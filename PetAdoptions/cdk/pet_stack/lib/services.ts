@@ -23,6 +23,7 @@ import { Construct } from 'constructs'
 import { PayForAdoptionService } from './services/pay-for-adoption-service'
 import { ListAdoptionsService } from './services/list-adoptions-service'
 import { SearchService } from './services/search-service'
+import { SearchEc2Service } from './services/search-service-ec2'
 import { TrafficGeneratorService } from './services/traffic-generator-service'
 import { StatusUpdaterService } from './services/status-updater-service'
 import { PetAdoptionsStepFn } from './services/stepfn'
@@ -220,11 +221,13 @@ export class Services extends Stack {
         });
         listAdoptionsService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
+        /*
         const ecsPetSearchCluster = new ecs.Cluster(this, "PetSearch", {
             vpc: theVPC,
             containerInsights: true
         });
         // PetSearch service definitions-----------------------------------------------------------------------
+        
         const searchService = new SearchService(this, 'search-service', {
             cluster: ecsPetSearchCluster,
             logGroupName: "/ecs/PetSearch",
@@ -238,6 +241,33 @@ export class Services extends Stack {
             securityGroup: ecsServicesSecurityGroup
         })
         searchService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
+         
+        */
+
+        // PetSearch service Ec2 definitions-----------------------------------------------------------------------
+        const ecsEc2PetSearchCluster = new ecs.Cluster(this, "PetSearchEc2", {
+            vpc: theVPC,
+            containerInsights: true,
+        });
+
+        ecsEc2PetSearchCluster.addCapacity('PetSearchEc2', {
+            instanceType: new ec2.InstanceType('t2.xlarge'),
+            desiredCapacity: 2,
+        });
+
+        const searchServiceEc2 = new SearchEc2Service(this, 'search-service-ec2', {
+            cluster: ecsEc2PetSearchCluster,
+            logGroupName: "/ecs/PetSearchEc2",
+            cpu: 1024,
+            memoryLimitMiB: 2048,
+            //repositoryURI: repositoryURI,
+            healthCheck: '/health/status',
+            desiredTaskCount: 2,
+            instrumentation: 'otel',
+            region: region,
+            securityGroup: ecsServicesSecurityGroup
+        })
+        searchServiceEc2.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
         // Traffic Generator task definition.
         const trafficGeneratorService = new TrafficGeneratorService(this, 'traffic-generator-service', {
@@ -654,8 +684,12 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
             timeout: Duration.minutes(10)
         });
         petsiteApplicationResourceController.addEnvironment("EKS_CLUSTER_NAME", cluster.clusterName);
+        /*
         petsiteApplicationResourceController.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
             ecsPetListAdoptionCluster.clusterArn + "," + ecsPetSearchCluster.clusterArn);
+        */
+        petsiteApplicationResourceController.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
+            ecsPetListAdoptionCluster.clusterArn + "," + ecsEc2PetSearchCluster.clusterArn);
 
         var customWidgetFunction = new lambda.Function(this, 'cloudwatch-custom-widget', {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
@@ -667,8 +701,12 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
         });
         customWidgetFunction.addEnvironment("CONTROLER_LAMBDA_ARN", petsiteApplicationResourceController.functionArn);
         customWidgetFunction.addEnvironment("EKS_CLUSTER_NAME", cluster.clusterName);
+        /*
         customWidgetFunction.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
             ecsPetListAdoptionCluster.clusterArn + "," + ecsPetSearchCluster.clusterArn);
+        */
+        customWidgetFunction.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
+            ecsPetListAdoptionCluster.clusterArn + "," + ecsEc2PetSearchCluster.clusterArn);
 
         var costControlDashboardBody = readFileSync("./resources/cw_dashboard_cost_control.json","utf-8");
         costControlDashboardBody = costControlDashboardBody.replaceAll("{{YOUR_LAMBDA_ARN}}",customWidgetFunction.functionArn);
@@ -699,8 +737,8 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
             '/petstore/snsarn': topic_petadoption.topicArn,
             '/petstore/dynamodbtablename': dynamodb_petadoption.tableName,
             '/petstore/s3bucketname': s3_observabilitypetadoptions.bucketName,
-            '/petstore/searchapiurl': `http://${searchService.service.loadBalancer.loadBalancerDnsName}/api/search?`,
-            '/petstore/searchimage': searchService.container.imageName,
+            '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
+            '/petstore/searchimage': searchServiceEc2.container.imageName,
             '/petstore/petlistadoptionsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/api/adoptionlist/`,
             '/petstore/petlistadoptionsmetricsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/metrics`,
             '/petstore/paymentapiurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/completeadoption`,
