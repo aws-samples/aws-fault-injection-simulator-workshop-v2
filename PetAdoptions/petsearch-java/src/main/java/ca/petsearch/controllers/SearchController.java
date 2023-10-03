@@ -80,6 +80,8 @@ public class SearchController {
 
             String key = getKey(petType, image);
             
+            /*
+            
             Double randomnumber = Math.random()*9999;
 
             if (randomnumber < 100) {
@@ -88,8 +90,18 @@ public class SearchController {
                 logger.info(randomnumber + " is the random number");
                 s3Client.createBucket(s3BucketName);
             }
+            
+            */
+            
+            Double randomnumber = Math.random()*9999;
 
-            logger.info("Generating presigned url");
+            if (randomnumber < 100) {
+                logger.info("Trying to list a S3 Bucket");
+                logger.info(randomnumber + " is the random number");
+                s3Client.listObjects(s3BucketName);
+            }            
+
+            logger.info("Generating presigned url for: " + key);
             GeneratePresignedUrlRequest generatePresignedUrlRequest =
                     new GeneratePresignedUrlRequest(s3BucketName, key)
                             .withMethod(HttpMethod.GET)
@@ -140,10 +152,12 @@ public class SearchController {
         Span span = tracer.spanBuilder("Scanning DynamoDB Table").startSpan();
 
         // This line is intentional. Delays searches
+        /*
         if (petType != null && !petType.trim().isEmpty() && petType.equals("bunny")) {
             logger.debug("Delaying the response on purpose, to show on traces as an issue");
             TimeUnit.MILLISECONDS.sleep(3000);
         }
+        */
         try(Scope scope = span.makeCurrent()) {
 
             List<Pet> result = ddbClient.scan(
