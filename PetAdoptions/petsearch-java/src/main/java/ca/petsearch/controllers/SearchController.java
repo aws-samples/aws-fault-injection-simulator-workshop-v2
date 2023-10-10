@@ -82,12 +82,14 @@ public class SearchController {
             
             Double randomnumber = Math.random()*9999;
 
+            /* 
             if (randomnumber < 100) {
                 logger.debug("Forced exception to show S3 bucket creation error. The bucket never really gets created due to lack of permissions");
                 logger.info("Trying to create a S3 Bucket");
                 logger.info(randomnumber + " is the random number");
                 s3Client.createBucket(s3BucketName);
             }
+            */
 
             logger.info("Generating presigned url");
             GeneratePresignedUrlRequest generatePresignedUrlRequest =
