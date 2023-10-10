@@ -9,6 +9,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3seeder from 'aws-cdk-lib/aws-s3-deployment'
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as eks from 'aws-cdk-lib/aws-eks';
 import * as yaml from 'js-yaml';
 import * as path from 'path';
@@ -23,7 +24,6 @@ import { Construct } from 'constructs'
 import { PayForAdoptionService } from './services/pay-for-adoption-service'
 import { ListAdoptionsService } from './services/list-adoptions-service'
 import { SearchService } from './services/search-service'
-import { SearchEc2Service } from './services/search-service-ec2'
 import { TrafficGeneratorService } from './services/traffic-generator-service'
 import { StatusUpdaterService } from './services/status-updater-service'
 import { PetAdoptionsStepFn } from './services/stepfn'
@@ -32,6 +32,8 @@ import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } fr
 import { readFileSync } from 'fs';
 import 'ts-replace-all'
 import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch';
+import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
+import { Cloud9Environment } from './modules/core/cloud9';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -110,7 +112,8 @@ export class Services extends Stack {
         }
         // The VPC where all the microservices will be deployed into
         const theVPC = new ec2.Vpc(this, 'Microservices', {
-            cidr: cidrRange,
+            ipAddresses: ec2.IpAddresses.cidr(cidrRange),
+            // cidr: cidrRange,
             natGateways: 1,
             maxAzs: 2
         });
@@ -223,13 +226,11 @@ export class Services extends Stack {
         });
         listAdoptionsService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
-        /*
         const ecsPetSearchCluster = new ecs.Cluster(this, "PetSearch", {
             vpc: theVPC,
             containerInsights: true
         });
         // PetSearch service definitions-----------------------------------------------------------------------
-        
         const searchService = new SearchService(this, 'search-service', {
             cluster: ecsPetSearchCluster,
             logGroupName: "/ecs/PetSearch",
@@ -243,33 +244,6 @@ export class Services extends Stack {
             securityGroup: ecsServicesSecurityGroup
         })
         searchService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
-         
-        */
-
-        // PetSearch service Ec2 definitions-----------------------------------------------------------------------
-        const ecsEc2PetSearchCluster = new ecs.Cluster(this, "PetSearchEc2", {
-            vpc: theVPC,
-            containerInsights: true,
-        });
-
-        ecsEc2PetSearchCluster.addCapacity('PetSearchEc2', {
-            instanceType: new ec2.InstanceType('t2.xlarge'),
-            desiredCapacity: 2,
-        });
-
-        const searchServiceEc2 = new SearchEc2Service(this, 'search-service-ec2', {
-            cluster: ecsEc2PetSearchCluster,
-            logGroupName: "/ecs/PetSearchEc2",
-            cpu: 1024,
-            memoryLimitMiB: 2048,
-            //repositoryURI: repositoryURI,
-            healthCheck: '/health/status',
-            desiredTaskCount: 2,
-            instrumentation: 'otel',
-            region: region,
-            securityGroup: ecsServicesSecurityGroup
-        })
-        searchServiceEc2.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
         // Traffic Generator task definition.
         const trafficGeneratorService = new TrafficGeneratorService(this, 'traffic-generator-service', {
@@ -359,13 +333,16 @@ export class Services extends Stack {
             parameterName: '/eks/petsite/EKSMasterRoleArn'
           })
 
+        const secretsKey = new kms.Key(this, 'SecretsKey');
         const cluster = new eks.Cluster(this, 'petsite', {
             clusterName: 'PetSite',
             mastersRole: clusterAdmin,
             vpc: theVPC,
             defaultCapacity: 2,
             defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
-            version: KubernetesVersion.V1_23
+            secretsEncryptionKey: secretsKey,
+            version: KubernetesVersion.of('1.27'),
+            kubectlLayer: new KubectlLayer(this, 'kubectl') 
         });
 
         const clusterSG = ec2.SecurityGroup.fromSecurityGroupId(this,'ClusterSG',cluster.clusterSecurityGroupId);
@@ -480,9 +457,16 @@ export class Services extends Stack {
 
         if (isEventEngine === 'true')
         {
-            var c9role = undefined
-            var c9InstanceProfile = undefined
-            var c9env = undefined
+
+            var c9Env = new Cloud9Environment(this, 'Cloud9Environment', {
+                vpcId: theVPC.vpcId,
+                subnetId: theVPC.publicSubnets[0].subnetId,
+                cloud9OwnerArn: "assumed-role/WSParticipantRole/Participant",
+                templateFile: __dirname + "/../../../../cloud9-cfn.yaml"
+            
+            });
+    
+            var c9role = c9Env.c9Role;
 
             // Dynamically check if AWSCloud9SSMAccessRole and AWSCloud9SSMInstanceProfile exists
             const c9SSMRole = new iam.Role(this,'AWSCloud9SSMAccessRole', {
@@ -492,50 +476,14 @@ export class Services extends Stack {
                 managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("AWSCloud9SSMInstanceProfile"),iam.ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")]
             });
 
-            const c9SSMRoleNoPath = iam.Role.fromRoleArn(this,'c9SSMRoleNoPath', "arn:aws:iam::" + stack.account + ":role/AWSCloud9SSMAccessRole")
-            cluster.awsAuth.addMastersRole(c9SSMRoleNoPath);
-
-            new iam.CfnInstanceProfile(this, 'AWSCloud9SSMInstanceProfile', {
-                path: '/cloud9/',
-                roles: [c9SSMRole.roleName],
-                instanceProfileName: 'AWSCloud9SSMInstanceProfile'
-            });
-
-            c9env = new cloud9.CfnEnvironmentEC2(this,"CloudEnv",{
-                ownerArn: "arn:aws:iam::" + stack.account +":assumed-role/WSParticipantRole/Participant",
-                instanceType: "t2.micro",
-                name: "observabilityworkshop",
-                subnetId: theVPC.privateSubnets[0].subnetId,
-                connectionType: 'CONNECT_SSM',
-                repositories: [
-                    {
-                        repositoryUrl: "https://github.com/aws-samples/one-observability-demo.git",
-                        pathComponent: "workshopfiles/one-observability-demo"
-                    }
-                ]
-            });
-
-            c9role = new iam.Role(this,'cloud9InstanceRole', {
-                assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
-                managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess"), iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore")],
-                roleName: "observabilityworkshop-admin"
-            });
-
-            c9InstanceProfile = new iam.CfnInstanceProfile(this,'cloud9InstanceProfile', {
-                roles: [c9role.roleName],
-                instanceProfileName: "observabilityworkshop-profile"
-            })
-
-            const teamRole = iam.Role.fromRoleArn(this,'TeamRole',"arn:aws:iam::" + stack.account +":role/TeamRole");
+            const teamRole = iam.Role.fromRoleArn(this,'TeamRole',"arn:aws:iam::" + stack.account +":role/WSParticipantRole");
             cluster.awsAuth.addRoleMapping(teamRole,{groups:["dashboard-view"]});
+            
 
+            if (c9role!=undefined) {
+                cluster.awsAuth.addMastersRole(iam.Role.fromRoleArn(this, 'c9role', c9role.attrArn, { mutable: false }));
+            }
 
-
-            if (c9role!=undefined)
-                cluster.awsAuth.addMastersRole(c9role)
-
-            if (c9env!=undefined)
-                cluster.node.addDependency(c9env)
 
         }
 
@@ -686,12 +634,8 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
             timeout: Duration.minutes(10)
         });
         petsiteApplicationResourceController.addEnvironment("EKS_CLUSTER_NAME", cluster.clusterName);
-        /*
         petsiteApplicationResourceController.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
             ecsPetListAdoptionCluster.clusterArn + "," + ecsPetSearchCluster.clusterArn);
-        */
-        petsiteApplicationResourceController.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
-            ecsPetListAdoptionCluster.clusterArn + "," + ecsEc2PetSearchCluster.clusterArn);
 
         var customWidgetFunction = new lambda.Function(this, 'cloudwatch-custom-widget', {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
@@ -703,12 +647,8 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
         });
         customWidgetFunction.addEnvironment("CONTROLER_LAMBDA_ARN", petsiteApplicationResourceController.functionArn);
         customWidgetFunction.addEnvironment("EKS_CLUSTER_NAME", cluster.clusterName);
-        /*
         customWidgetFunction.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
             ecsPetListAdoptionCluster.clusterArn + "," + ecsPetSearchCluster.clusterArn);
-        */
-        customWidgetFunction.addEnvironment("ECS_CLUSTER_ARNS", ecsPayForAdoptionCluster.clusterArn + "," +
-            ecsPetListAdoptionCluster.clusterArn + "," + ecsEc2PetSearchCluster.clusterArn);
 
         var costControlDashboardBody = readFileSync("./resources/cw_dashboard_cost_control.json","utf-8");
         costControlDashboardBody = costControlDashboardBody.replaceAll("{{YOUR_LAMBDA_ARN}}",customWidgetFunction.functionArn);
@@ -739,8 +679,8 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
             '/petstore/snsarn': topic_petadoption.topicArn,
             '/petstore/dynamodbtablename': dynamodb_petadoption.tableName,
             '/petstore/s3bucketname': s3_observabilitypetadoptions.bucketName,
-            '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
-            '/petstore/searchimage': searchServiceEc2.container.imageName,
+            '/petstore/searchapiurl': `http://${searchService.service.loadBalancer.loadBalancerDnsName}/api/search?`,
+            '/petstore/searchimage': searchService.container.imageName,
             '/petstore/petlistadoptionsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/api/adoptionlist/`,
             '/petstore/petlistadoptionsmetricsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/metrics`,
             '/petstore/paymentapiurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/completeadoption`,
