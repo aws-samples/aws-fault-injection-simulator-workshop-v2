@@ -132,19 +132,21 @@ export class Services extends Stack {
             rdsUsername = "petadmin"
         }
 
-        const auroraCluster = new rds.ServerlessCluster(this, 'Database', {
+        const auroraCluster = new rds.DatabaseCluster(this, 'Database', {
 
             engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
- 
+            writer: rds.ClusterInstance.provisioned('writer',{
+                instanceType: ec2.InstanceType.of(ec2.InstanceClass.R6G, ec2.InstanceSize.XLARGE4),
+              }),
             parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql13'),
             vpc: theVPC,
             securityGroups: [rdssecuritygroup],
-            defaultDatabaseName: 'adoptions',
-            scaling: {
-                autoPause: Duration.minutes(60),
-                minCapacity: rds.AuroraCapacityUnit.ACU_2,
-                maxCapacity: rds.AuroraCapacityUnit.ACU_8,
-            }
+            defaultDatabaseName: 'adoptions'
+            // scaling: {
+            //     autoPause: Duration.minutes(60),
+            //     minCapacity: rds.AuroraCapacityUnit.ACU_2,
+            //     maxCapacity: rds.AuroraCapacityUnit.ACU_8,
+            // }
         });
 
 
