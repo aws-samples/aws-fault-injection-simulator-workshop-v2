@@ -140,10 +140,12 @@ public class SearchController {
         Span span = tracer.spanBuilder("Scanning DynamoDB Table").startSpan();
 
         // This line is intentional. Delays searches
+        /* 
         if (petType != null && !petType.trim().isEmpty() && petType.equals("bunny")) {
             logger.debug("Delaying the response on purpose, to show on traces as an issue");
             TimeUnit.MILLISECONDS.sleep(3000);
         }
+        */
         try(Scope scope = span.makeCurrent()) {
 
             List<Pet> result = ddbClient.scan(
