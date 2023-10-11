@@ -1,11 +1,11 @@
 Description:  >
-  Cloud9 Environment for One Observability Workshop
+  Cloud9 Environment for Fault Injection Simulation
 
 Parameters:
   EnvironmentName:
     Description: An environment name that is prefixed to resource names
     Type: String
-    Default: "observabilityworkshop"
+    Default: "fisworkshop"
 
   CreateVPC:
     Description: Create a VPC for Cloud9 instance
