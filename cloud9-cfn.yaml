@@ -778,7 +778,7 @@ Resources:
           name: cloneRepository
           inputs:
             runCommand:
-            - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/one-observability-demo.git ~/environment/workshopfiles/one-observability-demo' 
+            - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/sirirako/fis.git ~/environment/workshopfiles/fis-workshop' 
         - action: aws:runShellScript
           name: NotifyCloudformation
           inputs:
