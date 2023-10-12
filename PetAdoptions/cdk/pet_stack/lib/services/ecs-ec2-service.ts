@@ -83,7 +83,7 @@ export abstract class EcsEc2Service extends Construct {
     this.taskDefinition.taskRole?.addManagedPolicy({
       managedPolicyArn: 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess',
     });
-    this.taskDefinition.taskRole?.grantPassRole;
+
     this.taskDefinition.taskRole?.addToPrincipalPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
@@ -131,6 +131,15 @@ export abstract class EcsEc2Service extends Construct {
         "ssm:DeregisterManagedInstance"
       ],
       resources: ['arn:aws:ssm:'+props.region+':*:managed-instance/*'],
+    }));
+
+    this.taskDefinition.taskRole?.addToPrincipalPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "iam:GetRole",
+        "iam:PassRole"
+      ],
+      resources: [ssmRole.roleArn]
     }));
 
     this.taskDefinition.addContainer('amazon-ssm-agent',{
