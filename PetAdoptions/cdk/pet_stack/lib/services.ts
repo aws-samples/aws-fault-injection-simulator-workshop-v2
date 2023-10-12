@@ -517,9 +517,11 @@ export class Services extends Stack {
         }
 
         const eksAdminArn = this.node.tryGetContext('admin_role');
+        let EKS_ADMIN_ARN = '';
         if ((eksAdminArn!=undefined)&&(eksAdminArn.length > 0)) {
             const role = iam.Role.fromRoleArn(this,"ekdAdminRoleArn",eksAdminArn,{mutable:false});
-            cluster.awsAuth.addMastersRole(role)
+            cluster.awsAuth.addMastersRole(role);
+            EKS_ADMIN_ARN = eksAdminArn;
         }
 
         const dahshboardManifest = new eks.KubernetesManifest(this,"k8sdashboardrbac",{
@@ -698,7 +700,7 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
 
         this.createOuputs(new Map(Object.entries({
             'CWServiceAccountArn': cwserviceaccount.roleArn,
-            'EKS_ADMIN_ARN':eksAdminArn,
+            'EKS_ADMIN_ARN':EKS_ADMIN_ARN,
             'XRayServiceAccountArn': xrayserviceaccount.roleArn,
             'OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
             'OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
