@@ -83,6 +83,15 @@ export abstract class EcsEc2Service extends Construct {
     this.taskDefinition.taskRole?.addManagedPolicy({
       managedPolicyArn: 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess',
     });
+    this.taskDefinition.taskRole?.grantPassRole;
+    this.taskDefinition.taskRole?.addToPrincipalPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "ssm:CreateActivation",
+        "ssm:AddTagsToResource",
+    ],
+      resources: ["*"],
+    }));
 
     // Build locally the image only if the repository URI is not specified
     // Can help speed up builds if we are not rebuilding anything
@@ -126,7 +135,7 @@ export abstract class EcsEc2Service extends Construct {
 
     this.taskDefinition.addContainer('amazon-ssm-agent',{
       image: ecs.ContainerImage.fromRegistry('public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest'),
-      memoryLimitMiB: 64,
+      memoryLimitMiB: 256,
       essential: false,
       cpu: 256,
       logging,
