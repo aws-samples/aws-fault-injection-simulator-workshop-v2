@@ -75,6 +75,7 @@ export abstract class EcsEc2Service extends Construct {
     this.taskDefinition = new ecs.Ec2TaskDefinition(this, "taskDefinition", {
         networkMode: ecs.NetworkMode.AWS_VPC,
         taskRole: taskRole,
+        pidMode: ecs.PidMode.TASK,
     });
 
     this.taskDefinition.addToExecutionRolePolicy(EcsEc2Service.ExecutionRolePolicy);
