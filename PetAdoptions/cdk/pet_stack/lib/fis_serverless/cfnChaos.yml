@@ -1,0 +1,274 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template creates a FIS experiment to inject chaos in Lambda function usign lambda layers.
+Parameters: 
+  UpdateLambdaWithSSMAutomationRoleParam: 
+    Type: String 
+    Default: 'UpdateLambdaWithSSMAutomationRoleParam'
+    Description: 'Update lambda via SSM Automation role'
+  LambdaExecutionRoleName: 
+    Type: String 
+    Default: 'SampleLambdaExecutionRole'
+    Description: 'Sample Lambda Execution Role'
+  FISRoleName: 
+    Type: String 
+    Default: 'FISRole'
+    Description: 'Sample FIS Execution Role'  
+  ChaosDocumentName: 
+    Type: String 
+    Default: 'InjectLambdaChaos'
+    Description: 'Chaos document name'
+  TargetFunctionName:
+    Description: 'The default target function name'
+    MinLength: 1
+    MaxLength: 1024
+    Type: String  
+    Default: '<FUNCTION_NAME>'
+  NodeLambdaLayer:
+    Description: ARN of the node lambda layer
+    Type: String
+Resources:
+  UpdateLambdaWithSSMAutomationRole:
+    Type: 'AWS::IAM::Role'
+    DeletionPolicy: Delete
+    Properties:
+      RoleName: 
+        Ref: UpdateLambdaWithSSMAutomationRoleParam
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: Allow
+            Principal:
+              Service: 'ssm.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'UpdateLambda'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'lambda:UpdateFunctionConfiguration'
+                  - 'lambda:GetFunctionConfiguration'
+                  - 'lambda:GetFunction'
+                Resource: 
+                  - "*"
+              - Effect: Allow
+                Action:
+                  - 'lambda:GetLayerVersion'
+                Resource: 
+                  - !Ref NodeLambdaLayer
+        - PolicyName: 'CreateSSMParam'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ssm:PutParameter'
+                  - 'ssm:LabelParameterVersion'
+                  - 'ssm:DescribeDocumentParameters'
+                  - 'ssm:GetParameters'
+                  - 'ssm:GetParameter'
+                  - 'ssm:DescribeParameters'
+                Resource: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ChaosInjection/*'
+  ChaosDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Automation
+      Name: 
+        Ref: ChaosDocumentName
+      DocumentFormat: YAML
+      Content:
+        description: Add Lambda Layer
+        schemaVersion: '0.3'
+        assumeRole: "{{assumeRole}}"
+        parameters:
+          LayerArn:
+            type: String
+            description: LayerArn
+            default: ''
+          assumeRole:
+            type: String
+            description: assumeRole
+            default: ''  
+          FunctionName:
+            type: String
+            description: FunctionName
+            default: ''
+        mainSteps:
+        - name: Step1
+          action: aws:executeScript
+          inputs:
+            Runtime: python3.7
+            Handler: handler
+            InputPayload:
+              FunctionName: "{{FunctionName}}"
+              LayerArn: "{{ LayerArn }}"
+            Script: |-
+              import boto3
+
+              def handler(event, context):
+               # get existing handler
+               function_name = event["FunctionName"]
+               layer_arn = event["LayerArn"]
+               lambda_client = boto3.client("lambda")
+               lambda_config_existing = lambda_client.get_function_configuration(FunctionName=function_name)
+ 
+               # get existing handler and timeout
+               lambda_runtime = lambda_config_existing['Runtime']
+               existing_handler = lambda_config_existing['Handler']
+               existing_timeout = lambda_config_existing['Timeout']
+               existing_memory = lambda_config_existing['MemorySize']
+               existing_env = lambda_config_existing['Environment']
+      
+               # save values in param store for later use
+               ssm_client = boto3.client("ssm")
+               javaLayerJarName = ssm_client.get_parameter(Name='/ChaosInjection/JavaLayerJarFileNameParam')['Parameter']['Value']
+               ssm_client.put_parameter(Name='/ChaosInjection/' + function_name+'_handler_ssmparam', Value=existing_handler,Type='String',Overwrite=True)
+               ssm_client.put_parameter(Name='/ChaosInjection/' +function_name+'_timeout_ssmparam', Value=str(existing_timeout),Type='String',Overwrite=True)
+               ssm_client.put_parameter(Name='/ChaosInjection/' +function_name+'_memory_ssmparam', Value=str(existing_memory),Type='String',Overwrite=True)
+               
+               new_handler=""
+               if lambda_runtime.startswith("java"):
+               
+                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,MemorySize=512,Layers=[layer_arn], Timeout=300,Environment={'Variables': {'JAVA_TOOL_OPTIONS': '-javaagent:"/opt/' + javaLayerJarName  + '"'}})
+               elif lambda_runtime.startswith("node"):
+                 new_handler="layer.layer_handler"
+                 existing_env['Variables']['CHAOS_OLD_HANDLER'] = existing_handler
+                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=[layer_arn], Timeout=300,Handler=new_handler,Environment=existing_env)
+               elif lambda_runtime.startswith("python"):
+                 new_handler="pylayer.layer_handler"
+                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=[layer_arn], Timeout=300,Handler=new_handler)
+
+ 
+               # Update target lambda - inject chaos layer, update handler and update the timeout to 5 mins to allow for latency injection. 
+
+ 
+               return
+  RollbackChaosDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Automation
+      Name:
+        !Join 
+        - '-'
+        - - Ref: ChaosDocumentName
+          - 'Rollback'
+      DocumentFormat: YAML
+      Content:
+        description: Add Lambda Layer
+        schemaVersion: '0.3'
+        assumeRole: "{{assumeRole}}"
+        parameters:
+          LayerArn:
+            type: String
+            description: LayerArn
+            default: ''
+          assumeRole:
+            type: String
+            description: assumeRole
+            default: ''  
+          FunctionName:
+            type: String
+            description: FunctionName
+            default: ''
+        mainSteps:
+        - name: Step1
+          action: aws:executeScript
+          inputs:
+            Runtime: python3.7
+            Handler: handler
+            InputPayload:
+              FunctionName: "{{FunctionName}}"
+              LayerArn: "{{LayerArn}}"
+            Script: |-
+              import boto3
+
+              def handler(event, context):
+               # get existing handler
+               function_name = event["FunctionName"]
+               layer_arn = event["LayerArn"]
+               
+               # get older values  in param store for rollback
+               ssm_client = boto3.client("ssm")
+               old_handler = ssm_client.get_parameter(Name='/ChaosInjection/' +function_name+'_handler_ssmparam')['Parameter']['Value']
+               old_timeout= ssm_client.get_parameter(Name='/ChaosInjection/' +function_name+'_timeout_ssmparam')['Parameter']['Value']
+               old_memory= ssm_client.get_parameter(Name='/ChaosInjection/' +function_name+'_memory_ssmparam')['Parameter']['Value']
+ 
+               # Update target lambda - remove layer, and revert handler and timeout
+               # environment variable - remove the java one we set. 
+
+               lambda_client = boto3.client("lambda") 
+               current_config = lambda_client.get_function(FunctionName=function_name)
+         
+               current_layers = current_config['Configuration']['Layers']
+               remove_layers = []
+         
+               lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=remove_layers ,Timeout=int(old_timeout),Handler=old_handler,Environment={},MemorySize=int(old_memory)) 
+               return               
+  ExperimentTemplate:
+    Type: 'AWS::FIS::ExperimentTemplate'
+    DeletionPolicy: Delete
+    Properties: 
+      Description: 'Inject chaos in Lambda with pre-configured chaos injection layers'
+      Actions: 
+        InjectChaos:
+          ActionId: 'aws:ssm:start-automation-execution'
+          Parameters: 
+            documentArn: 
+              !Join 
+              - ''
+              - - !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/'
+                - Ref: ChaosDocumentName
+            documentParameters:  !Join ["", ["{\"FunctionName\":\"", !Ref TargetFunctionName, "\",\"LayerArn\":\"" , !Ref NodeLambdaLayer ,"\",\"assumeRole\":\"", !GetAtt UpdateLambdaWithSSMAutomationRole.Arn,"\"}" ] ]  
+            maxDuration: 'PT10M'
+      StopConditions:
+        - Source: 'none'
+      RoleArn: !GetAtt FISRole.Arn
+      Tags: 
+        Name: 'fisChaosInjection'
+      Targets: {}
+  FISRole:
+    Type: 'AWS::IAM::Role'
+    DeletionPolicy: Delete
+    Properties:
+      RoleName: 
+        Ref: FISRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: Allow
+            Principal:
+              Service: 'fis.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies: 
+        - PolicyName: 'PassRole'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 'iam:PassRole' 
+                Resource: 'arn:aws:iam::*:role/*'
+                Condition: 
+                  StringEquals: 
+                    'iam:PassedToService': 'ssm.amazonaws.com'
+        - PolicyName: 'StartAutomation'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement: 
+              - Effect: Allow         
+                Action: 'ssm:StartAutomationExecution'
+                Resource:  "arn:aws:ssm:*:*:automation-definition/*:*"
+        - PolicyName: 'StopAutomation'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement: 
+              - Effect: Allow     
+                Action: 
+                  - 'ssm:GetAutomationExecution'                    
+                  - 'ssm:StopAutomationExecution'
+                Resource: 'arn:aws:ssm:*:*:automation-execution/*'  
+                          
+Outputs:
+  NodeChaosInjectionParam:
+    Description: The parameter string to update in FIS experiment template for injecting chaos in Node Lambda function 
+    Value: !Join ["", ["{\"FunctionName\":\"NodeChaosInjectionExampleFn\",\"LayerArn\":\"" , !Ref NodeLambdaLayer ,"\",\"assumeRole\":\"", !GetAtt UpdateLambdaWithSSMAutomationRole.Arn, "\"}" ] ]  
