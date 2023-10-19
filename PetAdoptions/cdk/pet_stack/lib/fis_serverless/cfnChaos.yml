@@ -15,7 +15,7 @@ Parameters:
     Description: 'Sample FIS Execution Role'  
   ChaosDocumentName: 
     Type: String 
-    Default: 'InjectLambdaChaos'
+    Default: 'InjectChaosLambda'
     Description: 'Chaos document name'
   TargetFunctionName:
     Description: 'The default target function name'
@@ -122,7 +122,6 @@ Resources:
       
                # save values in param store for later use
                ssm_client = boto3.client("ssm")
-               javaLayerJarName = ssm_client.get_parameter(Name='/ChaosInjection/JavaLayerJarFileNameParam')['Parameter']['Value']
                ssm_client.put_parameter(Name='/ChaosInjection/' + function_name+'_handler_ssmparam', Value=existing_handler,Type='String',Overwrite=True)
                ssm_client.put_parameter(Name='/ChaosInjection/' +function_name+'_timeout_ssmparam', Value=str(existing_timeout),Type='String',Overwrite=True)
                ssm_client.put_parameter(Name='/ChaosInjection/' +function_name+'_memory_ssmparam', Value=str(existing_memory),Type='String',Overwrite=True)
