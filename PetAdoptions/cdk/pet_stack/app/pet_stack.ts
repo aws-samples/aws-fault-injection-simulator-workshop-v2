@@ -5,6 +5,7 @@ import { Applications } from '../lib/applications';
 //import { EKSPetsite } from '../lib/ekspetsite'
 import { App, Tags, Aspects } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
+import { FisServerless } from '../lib/fis_serverless';
 
 
 const stackName = "Services";
@@ -17,6 +18,12 @@ const stack = new Services(app, stackName, {
 }});
 
 const applications = new Applications(app, "Applications", {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: process.env.CDK_DEFAULT_REGION 
+}});
+
+const fis_serverless = new FisServerless(app, "FisServerless", {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
