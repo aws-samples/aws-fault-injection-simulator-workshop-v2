@@ -1,5 +1,5 @@
 {
-    "Comment": "State Machine for stopping ECS tasks based on tags",
+    "Comment": "State Machine for stopping ECS tasks using FIS",
     "StartAt": "ListClusters",
     "States": {
       "ListClusters": {
