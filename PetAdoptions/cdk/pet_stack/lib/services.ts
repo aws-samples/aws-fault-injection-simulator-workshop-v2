@@ -256,7 +256,7 @@ export class Services extends Stack {
         });
 
         ecsEc2PetSearchCluster.addCapacity('PetSearchEc2', {
-            instanceType: new ec2.InstanceType('t2.xlarge'),
+            instanceType: new ec2.InstanceType('m5.large'),
             desiredCapacity: 2,
         });
 
@@ -368,7 +368,7 @@ export class Services extends Stack {
             mastersRole: clusterAdmin,
             vpc: theVPC,
             defaultCapacity: 2,
-            defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
+            defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.LARGE),
             secretsEncryptionKey: secretsKey,
             version: KubernetesVersion.of('1.27'),
             kubectlLayer: new KubectlLayer(this, 'kubectl') 
