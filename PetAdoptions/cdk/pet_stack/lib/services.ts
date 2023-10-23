@@ -195,6 +195,7 @@ export class Services extends Stack {
             cpu: 1024,
             memoryLimitMiB: 2048,
             healthCheck: '/health/status',
+            enableSSM: true,
             // build locally
             //repositoryURI: repositoryURI,
             database: auroraCluster,
@@ -218,6 +219,7 @@ export class Services extends Stack {
             memoryLimitMiB: 2048,
             healthCheck: '/health/status',
             instrumentation: 'otel',
+            enableSSM: true,
             // build locally
             //repositoryURI: repositoryURI,
             database: auroraCluster,
@@ -278,9 +280,9 @@ export class Services extends Stack {
         const trafficGeneratorService = new TrafficGeneratorService(this, 'traffic-generator-service', {
             cluster: ecsPetListAdoptionCluster,
             logGroupName: "/ecs/PetTrafficGenerator",
-            cpu: 256,
-            memoryLimitMiB: 512,
-            instrumentation: 'none',
+            cpu: 512,
+            memoryLimitMiB: 1024,
+            enableSSM: false,
             //repositoryURI: repositoryURI,
             desiredTaskCount: 1,
             region: region,

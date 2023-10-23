@@ -22,13 +22,12 @@ const applications = new Applications(app, "Applications", {
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
 }});
-/*
+
 const fis_serverless = new FisServerless(app, "FisServerless", {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
 }});
-*/
 
 Tags.of(app).add("Workshop","true")
 //Aspects.of(stack).add(new AwsSolutionsChecks({verbose: true}));
