@@ -79,7 +79,8 @@ export class Services extends Stack {
                 name: 'petid',
                 type: ddb.AttributeType.STRING
             },
-            removalPolicy:  RemovalPolicy.DESTROY
+            removalPolicy:  RemovalPolicy.DESTROY,
+            billingMode: ddb.BillingMode.PAY_PER_REQUEST,
         });
 
         dynamodb_petadoption.metric('WriteThrottleEvents',{statistic:"avg"}).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
