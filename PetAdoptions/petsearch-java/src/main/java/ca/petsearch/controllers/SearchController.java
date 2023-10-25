@@ -79,17 +79,11 @@ public class SearchController {
             String s3BucketName = getSSMParameter(BUCKET_NAME);
 
             String key = getKey(petType, image);
-            
-            Double randomnumber = Math.random()*9999;
-
-            /* 
-            if (randomnumber < 100) {
-                logger.debug("Forced exception to show S3 bucket creation error. The bucket never really gets created due to lack of permissions");
-                logger.info("Trying to create a S3 Bucket");
-                logger.info(randomnumber + " is the random number");
-                s3Client.createBucket(s3BucketName);
+            // check if an object exist in s3 bucket
+            logger.info("Trying to access metadata");
+            if (s3Client.doesObjectExist(s3BucketName, key)) {
+                logger.info("Object exist in S3 bucket");
             }
-            */
 
             logger.info("Generating presigned url");
             GeneratePresignedUrlRequest generatePresignedUrlRequest =
