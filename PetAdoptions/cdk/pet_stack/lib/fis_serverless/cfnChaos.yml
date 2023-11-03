@@ -50,13 +50,9 @@ Resources:
                   - 'lambda:UpdateFunctionConfiguration'
                   - 'lambda:GetFunctionConfiguration'
                   - 'lambda:GetFunction'
-                Resource: 
-                  - "*"
-              - Effect: Allow
-                Action:
                   - 'lambda:GetLayerVersion'
                 Resource: 
-                  - !Ref NodeLambdaLayer
+                  - "*"
         - PolicyName: 'CreateSSMParam'
           PolicyDocument:
             Version: '2012-10-17'
@@ -119,24 +115,34 @@ Resources:
                existing_timeout = lambda_config_existing['Timeout']
                existing_memory = lambda_config_existing['MemorySize']
                existing_env = lambda_config_existing['Environment']
+
+               if 'Layers' in lambda_config_existing:
+                existing_layers = lambda_config_existing['Layers']
+               else:
+                existing_layers = []
       
                # save values in param store for later use
                ssm_client = boto3.client("ssm")
                ssm_client.put_parameter(Name='/ChaosInjection/' + function_name+'_handler_ssmparam', Value=existing_handler,Type='String',Overwrite=True)
                ssm_client.put_parameter(Name='/ChaosInjection/' +function_name+'_timeout_ssmparam', Value=str(existing_timeout),Type='String',Overwrite=True)
                ssm_client.put_parameter(Name='/ChaosInjection/' +function_name+'_memory_ssmparam', Value=str(existing_memory),Type='String',Overwrite=True)
-               
+
+               new_layers = []
+               if existing_layers:
+                 new_layers = [layer['Arn'] for layer in existing_layers]
+               new_layers.append(layer_arn)
+
                new_handler=""
                if lambda_runtime.startswith("java"):
                
-                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,MemorySize=512,Layers=[layer_arn], Timeout=300,Environment={'Variables': {'JAVA_TOOL_OPTIONS': '-javaagent:"/opt/' + javaLayerJarName  + '"'}})
+                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,MemorySize=512,Layers=new_layers, Timeout=300,Environment={'Variables': {'JAVA_TOOL_OPTIONS': '-javaagent:"/opt/' + javaLayerJarName  + '"'}})
                elif lambda_runtime.startswith("node"):
                  new_handler="layer.layer_handler"
                  existing_env['Variables']['CHAOS_OLD_HANDLER'] = existing_handler
-                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=[layer_arn], Timeout=300,Handler=new_handler,Environment=existing_env)
+                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=new_layers, Timeout=300,Handler=new_handler,Environment=existing_env)
                elif lambda_runtime.startswith("python"):
                  new_handler="pylayer.layer_handler"
-                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=[layer_arn], Timeout=300,Handler=new_handler)
+                 lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=new_layers, Timeout=300,Handler=new_handler)
 
  
                # Update target lambda - inject chaos layer, update handler and update the timeout to 5 mins to allow for latency injection. 
@@ -200,7 +206,7 @@ Resources:
                current_config = lambda_client.get_function(FunctionName=function_name)
          
                current_layers = current_config['Configuration']['Layers']
-               remove_layers = []
+               remove_layers = [layer['Arn'] for layer in current_layers if layer['Arn'] != layer_arn]
          
                lambda_config_details = lambda_client.update_function_configuration(FunctionName=function_name,Layers=remove_layers ,Timeout=int(old_timeout),Handler=old_handler,Environment={},MemorySize=int(old_memory)) 
                return               
