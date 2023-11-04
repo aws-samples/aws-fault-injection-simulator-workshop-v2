@@ -1,6 +1,6 @@
-## One Observability Demo
+## AWS Fault Injection Simulator Workshop
 
-This repo contains a sample application which is used in the One Observability Demo workshop here - https://observability.workshop.aws/
+This repo contains a sample application which is used in the AWS Fault Injection Simulator Workshop
 
 ## Security
 
