@@ -232,5 +232,14 @@
     "image": "p5",
     "petcolor": "white",
     "price": "79"
+  },
+  {
+    "pettype": "puppy",
+    "petid": "016",
+    "availability": "yes",
+    "cuteness_rate": "5",
+    "image": "p16",
+    "petcolor": "brown",
+    "price": "500"
   }
 ]
