@@ -778,7 +778,7 @@ Resources:
           name: cloneRepository
           inputs:
             runCommand:
-            - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/sirirako/fis.git ~/environment/workshopfiles/fis-workshop' 
+            - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop' 
         - action: aws:runShellScript
           name: NotifyCloudformation
           inputs:
