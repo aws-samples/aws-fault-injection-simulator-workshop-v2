@@ -1,0 +1,14 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "ssm:SendCommand",
+                "ssm:ListCommands",
+                "ssm:CancelCommand"
+            ],
+            "Effect": "Allow",
+            "Resource": "*"
+        }
+    ]
+}
