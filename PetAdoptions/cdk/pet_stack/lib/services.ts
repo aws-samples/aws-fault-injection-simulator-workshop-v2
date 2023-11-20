@@ -371,7 +371,7 @@ export class Services extends Stack {
             mastersRole: clusterAdmin,
             vpc: theVPC,
             defaultCapacity: 2,
-            defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MEDIUM),
+            defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
             version: KubernetesVersion.of('1.27'),
             kubectlLayer: new KubectlLayer(this, 'kubectl') 
