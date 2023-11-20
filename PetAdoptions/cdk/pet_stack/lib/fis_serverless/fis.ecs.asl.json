@@ -32,7 +32,7 @@
           "Targets": {
             "ecsworkshoptask": {
               "ResourceType": "aws:ecs:task",
-              "ResourceArns.$": "$.TaskArns",
+              "ResourceArns.$": "States.ArrayGetItem(States.ArrayPartition($.TaskArns,5),0)",
               "SelectionMode": "ALL"
             }
           },
