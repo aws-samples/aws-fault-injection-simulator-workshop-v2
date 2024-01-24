@@ -139,6 +139,12 @@ export class Services extends Stack {
             writer: rds.ClusterInstance.provisioned('writer',{
                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.R6G, ec2.InstanceSize.XLARGE4),
               }),
+            readers: [
+                rds.ClusterInstance.provisioned('reader', {
+                    instanceType: ec2.InstanceType.of(ec2.InstanceClass.R6G, ec2.InstanceSize.XLARGE4),
+                },
+                ),
+            ],
             parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql13'),
             vpc: theVPC,
             securityGroups: [rdssecuritygroup],
