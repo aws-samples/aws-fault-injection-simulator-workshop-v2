@@ -26,6 +26,11 @@ export class Applications extends Stack {
       clusterName: 'PetSite',
       kubectlRoleArn: roleArn,
     });
+    // Create metrics server
+   const metricServerYaml = yaml.loadAll(fs.readFileSync('manifests/metricServerManifest.yaml', 'utf8')) as [Record<string, any>];
+   cluster.addManifest('MetricServer', ...metricServerYaml);
+
+
     // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
     // Thsos might be an issue
     const clusterId = Fn.select(4, Fn.split('/', oidcProviderUrl)) // Remove https:// from the URL as workaround to get ClusterID
