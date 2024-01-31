@@ -27,8 +27,12 @@ export class Applications extends Stack {
       kubectlRoleArn: roleArn,
     });
     // Create metrics server
-   const metricServerYaml = yaml.loadAll(fs.readFileSync('manifests/metricServerManifest.yaml', 'utf8')) as [Record<string, any>];
-   cluster.addManifest('MetricServer', ...metricServerYaml);
+    new eks.HelmChart(this, 'metrics-server', {
+      cluster,
+      chart: 'metrics-server',
+      repository: 'https://kubernetes-sigs.github.io/metrics-server/',
+      namespace: 'kube-system',
+    });
 
 
     // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
