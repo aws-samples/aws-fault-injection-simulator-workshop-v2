@@ -48,6 +48,13 @@ spec:
         ports:
         - containerPort: 80
           protocol: TCP
+        resources:
+          limits:
+            cpu: 800m
+            memory: 300Mi
+          requests:
+            cpu: 400m
+            memory: 200Mi
         env:
         - name: AWS_XRAY_DAEMON_ADDRESS
           value: xray-service.default:2000
