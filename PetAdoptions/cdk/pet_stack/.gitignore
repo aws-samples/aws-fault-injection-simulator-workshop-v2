@@ -10,8 +10,6 @@ cdk.out
 .cache
 .build
 
-**/package-lock.json
-
 cdk.context.json
 
 # IDE
