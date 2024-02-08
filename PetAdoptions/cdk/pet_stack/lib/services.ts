@@ -1,5 +1,6 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as asg from 'aws-cdk-lib/aws-autoscaling';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as sns from 'aws-cdk-lib/aws-sns'
 import * as sqs from 'aws-cdk-lib/aws-sqs'
@@ -19,6 +20,7 @@ import * as cloud9 from 'aws-cdk-lib/aws-cloud9';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecrassets from 'aws-cdk-lib/aws-ecr-assets';
+import * as cdk from "aws-cdk-lib";
 
 import { Construct } from 'constructs'
 import { PayForAdoptionService } from './services/pay-for-adoption-service'
@@ -117,8 +119,12 @@ export class Services extends Stack {
             ipAddresses: ec2.IpAddresses.cidr(cidrRange),
             // cidr: cidrRange,
             natGateways: 1,
-            maxAzs: 2
+            maxAzs: 2,
+            
         });
+
+        // Adding tags to the VPC for AzImpairmentPower
+        cdk.Tags.of(theVPC).add('AzImpairmentPower', 'DisruptSubnet');
 
         // Create RDS Aurora PG cluster
         const rdssecuritygroup = new ec2.SecurityGroup(this, 'petadoptionsrdsSG', {
@@ -156,6 +162,8 @@ export class Services extends Stack {
             // }
         });
 
+        // Adding tags to the RDS for AzImpairmentPower
+        cdk.Tags.of(auroraCluster).add('AzImpairmentPower', 'DisruptRds');
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -195,6 +203,9 @@ export class Services extends Stack {
             vpc: theVPC,
             containerInsights: true
         });
+
+        
+
         // PayForAdoption service definitions-----------------------------------------------------------------------
         const payForAdoptionService = new PayForAdoptionService(this, 'pay-for-adoption-service', {
             cluster: ecsPayForAdoptionCluster,
@@ -263,11 +274,47 @@ export class Services extends Stack {
             vpc: theVPC,
             containerInsights: true,
         });
+        // Replacing with addAsgCapacityProvider as per best practice
+        // ecsEc2PetSearchCluster.addCapacity('PetSearchEc2', {
+        //     instanceType: new ec2.InstanceType('m5.large'),
+        //     desiredCapacity: 2,
+        // });
 
-        ecsEc2PetSearchCluster.addCapacity('PetSearchEc2', {
+        const ecsEc2PetSearchRole = new iam.Role(this, 'ecsEc2PetSearchRole', {
+            assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+          });
+        
+        ecsEc2PetSearchRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
+
+        
+
+        const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
+            machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
             instanceType: new ec2.InstanceType('m5.large'),
+            userData: ec2.UserData.forLinux(),
+            role: ecsEc2PetSearchRole,
+          });
+
+        const ecsEc2PetSearchAutoScalingGroup = new asg.AutoScalingGroup(this, 'ecsEc2PetSearchASG', {
+            vpc: theVPC,
+            minCapacity: 1,
+            maxCapacity: 2,
             desiredCapacity: 2,
-        });
+            launchTemplate: ecsEc2PetSearchlaunchTemplate,
+          });
+
+        const ecsEc2PetSearchCapacityProvider = new ecs.AsgCapacityProvider(this, 'PetSearchAsgCapacityProvider', {
+            autoScalingGroup: ecsEc2PetSearchAutoScalingGroup,
+          });
+
+        ecsEc2PetSearchCluster.addAsgCapacityProvider(ecsEc2PetSearchCapacityProvider)
+
+
+
+        // Adding tags to the ECS for AzImpairmentPower
+        cdk.Tags.of(ecsEc2PetSearchAutoScalingGroup).add('AzImpairmentPower', 'IceAsg');
+        //cdk.Tags.of(ecsEc2PetSearchCluster).add('AzImpairmentPower', 'StopInstances');
+
 
         const searchServiceEc2 = new SearchEc2Service(this, 'search-service-ec2', {
             cluster: ecsEc2PetSearchCluster,
