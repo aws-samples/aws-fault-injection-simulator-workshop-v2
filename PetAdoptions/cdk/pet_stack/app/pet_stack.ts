@@ -30,5 +30,6 @@ const fis_serverless = new FisServerless(app, "FisServerless", {
 }});
 
 Tags.of(app).add("Workshop","true")
+Tags.of(app).add("AzImpairmentPowerReady","true")
 //Aspects.of(stack).add(new AwsSolutionsChecks({verbose: true}));
 //Aspects.of(applications).add(new AwsSolutionsChecks({verbose: true}));
