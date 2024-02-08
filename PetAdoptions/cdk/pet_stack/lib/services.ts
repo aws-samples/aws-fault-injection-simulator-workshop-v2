@@ -300,7 +300,21 @@ export class Services extends Stack {
             minCapacity: 1,
             maxCapacity: 2,
             desiredCapacity: 2,
-        });
+            launchTemplate: ecsEc2PetSearchlaunchTemplate,
+          });
+
+        const ecsEc2PetSearchCapacityProvider = new ecs.AsgCapacityProvider(this, 'PetSearchAsgCapacityProvider', {
+            autoScalingGroup: ecsEc2PetSearchAutoScalingGroup,
+          });
+
+        ecsEc2PetSearchCluster.addAsgCapacityProvider(ecsEc2PetSearchCapacityProvider)
+
+
+
+        // Adding tags to the ECS for AzImpairmentPower
+        cdk.Tags.of(ecsEc2PetSearchAutoScalingGroup).add('AzImpairmentPower', 'IceAsg');
+        cdk.Tags.of(ecsEc2PetSearchCluster).add('AzImpairmentPower', 'StopInstances');
+
 
         const searchServiceEc2 = new SearchEc2Service(this, 'search-service-ec2', {
             cluster: ecsEc2PetSearchCluster,
