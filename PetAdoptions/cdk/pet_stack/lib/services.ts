@@ -313,7 +313,7 @@ export class Services extends Stack {
 
         // Adding tags to the ECS for AzImpairmentPower
         cdk.Tags.of(ecsEc2PetSearchAutoScalingGroup).add('AzImpairmentPower', 'IceAsg');
-        //cdk.Tags.of(ecsEc2PetSearchCluster).add('AzImpairmentPower', 'StopInstances');
+        cdk.Tags.of(ecsEc2PetSearchCluster).add('AzImpairmentPower', 'StopInstances');
 
 
         const searchServiceEc2 = new SearchEc2Service(this, 'search-service-ec2', {
