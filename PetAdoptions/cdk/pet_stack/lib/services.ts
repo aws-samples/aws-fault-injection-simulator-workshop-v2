@@ -162,8 +162,8 @@ export class Services extends Stack {
             // }
         });
 
-        // Adding tags to the RDS for AzImpairmentPower
-        cdk.Tags.of(auroraCluster).add('AzImpairmentPower', 'DisruptRds');
+        // // Adding tags to the RDS for AzImpairmentPower
+        // cdk.Tags.of(auroraCluster).add('AzImpairmentPower', 'DisruptRds');
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -203,8 +203,6 @@ export class Services extends Stack {
             vpc: theVPC,
             containerInsights: true
         });
-
-        
 
         // PayForAdoption service definitions-----------------------------------------------------------------------
         const payForAdoptionService = new PayForAdoptionService(this, 'pay-for-adoption-service', {
