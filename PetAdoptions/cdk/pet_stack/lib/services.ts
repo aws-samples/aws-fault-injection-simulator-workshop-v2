@@ -297,10 +297,18 @@ export class Services extends Stack {
 
         const ecsEc2PetSearchAutoScalingGroup = new asg.AutoScalingGroup(this, 'ecsEc2PetSearchASG', {
             vpc: theVPC,
-            minCapacity: 1,
+            minCapacity: 2,
             maxCapacity: 2,
             desiredCapacity: 2,
-        });
+            launchTemplate: ecsEc2PetSearchlaunchTemplate,
+          });
+
+        const ecsEc2PetSearchCapacityProvider = new ecs.AsgCapacityProvider(this, 'PetSearchAsgCapacityProvider', {
+            autoScalingGroup: ecsEc2PetSearchAutoScalingGroup,
+          });
+
+        ecsEc2PetSearchCluster.addAsgCapacityProvider(ecsEc2PetSearchCapacityProvider)
+
 
         const searchServiceEc2 = new SearchEc2Service(this, 'search-service-ec2', {
             cluster: ecsEc2PetSearchCluster,
