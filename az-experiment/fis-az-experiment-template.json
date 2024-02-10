@@ -81,11 +81,7 @@
     "IAM-role": {
       "resourceType": "aws:iam:role",
       "resourceArns": [
-<<<<<<< HEAD
-        "arn:aws:iam::your_aws_account:role/fisworkshop-admin"
-=======
         "arn:aws:iam::905418323887:role/fisworkshop-admin"
->>>>>>> d40beb1 (AZ Power Experiment Template Added)
       ],
       "selectionMode": "ALL"
     },
@@ -203,21 +199,13 @@
       "source": "none"
     }
   ],
-<<<<<<< HEAD
-  "roleArn": "arn:aws:iam::your_aws_account:role/fis-az-role",
-=======
   "roleArn": "arn:aws:iam::905418323887:role/fis-az-role",
->>>>>>> d40beb1 (AZ Power Experiment Template Added)
   "tags": {
     "Name": "AZ Availability: Power Interruption"
   },
   "logConfiguration": {
     "cloudWatchLogsConfiguration": {
-<<<<<<< HEAD
-      "logGroupArn": "arn:aws:logs:eu-west-2:your_aws_account:log-group:FISExperiments:*"
-=======
       "logGroupArn": "arn:aws:logs:eu-west-2:905418323887:log-group:FISExperiments:*"
->>>>>>> d40beb1 (AZ Power Experiment Template Added)
     },
     "logSchemaVersion": 2
   },
