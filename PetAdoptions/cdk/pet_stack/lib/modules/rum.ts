@@ -87,20 +87,20 @@ export class RUM extends Construct {
 
         // Note that JS client is pinned to us-east-1!
         this.htmlScript = `<script>(function(n,i,v,r,s,c,x,z){x=window.AwsRumClient={q:[],n:n,i:i,v:v,r:r,c:c};window[n]=function(c,p){x.q.push({c:c,p:p});};z=document.createElement('script');z.async=true;z.src=s;document.head.insertBefore(z,document.head.getElementsByTagName('script')[0]);})(
-'cwr','` + this.appMonitor.attrId + `','1.0.0','` + Stack.of(this).region + `','https://client.rum.us-east-1.amazonaws.com/1.14.0/cwr.js',
-{ disableAutoPageView: true, sessionSampleRate: 1,guestRoleArn: "` + cwRumUnauthenticatedRole.roleArn + `",identityPoolId: "` + cwRumIdentityPool.ref +`",endpoint:"https://dataplane.rum.` + Stack.of(this).region + `.amazonaws.com",telemetries: ["errors","performance","http"],allowCookies: true,enableXRay: true,cookieAttributes:{secure:false}});</script>`;
+'cwr','` + this.appMonitor.attrId + `','1.0.0','` + Stack.of(this).region + `','https://client.rum.us-east-1.amazonaws.com/1.16.1/cwr.js',
+{ sessionSampleRate: 1,guestRoleArn: "` + cwRumUnauthenticatedRole.roleArn + `",identityPoolId: "` + cwRumIdentityPool.ref +`",endpoint:"https://dataplane.rum.` + Stack.of(this).region + `.amazonaws.com",telemetries: ["errors","performance","http"],allowCookies: true,enableXRay: true,cookieAttributes:{secure:false}});</script>`;
 
         // This will record the Page View event
         this.pageViewScript = `<script>function pageId() { const uP = new URLSearchParams(window.location.search); const pT = uP.get('selectedPetType'); return { pageId: window.location.pathname + (!pT ? '' : uP.get('selectedPetType') + '/' + uP.get('selectedPetColor')), pageTags: window.location.pathname === '/' ? [ 'landing' ] : [] } } cwr('recordPageView', pageId());</script>`;
         
 
-        this.rumHtmlScript= new CfnOutput(scope, 'RUM-HTML-Script', {
+        this.rumHtmlScript =  new CfnOutput(scope, 'RUM-HTML-Script', {
             value: this.htmlScript,
             description: 'RUM HTML Script',
             exportName: 'RUM-HTML-Script'
         });
 
-        this.rumPageviewScript= new CfnOutput(scope, 'RUM-Pageview-Script', {
+        this.rumPageviewScript = new CfnOutput(scope, 'RUM-Pageview-Script', {
             value: this.pageViewScript,
             description: 'RUM Pageview Script',
             exportName: 'RUM-Pageview-Script'

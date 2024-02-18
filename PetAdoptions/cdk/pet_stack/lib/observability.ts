@@ -3,19 +3,18 @@ import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { RUM } from './modules/rum';
 import * as fs from 'fs';
-import { CustomCanary } from './modules/canary';
 import { Alarm, ComparisonOperator, TreatMissingData, Metric } from 'aws-cdk-lib/aws-cloudwatch'
 import { Alias } from 'aws-cdk-lib/aws-kms';
+import * as cr from 'aws-cdk-lib/custom-resources'
 
-
-export class CustomizationStack extends cdk.Stack {
+export class Observability extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
     
-    const petSiteUrl = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamPetSiteUrl', { parameterName: "/petstore/petsiteurl"}).stringValue;
-    const domain = petSiteUrl.replace(/^https?:\/\//, '');
-    console.log(domain);
-
+    const petSiteUrl = ssm.StringParameter.valueFromLookup(this, '/petstore/petsitedomain');
+    //const domain: string = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamPetSiteDomain', { parameterName: "/petstore/petsitedomain"}).stringValue;
+    const domain = (petSiteUrl.replace(/^https?:\/\//, '')).toLowerCase()
+    
     if (!domain) {
       throw new Error('domain is required');
     }
@@ -25,16 +24,43 @@ export class CustomizationStack extends cdk.Stack {
       domain: domain
     });
 
-    // Iterate over all the subfolders under canaries
-    for (const dir of fs.readdirSync(__dirname + '/canaries/')) {
-      var customCanary = new CustomCanary(this, dir, {
-        script_path: __dirname + '/canaries/' + dir + '/index.js',
-        URL: "http://" + domain,
-        name: dir,
-        RUMName: rum.appMonitor.name
-      });
+    const putParameter = new cr.AwsCustomResource(this, '/petstore/rumscript', {
+      onCreate: {
+        service: 'SSM',
+        action: 'putParameter',
+        parameters: {
+          Name: '/petstore/rumscript',
+          Value: rum.htmlScript,
+          Overwrite: true
+        },
+        physicalResourceId: cr.PhysicalResourceId.of('/petstore/rumscript'),
+      },
+      onUpdate: {        
+        service: 'SSM',
+        action: 'putParameter',
+        parameters: {
+          Name: '/petstore/rumscript',
+          Value: rum.htmlScript,
+          Overwrite: true
+        },
+        physicalResourceId: cr.PhysicalResourceId.of('/petstore/rumscript'),
+      },
+      onDelete: {
+          service: 'SSM',
+          action: 'putParameter',
+          parameters: {
+            Name: '/petstore/rumscript',
+            Value: '',
+            Overwrite: true
+        },
+        physicalResourceId: cr.PhysicalResourceId.of('/petstore/rumscript'),
+      },
+      policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+        resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE,
+      }),
+    })
 
-    }
+    //new ssm.StringParameter(this, '/petstore/rumscript', { parameterName: '/petstore/rumscript', stringValue: rum.htmlScript });
 
     // Alarm for Frustrating navigation experience
     const navigationFrustratedMetric = new Metric({

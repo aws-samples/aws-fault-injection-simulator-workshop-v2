@@ -740,6 +740,7 @@ var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json","utf
             '/petstore/rdsendpoint': auroraCluster.clusterEndpoint.hostname,
             '/petstore/stackname': stackName,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
+            '/petstore/petsitedomain': `${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
             '/eks/petsite/OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
