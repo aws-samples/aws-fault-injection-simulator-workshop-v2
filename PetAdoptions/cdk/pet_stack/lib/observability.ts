@@ -50,7 +50,7 @@ export class Observability extends cdk.Stack {
           action: 'putParameter',
           parameters: {
             Name: '/petstore/rumscript',
-            Value: '',
+            Value: ' ',
             Overwrite: true
         },
         physicalResourceId: cr.PhysicalResourceId.of('/petstore/rumscript'),
