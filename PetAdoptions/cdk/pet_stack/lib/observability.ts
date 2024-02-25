@@ -17,8 +17,7 @@ export class Observability extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
     
-    
-    const petSiteUrl = ssm.StringParameter.valueFromLookup(this, '/petstore/petsitedomain');
+    const petSiteUrl = ssm.StringParameter.valueFromLookup(this, '/petstore/petsiteurl');
     //const domain: string = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamPetSiteDomain', { parameterName: "/petstore/petsitedomain"}).stringValue;
     const domain = (petSiteUrl.replace(/^https?:\/\//, '')).toLowerCase()
     
