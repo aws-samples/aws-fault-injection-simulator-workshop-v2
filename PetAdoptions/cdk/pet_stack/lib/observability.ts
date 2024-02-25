@@ -14,6 +14,7 @@ export class Observability extends cdk.Stack {
     
     const fisLogGroup = new logs.LogGroup(this, 'FISLogGroup', {
       logGroupName: 'FISExperiments',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
     
     
