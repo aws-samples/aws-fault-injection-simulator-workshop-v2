@@ -15,9 +15,11 @@ read INPUT
 if [ "$INPUT" = "YES" ]; then
   echo "Executing Terminate call"
   curl ${TERMINATION_URL}
+  echo ""
 else
   for i in {1..10}
   do
     curl ${UNAVAILABLE_URL}
+    echo ""
   done
 fi

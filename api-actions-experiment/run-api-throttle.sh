@@ -19,4 +19,5 @@ if [ "$INPUT" = "YES" ]; then
 else
     echo "Only running one request"
     curl ${THROTTLE_URL}
+    echo ""
 fi

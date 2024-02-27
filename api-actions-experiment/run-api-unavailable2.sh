@@ -20,5 +20,6 @@ else
   for i in {1..10}
   do
     curl ${UNAVAILABLE_URL}
+    echo ""
   done
 fi
