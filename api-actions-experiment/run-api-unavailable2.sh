@@ -14,7 +14,8 @@ read INPUT
 
 if [ "$INPUT" = "YES" ]; then
   echo "Executing Terminate call"
-  curl ${TERMINATION_URL}
+  curl -X POST ${TERMINATION_URL}
+  echo ""
 else
   for i in {1..10}
   do
