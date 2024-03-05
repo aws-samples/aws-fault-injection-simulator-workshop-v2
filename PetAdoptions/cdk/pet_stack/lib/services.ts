@@ -37,6 +37,7 @@ import 'ts-replace-all'
 import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch';
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 import { Cloud9Environment } from './modules/core/cloud9';
+import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -452,15 +453,7 @@ export class Services extends Stack {
             cpuArch: eks.CpuArch.X86_64,
             kubernetesVersion: '1.27',
             nodeType: eks.NodeType.STANDARD,
-          });
-
-        //   const eksPetSiteRole = new iam.Role(this, 'eksPetSiteRole', {
-        //     assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-        // });
-
-        // eksPetSiteRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
-        // eksPetSiteRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKSWorkerNodePolicy'));
-        // eksPetSiteRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'));
+        });
 
         const userData = ec2.UserData.forLinux();
         userData.addCommands(`/etc/eks/bootstrap.sh ${cluster.clusterName} --node-labels AzImpairmentPower=Ready,foo=bar,goo=far`);
@@ -469,11 +462,11 @@ export class Services extends Stack {
             machineImage: eksOptimizedImage,
             instanceType: new ec2.InstanceType('m5.large'),
             userData: userData,
-         //   role: eksPetSiteRole,
+            //   role: eksPetSiteRole,
         });
-        // Tagging Launch Template
-        // cdk.Tags.of(petsiteEKSlt).add('AzImpairmentPower', 'Ready');
+
         // Adding ClusterNodeGroupRole
+        // Add SSM Permissions to the node role and EKS Node required permissions
         const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, 'eksPetsiteASGClusterNodeGroupRole', {
             roleName: 'eksPetsiteASGClusterNodeGroupRole',
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -484,9 +477,9 @@ export class Services extends Stack {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
-
-        // Adding Node Group
-        cluster.addNodegroupCapacity("PetSiteNodeGroupCapacity", {
+        // Creare nodeGroup properties
+        const eksPetSiteNodegroupProps = {
+            cluster: cluster,
             launchTemplateSpec: {
                 id: eksPetSitelt.launchTemplateId!,
                 version: eksPetSitelt.latestVersionNumber,
@@ -500,28 +493,29 @@ export class Services extends Stack {
                 ["AzImpairmentPower"]: "Ready",
             },
             nodeRole: eksPetsiteASGClusterNodeGroupRole,
-            //amiType: eks.NodegroupAmiType.AL2_X86_64,
-        })
 
-        
 
-        // updating EKS Autoscaling Group Capacity to add node labels
-        // cluster.addAutoScalingGroupCapacity('petsiteASG', {
-        //     instanceType: new ec2.InstanceType('m5.xlarge'),
-        //     minCapacity: 2,
-        //     bootstrapOptions: {
-        //       kubeletExtraArgs: '--node-labels AzImpairmentPower=Ready,foo=bar,goo=far',
-        //       awsApiRetryAttempts: 5,
-        //     },
-        //   });
+        };
+
+        // Adding Node Group
+        const eksPetsiteASGClusterNodeGroup = new eks.Nodegroup(this, 'eksPetsiteASGClusterNodeGroup', eksPetSiteNodegroupProps);
+
+        // Tagging  Node Group resources https://classic.yarnpkg.com/en/package/eks-nodegroup-asg-tags-cdk
+        new NodegroupAsgTags(this, 'petSiteNodeGroupAsgTags', {
+            cluster: cluster,
+            nodegroup: eksPetsiteASGClusterNodeGroup,
+            nodegroupProps: eksPetSiteNodegroupProps,
+            setClusterAutoscalerTagsForNodeLabels: true,
+            setClusterAutoscalerTagsForNodeTaints: true,
+            tags: {
+                'AzImpairmentPower': 'Ready',
+            },
+        });
 
         const clusterSG = ec2.SecurityGroup.fromSecurityGroupId(this, 'ClusterSG', cluster.clusterSecurityGroupId);
         clusterSG.addIngressRule(albSG, ec2.Port.allTraffic(), 'Allow traffic from the ALB');
         clusterSG.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(443), 'Allow local access to k8s api');
 
-
-        // Add SSM Permissions to the node role
-        //cluster.defaultNodegroup?.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
 
         // From https://github.com/aws-samples/ssm-agent-daemonset-installer
         var ssmAgentSetup = yaml.loadAll(readFileSync("./resources/setup-ssm-agent.yaml", "utf8")) as Record<string, any>[];
