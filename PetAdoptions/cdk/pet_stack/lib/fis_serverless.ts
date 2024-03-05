@@ -128,5 +128,11 @@ export class FisServerless extends Stack {
                 level: stepfunctions.LogLevel.ALL,
               },
         })
+
+        // Dummy IAM Role for the AZ Power Outage
+        const fisDummyRole = new Role(this, 'FISDummyRoleForASG', {
+            assumedBy: new ServicePrincipal('ec2.amazonaws.com'),
+        });
+
     }
 }
