@@ -466,7 +466,6 @@ export class Services extends Stack {
         // Tagging Launch Template
         // cdk.Tags.of(petsiteEKSlt).add('AzImpairmentPower', 'Ready');
         // Adding ClusterNodeGroupRole
-
         const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, 'eksPetsiteASGClusterNodeGroupRole', {
             roleName: 'eksPetsiteASGClusterNodeGroupRole',
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -486,7 +485,6 @@ export class Services extends Stack {
             },
             labels: {
                 ["AzImpairmentPower"]: "Ready",
-                ["WorkhopLabel"]: "Ready",
             },
             desiredSize: 2,
             maxSize: 2,
