@@ -329,6 +329,9 @@ Resources:
                   - rds:DescribeDBInstances
                   - rds:DescribeDbClusters
                   - ssm:ListCommands
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Resource: '*'
               - Sid: AllowFISExperimentRoleEC2Actions
                 Effect: Allow
