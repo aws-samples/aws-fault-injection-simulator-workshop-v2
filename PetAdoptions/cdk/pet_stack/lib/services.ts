@@ -294,7 +294,7 @@ export class Services extends Stack {
 
         const ecsEc2PetSearchAutoScalingGroup = new asg.AutoScalingGroup(this, 'ecsEc2PetSearchASG', {
             vpc: theVPC,
-            minCapacity: 1,
+            minCapacity: 2,
             maxCapacity: 2,
             desiredCapacity: 2,
             launchTemplate: ecsEc2PetSearchlaunchTemplate,
@@ -427,28 +427,6 @@ export class Services extends Stack {
             kubectlLayer: new KubectlLayer(this, 'kubectl')
         });
 
-        //         const userData = `MIME-Version: 1.0
-        // Content-Type: multipart/mixed; boundary="==MYBOUNDARY=="
-
-        // --==MYBOUNDARY==
-        // Content-Type: text/x-shellscript; charset="us-ascii"
-
-        // #!/bin/bash
-        // echo "Running custom user data script"
-        // set -o xtrace'
-        // /etc/eks/bootstrap.sh ${cluster.clusterName}
-
-        // --==MYBOUNDARY==--//
-        // `
-        //         const petsiteEKSlt = new ec2.CfnLaunchTemplate(this, 'petsiteEKSLaunchTemplate', {
-        //             launchTemplateData: {
-        //                 instanceType: 'm5.xlarge',
-        //                 userData: Fn.base64(userData),
-        //                 imageId: ec2.MachineImage.latestAmazonLinux2().getImage(this).imageId,
-        //             },
-
-        //         });
-
         const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
             cpuArch: eks.CpuArch.X86_64,
             kubernetesVersion: '1.27',
@@ -477,7 +455,7 @@ export class Services extends Stack {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
-        // Creare nodeGroup properties
+        // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
             launchTemplateSpec: {
@@ -493,8 +471,6 @@ export class Services extends Stack {
                 ["AzImpairmentPower"]: "Ready",
             },
             nodeRole: eksPetsiteASGClusterNodeGroupRole,
-
-
         };
 
         // Adding Node Group
