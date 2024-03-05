@@ -331,6 +331,7 @@ Resources:
                   - ssm:ListCommands
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
+                  - logs:CreateLogDelivery
                   - logs:PutLogEvents
                 Resource: '*'
               - Sid: AllowFISExperimentRoleEC2Actions
