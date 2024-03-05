@@ -333,6 +333,9 @@ Resources:
                   - logs:CreateLogStream
                   - logs:CreateLogDelivery
                   - logs:PutLogEvents
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
                 Resource: '*'
               - Sid: AllowFISExperimentRoleEC2Actions
                 Effect: Allow
