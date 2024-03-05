@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Provisioning spot resources"
-
+AWS_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 # Use subnet from workshop deploy
 SUBNET_ID=$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=Services/Microservices/PublicSubnet1" --query "Subnets[].SubnetId" --output text)
 S3_BUCKET=$(aws s3 ls | grep pet | awk '{print $3}')
@@ -15,6 +15,7 @@ sam deploy \
   --no-fail-on-empty-changeset \
   --capabilities CAPABILITY_NAMED_IAM \
   --parameter-overrides "SubnetId=${SUBNET_ID} ImageId=${AMI_ID}" \
-  --s3-bucket $S3_BUCKET
+  --s3-bucket $S3_BUCKET \
+  --region $AWS_REGION
 
 echo "OK" > deploy-status.txt
