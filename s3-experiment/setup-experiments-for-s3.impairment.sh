@@ -52,7 +52,7 @@ aws fis create-experiment-template \
                         "actionId": "aws:network:disrupt-connectivity",
                         "description": "BlockAccessToS3 via public subnet",
                         "parameters": {
-                                "duration": "PT5M",
+                                "duration": "PT3M",
                                 "scope": "s3"
                         },
                         "targets": {
@@ -98,7 +98,7 @@ aws fis create-experiment-template \
                         "actionId": "aws:network:disrupt-connectivity",
                         "description": "BlockAccessToS3 via public subnet",
                         "parameters": {
-                                "duration": "PT5M",
+                                "duration": "PT3M",
                                 "scope": "s3"
                         },
                         "targets": {
