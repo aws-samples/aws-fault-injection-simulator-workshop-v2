@@ -284,7 +284,7 @@ export class Services extends Stack {
 
         const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
             machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
-            instanceType: new ec2.InstanceType('m5.large'),
+            instanceType: new ec2.InstanceType('m5.xlarge'),
             userData: ec2.UserData.forLinux(),
             role: ecsEc2PetSearchRole,
         });
@@ -429,7 +429,7 @@ export class Services extends Stack {
 
         const eksPetSitelt = new ec2.LaunchTemplate(this, 'eksPetSitelt', {
             machineImage: eksOptimizedImage,
-            instanceType: new ec2.InstanceType('m5.large'),
+            instanceType: new ec2.InstanceType('m5.xlarge'),
             userData: userData,
             //   role: eksPetSiteRole,
         });
