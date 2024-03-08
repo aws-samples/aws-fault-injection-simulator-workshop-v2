@@ -11,4 +11,4 @@ aws cloudformation deploy \
     --parameter-overrides \
         SubnetId=${SUBNET_ID} \
     --no-fail-on-empty-changeset \
-    --capabilities CAPABILITY_IAM
+    --capabilities CAPABILITY_NAMED_IAM
