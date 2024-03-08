@@ -2,3 +2,5 @@
 PetAdoptions/payforadoption-go/petadoptions
 **/.DS_Store
 **/.idea
+cdk.out/*
+PetAdoptions/cdk/pet_stack/out/out.json

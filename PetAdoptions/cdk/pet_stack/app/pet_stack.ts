@@ -37,5 +37,6 @@ const observability = new Observability(app, "Observability", {
 }});
 
 Tags.of(app).add("Workshop","true")
+Tags.of(app).add("AzImpairmentPower","Ready")
 //Aspects.of(stack).add(new AwsSolutionsChecks({verbose: true}));
 //Aspects.of(applications).add(new AwsSolutionsChecks({verbose: true}));
