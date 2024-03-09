@@ -2,7 +2,7 @@
 
 AWS_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-SSM_ROLE_NAME=FisWorkshopSsmEc2DemoRole
+SSM_ROLE_ARN=$(aws iam get-role --role-name FisWorkshopSsmEc2DemoRole --query Role.Arn --output text)
 FIS_ROLE_NAME=FisSsmExecutionRole
 ASG_NAME=$(aws autoscaling describe-auto-scaling-groups --filters Name=tag-key,Values=Name Name=tag-value,Values='Services/PetSearchEc2/PetSearchEc2' --query 'AutoScalingGroups[*].AutoScalingGroupName'  --output text)
 AUTO_SCALING_GROUP_NAME=$ASG_NAME
@@ -19,7 +19,7 @@ aws fis create-experiment-template \
                         "description": "Terminate Instances in AZ",
                         "parameters": {
                                 "documentArn": "arn:aws:ssm:'$AWS_REGION':'$ACCOUNT_ID':document/TerminateAsgInstancesWithSsm",
-                                "documentParameters": "{\"AvailabilityZone\": \"'$FIRST_AVAILABILITY_ZONE'\", \"AutoscalingGroupName\": \"'$AUTO_SCALING_GROUP_NAME'\", \"AutomationAssumeRole\":\"FisWorkshopSsmEc2DemoRole\"}",
+                                "documentParameters": "{\"AvailabilityZone\": \"'$FIRST_AVAILABILITY_ZONE'\", \"AutoscalingGroupName\": \"'$AUTO_SCALING_GROUP_NAME'\", \"AutomationAssumeRole\":\"'$SSM_ROLE_ARN'\"}",
                                 "maxDuration": "PT3M"
                         }
                 }
