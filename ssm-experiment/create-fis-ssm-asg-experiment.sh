@@ -4,10 +4,10 @@ AWS_REGION=$(aws ec2 describe-availability-zones --output text --query 'Availabi
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 SSM_ROLE_ARN=$(aws iam get-role --role-name FisWorkshopSsmEc2DemoRole --query Role.Arn --output text)
 FIS_ROLE_NAME=FisSsmExecutionRole
-ASG_NAME=$(aws autoscaling describe-auto-scaling-groups --filters Name=tag-key,Values=Name Name=tag-value,Values='Services/PetSearchEc2/PetSearchEc2' --query 'AutoScalingGroups[*].AutoScalingGroupName'  --output text)
-AUTO_SCALING_GROUP_NAME=$ASG_NAME
+AUTO_SCALING_GROUP_NAME=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?starts_with(AutoScalingGroupName, 'Services-ecsEc2PetSearch')].AutoScalingGroupName" --output text)
 AUTO_SCALING_GROUP_INFO=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $AUTO_SCALING_GROUP_NAME  --query 'AutoScalingGroups[0]')
 FIRST_AVAILABILITY_ZONE=$(echo $AUTO_SCALING_GROUP_INFO | jq -r '.AvailabilityZones[0]')
+
 
 aws fis create-experiment-template \
     --cli-input-json '{

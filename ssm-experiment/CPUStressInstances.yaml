@@ -6,21 +6,14 @@ Metadata:
       - Label:
           default: EC2 Instance Configuration
         Parameters:
-          - LinuxImageId
           - WindowsImageId
           - InstanceType
     ParameterLabels:
-      LinuxImageId:
-        default: AMZ Linux Amazon Machine Image (AMI) Id
       WindowsImageId:
         default: AMZ Linux Amazon Machine Image (AMI) Id
       InstanceType:
         default: EC2 Instance Type
 Parameters:
-  LinuxImageId:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
-    Description: 'SSM Parameter for Amazon Linux AMI.'
   WindowsImageId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base
@@ -76,21 +69,6 @@ Resources:
       Tags:
         - Key: Name
           Value: 'FisWindowsCPUStress'
-  LinuxInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !Ref 'LinuxImageId'
-      IamInstanceProfile: !Ref 'SSMInstanceProfile'
-      InstanceType: !Ref 'InstanceType'
-      Monitoring: true
-      SubnetId: !If [UseDefaultVpc, !Ref "AWS::NoValue", !Ref SubnetId]
-      Tags:
-        - Key: Name
-          Value: 'FisLinuxCPUStress'
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          sudo yum -y install htop
 
   FISRole:
     Type: AWS::IAM::Role
