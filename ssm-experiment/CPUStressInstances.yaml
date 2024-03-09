@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: "AWS FIS workshop - EC2/static stack. Launch Windows and Linux Instance for CPU Stress Test during FIS Workshop."
+Description: "AWS FIS workshop - EC2/static stack. Launch Windows Instance for CPU Stress Test during FIS Workshop."
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -10,7 +10,7 @@ Metadata:
           - InstanceType
     ParameterLabels:
       WindowsImageId:
-        default: AMZ Linux Amazon Machine Image (AMI) Id
+        default: AMZ Windows Amazon Machine Image (AMI) Id
       InstanceType:
         default: EC2 Instance Type
 Parameters:
