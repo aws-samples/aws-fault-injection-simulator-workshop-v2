@@ -29,13 +29,13 @@ aws fis create-experiment-template \
                         "source": "none"
                 }
         ],
-        "roleArn": "arn:aws:iam::'$ACCOUNT_ID':role/'$FIS_ROLE_NAM'",
+        "roleArn": "arn:aws:iam::'$ACCOUNT_ID':role/'$FIS_ROLE_NAME'",
         "tags": {
                 "Name": "Terminate ASG"
         },
         "logConfiguration": {
                 "cloudWatchLogsConfiguration": {
-                        "logGroupArn": "arn:aws:logs:us-east-1:996731787415:log-group:FISExperiments:*"
+                        "logGroupArn": "arn:aws:logs:'$AWS_REGION':'$ACCOUNT_ID':log-group:FISExperiments:*"
                 },
                 "logSchemaVersion": 2
         },
