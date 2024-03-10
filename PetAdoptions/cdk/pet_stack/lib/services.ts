@@ -299,6 +299,7 @@ export class Services extends Stack {
 
         const ecsEc2PetSearchCapacityProvider = new ecs.AsgCapacityProvider(this, 'PetSearchAsgCapacityProvider', {
             autoScalingGroup: ecsEc2PetSearchAutoScalingGroup,
+            enableManagedTerminationProtection: false,
         });
 
         ecsEc2PetSearchCluster.addAsgCapacityProvider(ecsEc2PetSearchCapacityProvider)
