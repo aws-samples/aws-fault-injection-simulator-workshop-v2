@@ -1,4 +1,4 @@
-rom selenium import webdriver
+from selenium import webdriver
 import boto3
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
