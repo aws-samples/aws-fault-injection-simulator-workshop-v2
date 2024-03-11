@@ -1,6 +1,10 @@
 #!/bin/bash
 AWS_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+CLUSTER_ARN=$(aws ecs list-clusters | grep -i petsearch | tr ',' '\n' | tr '"' '\n' | awk '{print $1}')
+CONTAINER_INSTANCE1=$(aws ecs list-container-instances --cluster $CLUSTER_ARN | jq -r .containerInstanceArns[0])
+EC2INSTID=$(aws ecs describe-container-instances --cluster $CLUSTER_ARN --container-instance $CONTAINER_INSTANCE1 | jq -r '.containerInstances[] |.ec2InstanceId')
+EC2TAGNAME=$(aws ec2 describe-instances --instance-ids $EC2INSTID --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value]' --output text)
 
 aws fis create-experiment-template \
     --cli-input-json '{
@@ -9,7 +13,7 @@ aws fis create-experiment-template \
                 "Instances-Target-1": {
                         "resourceType": "aws:ec2:instance",
                         "resourceTags": {
-                                "Name": "Services/ecsEc2PetSearchLaunchTemplate"
+                                "Name": "'$EC2TAGNAME'"
                         },
                         "selectionMode": "PERCENT(50)"
                 }
