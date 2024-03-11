@@ -9,7 +9,7 @@ aws fis create-experiment-template \
                 "Instances-Target-1": {
                         "resourceType": "aws:ec2:instance",
                         "resourceTags": {
-                                "Name": "Services/PetSearchEc2/PetSearchEc2"
+                                "Name": "Services/ecsEc2PetSearchLaunchTemplate"
                         },
                         "selectionMode": "PERCENT(50)"
                 }
