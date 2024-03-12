@@ -1,0 +1,25 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SearchService = void 0;
+const ecs = require("aws-cdk-lib/aws-ecs");
+const iam = require("aws-cdk-lib/aws-iam");
+const aws_ecr_assets_1 = require("aws-cdk-lib/aws-ecr-assets");
+const ecs_service_1 = require("./ecs-service");
+class SearchService extends ecs_service_1.EcsService {
+    constructor(scope, id, props) {
+        var _a, _b;
+        super(scope, id, props);
+        (_a = this.taskDefinition.taskRole) === null || _a === void 0 ? void 0 : _a.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonDynamoDBReadOnlyAccess', 'arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess'));
+        (_b = this.taskDefinition.taskRole) === null || _b === void 0 ? void 0 : _b.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonS3ReadOnlyAccess', 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'));
+    }
+    containerImageFromRepository(repositoryURI) {
+        return ecs.ContainerImage.fromRegistry(`${repositoryURI}/pet-search-java:latest`);
+    }
+    createContainerImage() {
+        return ecs.ContainerImage.fromDockerImageAsset(new aws_ecr_assets_1.DockerImageAsset(this, "search-service", {
+            directory: "./resources/microservices/petsearch-java"
+        }));
+    }
+}
+exports.SearchService = SearchService;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoic2VhcmNoLXNlcnZpY2UuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJzZWFyY2gtc2VydmljZS50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSwyQ0FBMkM7QUFDM0MsMkNBQTJDO0FBQzNDLCtEQUE4RDtBQUM5RCwrQ0FBMkQ7QUFHM0QsTUFBYSxhQUFjLFNBQVEsd0JBQVU7SUFFM0MsWUFBWSxLQUFnQixFQUFFLEVBQVUsRUFBRSxLQUFzQjs7UUFDOUQsS0FBSyxDQUFDLEtBQUssRUFBRSxFQUFFLEVBQUUsS0FBSyxDQUFDLENBQUM7UUFFeEIsTUFBQSxJQUFJLENBQUMsY0FBYyxDQUFDLFFBQVEsMENBQUUsZ0JBQWdCLENBQUMsR0FBRyxDQUFDLGFBQWEsQ0FBQyxvQkFBb0IsQ0FBQyxJQUFJLEVBQUUsOEJBQThCLEVBQUUsc0RBQXNELENBQUMsQ0FBQyxDQUFDO1FBQ3JMLE1BQUEsSUFBSSxDQUFDLGNBQWMsQ0FBQyxRQUFRLDBDQUFFLGdCQUFnQixDQUFDLEdBQUcsQ0FBQyxhQUFhLENBQUMsb0JBQW9CLENBQUMsSUFBSSxFQUFFLHdCQUF3QixFQUFFLGdEQUFnRCxDQUFDLENBQUMsQ0FBQztJQUMzSyxDQUFDO0lBRUQsNEJBQTRCLENBQUMsYUFBcUI7UUFDaEQsT0FBTyxHQUFHLENBQUMsY0FBYyxDQUFDLFlBQVksQ0FBQyxHQUFHLGFBQWEseUJBQXlCLENBQUMsQ0FBQTtJQUNuRixDQUFDO0lBRUQsb0JBQW9CO1FBQ2xCLE9BQU8sR0FBRyxDQUFDLGNBQWMsQ0FBQyxvQkFBb0IsQ0FBQyxJQUFJLGlDQUFnQixDQUFDLElBQUksRUFBQyxnQkFBZ0IsRUFBRTtZQUN6RixTQUFTLEVBQUUsMENBQTBDO1NBQ3RELENBQUMsQ0FBQyxDQUFBO0lBQ0wsQ0FBQztDQUNGO0FBbEJELHNDQWtCQyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCAqIGFzIGVjcyBmcm9tICdhd3MtY2RrLWxpYi9hd3MtZWNzJztcbmltcG9ydCAqIGFzIGlhbSBmcm9tICdhd3MtY2RrLWxpYi9hd3MtaWFtJztcbmltcG9ydCB7IERvY2tlckltYWdlQXNzZXQgfSBmcm9tICdhd3MtY2RrLWxpYi9hd3MtZWNyLWFzc2V0cyc7XG5pbXBvcnQgeyBFY3NTZXJ2aWNlLCBFY3NTZXJ2aWNlUHJvcHMgfSBmcm9tICcuL2Vjcy1zZXJ2aWNlJ1xuaW1wb3J0IHsgQ29uc3RydWN0IH0gZnJvbSAnY29uc3RydWN0cydcblxuZXhwb3J0IGNsYXNzIFNlYXJjaFNlcnZpY2UgZXh0ZW5kcyBFY3NTZXJ2aWNlIHtcblxuICBjb25zdHJ1Y3RvcihzY29wZTogQ29uc3RydWN0LCBpZDogc3RyaW5nLCBwcm9wczogRWNzU2VydmljZVByb3BzICApIHtcbiAgICBzdXBlcihzY29wZSwgaWQsIHByb3BzKTtcblxuICAgIHRoaXMudGFza0RlZmluaXRpb24udGFza1JvbGU/LmFkZE1hbmFnZWRQb2xpY3koaWFtLk1hbmFnZWRQb2xpY3kuZnJvbU1hbmFnZWRQb2xpY3lBcm4odGhpcywgJ0FtYXpvbkR5bmFtb0RCUmVhZE9ubHlBY2Nlc3MnLCAnYXJuOmF3czppYW06OmF3czpwb2xpY3kvQW1hem9uRHluYW1vREJSZWFkT25seUFjY2VzcycpKTtcbiAgICB0aGlzLnRhc2tEZWZpbml0aW9uLnRhc2tSb2xlPy5hZGRNYW5hZ2VkUG9saWN5KGlhbS5NYW5hZ2VkUG9saWN5LmZyb21NYW5hZ2VkUG9saWN5QXJuKHRoaXMsICdBbWF6b25TM1JlYWRPbmx5QWNjZXNzJywgJ2Fybjphd3M6aWFtOjphd3M6cG9saWN5L0FtYXpvblMzUmVhZE9ubHlBY2Nlc3MnKSk7XG4gIH1cblxuICBjb250YWluZXJJbWFnZUZyb21SZXBvc2l0b3J5KHJlcG9zaXRvcnlVUkk6IHN0cmluZykgOiBlY3MuQ29udGFpbmVySW1hZ2Uge1xuICAgIHJldHVybiBlY3MuQ29udGFpbmVySW1hZ2UuZnJvbVJlZ2lzdHJ5KGAke3JlcG9zaXRvcnlVUkl9L3BldC1zZWFyY2gtamF2YTpsYXRlc3RgKVxuICB9XG5cbiAgY3JlYXRlQ29udGFpbmVySW1hZ2UoKSA6IGVjcy5Db250YWluZXJJbWFnZSB7XG4gICAgcmV0dXJuIGVjcy5Db250YWluZXJJbWFnZS5mcm9tRG9ja2VySW1hZ2VBc3NldChuZXcgRG9ja2VySW1hZ2VBc3NldCh0aGlzLFwic2VhcmNoLXNlcnZpY2VcIiwge1xuICAgICAgZGlyZWN0b3J5OiBcIi4vcmVzb3VyY2VzL21pY3Jvc2VydmljZXMvcGV0c2VhcmNoLWphdmFcIlxuICAgIH0pKVxuICB9XG59XG4iXX0=

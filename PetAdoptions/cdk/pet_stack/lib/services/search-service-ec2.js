@@ -1,0 +1,25 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SearchEc2Service = void 0;
+const ecs = require("aws-cdk-lib/aws-ecs");
+const iam = require("aws-cdk-lib/aws-iam");
+const aws_ecr_assets_1 = require("aws-cdk-lib/aws-ecr-assets");
+const ecs_ec2_service_1 = require("./ecs-ec2-service");
+class SearchEc2Service extends ecs_ec2_service_1.EcsEc2Service {
+    constructor(scope, id, props) {
+        var _a, _b;
+        super(scope, id, props);
+        (_a = this.taskDefinition.taskRole) === null || _a === void 0 ? void 0 : _a.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonDynamoDBReadOnlyAccess', 'arn:aws:iam::aws:policy/AmazonDynamoDBReadOnlyAccess'));
+        (_b = this.taskDefinition.taskRole) === null || _b === void 0 ? void 0 : _b.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonS3ReadOnlyAccess', 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'));
+    }
+    containerImageFromRepository(repositoryURI) {
+        return ecs.ContainerImage.fromRegistry(`${repositoryURI}/pet-search-java:latest`);
+    }
+    createContainerImage() {
+        return ecs.ContainerImage.fromDockerImageAsset(new aws_ecr_assets_1.DockerImageAsset(this, "search-service", {
+            directory: "./resources/microservices/petsearch-java"
+        }));
+    }
+}
+exports.SearchEc2Service = SearchEc2Service;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoic2VhcmNoLXNlcnZpY2UtZWMyLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsic2VhcmNoLXNlcnZpY2UtZWMyLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7OztBQUFBLDJDQUEyQztBQUMzQywyQ0FBMkM7QUFDM0MsK0RBQThEO0FBQzlELHVEQUFxRTtBQUdyRSxNQUFhLGdCQUFpQixTQUFRLCtCQUFhO0lBRWpELFlBQVksS0FBZ0IsRUFBRSxFQUFVLEVBQUUsS0FBeUI7O1FBQ2pFLEtBQUssQ0FBQyxLQUFLLEVBQUUsRUFBRSxFQUFFLEtBQUssQ0FBQyxDQUFDO1FBRXhCLE1BQUEsSUFBSSxDQUFDLGNBQWMsQ0FBQyxRQUFRLDBDQUFFLGdCQUFnQixDQUFDLEdBQUcsQ0FBQyxhQUFhLENBQUMsb0JBQW9CLENBQUMsSUFBSSxFQUFFLDhCQUE4QixFQUFFLHNEQUFzRCxDQUFDLENBQUMsQ0FBQztRQUNyTCxNQUFBLElBQUksQ0FBQyxjQUFjLENBQUMsUUFBUSwwQ0FBRSxnQkFBZ0IsQ0FBQyxHQUFHLENBQUMsYUFBYSxDQUFDLG9CQUFvQixDQUFDLElBQUksRUFBRSx3QkFBd0IsRUFBRSxnREFBZ0QsQ0FBQyxDQUFDLENBQUM7SUFDM0ssQ0FBQztJQUVELDRCQUE0QixDQUFDLGFBQXFCO1FBQ2hELE9BQU8sR0FBRyxDQUFDLGNBQWMsQ0FBQyxZQUFZLENBQUMsR0FBRyxhQUFhLHlCQUF5QixDQUFDLENBQUE7SUFDbkYsQ0FBQztJQUVELG9CQUFvQjtRQUNsQixPQUFPLEdBQUcsQ0FBQyxjQUFjLENBQUMsb0JBQW9CLENBQUMsSUFBSSxpQ0FBZ0IsQ0FBQyxJQUFJLEVBQUMsZ0JBQWdCLEVBQUU7WUFDekYsU0FBUyxFQUFFLDBDQUEwQztTQUN0RCxDQUFDLENBQUMsQ0FBQTtJQUNMLENBQUM7Q0FDRjtBQWxCRCw0Q0FrQkMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgKiBhcyBlY3MgZnJvbSAnYXdzLWNkay1saWIvYXdzLWVjcyc7XG5pbXBvcnQgKiBhcyBpYW0gZnJvbSAnYXdzLWNkay1saWIvYXdzLWlhbSc7XG5pbXBvcnQgeyBEb2NrZXJJbWFnZUFzc2V0IH0gZnJvbSAnYXdzLWNkay1saWIvYXdzLWVjci1hc3NldHMnO1xuaW1wb3J0IHsgRWNzRWMyU2VydmljZSwgRWNzRWMyU2VydmljZVByb3BzIH0gZnJvbSAnLi9lY3MtZWMyLXNlcnZpY2UnXG5pbXBvcnQgeyBDb25zdHJ1Y3QgfSBmcm9tICdjb25zdHJ1Y3RzJ1xuXG5leHBvcnQgY2xhc3MgU2VhcmNoRWMyU2VydmljZSBleHRlbmRzIEVjc0VjMlNlcnZpY2Uge1xuXG4gIGNvbnN0cnVjdG9yKHNjb3BlOiBDb25zdHJ1Y3QsIGlkOiBzdHJpbmcsIHByb3BzOiBFY3NFYzJTZXJ2aWNlUHJvcHMgICkge1xuICAgIHN1cGVyKHNjb3BlLCBpZCwgcHJvcHMpO1xuXG4gICAgdGhpcy50YXNrRGVmaW5pdGlvbi50YXNrUm9sZT8uYWRkTWFuYWdlZFBvbGljeShpYW0uTWFuYWdlZFBvbGljeS5mcm9tTWFuYWdlZFBvbGljeUFybih0aGlzLCAnQW1hem9uRHluYW1vREJSZWFkT25seUFjY2VzcycsICdhcm46YXdzOmlhbTo6YXdzOnBvbGljeS9BbWF6b25EeW5hbW9EQlJlYWRPbmx5QWNjZXNzJykpO1xuICAgIHRoaXMudGFza0RlZmluaXRpb24udGFza1JvbGU/LmFkZE1hbmFnZWRQb2xpY3koaWFtLk1hbmFnZWRQb2xpY3kuZnJvbU1hbmFnZWRQb2xpY3lBcm4odGhpcywgJ0FtYXpvblMzUmVhZE9ubHlBY2Nlc3MnLCAnYXJuOmF3czppYW06OmF3czpwb2xpY3kvQW1hem9uUzNSZWFkT25seUFjY2VzcycpKTtcbiAgfVxuXG4gIGNvbnRhaW5lckltYWdlRnJvbVJlcG9zaXRvcnkocmVwb3NpdG9yeVVSSTogc3RyaW5nKSA6IGVjcy5Db250YWluZXJJbWFnZSB7XG4gICAgcmV0dXJuIGVjcy5Db250YWluZXJJbWFnZS5mcm9tUmVnaXN0cnkoYCR7cmVwb3NpdG9yeVVSSX0vcGV0LXNlYXJjaC1qYXZhOmxhdGVzdGApXG4gIH1cblxuICBjcmVhdGVDb250YWluZXJJbWFnZSgpIDogZWNzLkNvbnRhaW5lckltYWdlIHtcbiAgICByZXR1cm4gZWNzLkNvbnRhaW5lckltYWdlLmZyb21Eb2NrZXJJbWFnZUFzc2V0KG5ldyBEb2NrZXJJbWFnZUFzc2V0KHRoaXMsXCJzZWFyY2gtc2VydmljZVwiLCB7XG4gICAgICBkaXJlY3Rvcnk6IFwiLi9yZXNvdXJjZXMvbWljcm9zZXJ2aWNlcy9wZXRzZWFyY2gtamF2YVwiXG4gICAgfSkpXG4gIH1cbn1cbiJdfQ==
