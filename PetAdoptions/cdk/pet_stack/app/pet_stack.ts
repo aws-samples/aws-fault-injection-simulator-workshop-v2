@@ -6,7 +6,7 @@ import { Applications } from '../lib/applications';
 import { App, Tags, Aspects } from 'aws-cdk-lib';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { FisServerless } from '../lib/fis_serverless';
-//import { Observability } from '../lib/observability'
+import { Observability } from '../lib/observability'
 import { LoadTesting } from '../lib/load_testing';
 
 const stackName = "Services";
