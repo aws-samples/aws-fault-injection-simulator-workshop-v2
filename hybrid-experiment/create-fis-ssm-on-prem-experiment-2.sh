@@ -30,8 +30,8 @@ aws fis create-experiment-template \
                         "description": "'$DESCRIPTION' via SSM",
                         "parameters": {
                                 "documentArn": "arn:aws:ssm:'$AWS_REGION':'$ACCOUNT_ID':document/TargetHybridInstances",
-                                "documentParameters": "{\"AutomationAssumeRole\": \"'$SSM_ROLE_ARN'\",\"DocumentName\": \"'$DOCUMENTNAME'\",   \"DocumentParameters\": \"{\\\"DurationSeconds\\\":\\\"120\\\"}\",   \"Filters\": \"[{\\\"Key\\\":\\\"tag:OS\\\",\\\"Values\\\":[\\\"Ubuntu\\\"]},{\\\"Key\\\":\\\"tag:Instance\\\",\\\"Values\\\":[\\\"1\\\"]}]\" }",
-                                "maxDuration": "PT3M"
+                                "documentParameters": "{\"AutomationAssumeRole\": \"'$SSM_ROLE_ARN'\",\"DocumentName\": \"'$DOCUMENTNAME'\",   \"DocumentParameters\": \"{\\\"DurationSeconds\\\":\\\"300\\\"}\",   \"Filters\": \"[{\\\"Key\\\":\\\"tag:OS\\\",\\\"Values\\\":[\\\"Ubuntu\\\"]},{\\\"Key\\\":\\\"tag:Instance\\\",\\\"Values\\\":[\\\"1\\\"]}]\" }",
+                                "maxDuration": "PT6M"
                         }
                 }
         },
