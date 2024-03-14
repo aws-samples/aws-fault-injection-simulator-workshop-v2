@@ -31,4 +31,4 @@ aws_secret_access_key = $SECRET_KEY
 EOF
 
 cd ..
-tar -cvf aws.tar $BASEDIR/.aws/ $BASEDIR/common-config.toml $BASEDIR/amazon-cloudwatch-agent.json
+tar -cvf aws.tar .aws/ common-config.toml amazon-cloudwatch-agent.json
