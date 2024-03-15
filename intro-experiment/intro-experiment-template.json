@@ -44,7 +44,7 @@
     "roleArn": "arn:aws:iam::YOUR_ACCOUNT_NUMBER_HERE:role/FisWorkshopEC2ServiceRole",
     "logConfiguration": {
         "cloudWatchLogsConfiguration": {
-            "logGroupArn": "arn:aws:logs:YOUR_REGION_HERE:YOUR_ACCOUNT_NUMBER_HERE:log-group:/fis-workshop/fis-logs:*"
+            "logGroupArn": "arn:aws:logs:YOUR_REGION_HERE:YOUR_ACCOUNT_NUMBER_HERE:log-group:/FISExperiments:*"
         },
         "logSchemaVersion": 2
     },
