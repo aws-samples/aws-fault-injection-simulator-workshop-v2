@@ -1,0 +1,55 @@
+{
+    "description": "Terminate half of the instances in the auto scaling group",
+    "tags": {
+        "Name": "FisWorkshop-Exp1-CLI"
+    },
+    "actions": {
+        "FisWorkshopAsg-TerminateInstances": {
+            "actionId": "aws:ec2:terminate-instances",
+            "description": "Terminate instances",
+            "parameters": {},
+            "targets": {
+                "Instances": "FisWorkshopAsg-50Percent"
+            }
+        },
+        "Wait": {
+            "actionId": "aws:fis:wait",
+            "parameters": {
+                "duration": "PT3M"
+            }
+        }
+    },
+    "targets": {
+        "FisWorkshopAsg-50Percent": {
+            "resourceType": "aws:ec2:instance",
+            "resourceTags": {
+                "experiment": "ready"
+            },
+            "filters": [
+                {
+                    "path": "State.Name",
+                    "values": [
+                        "running"
+                    ]
+                }
+            ],
+            "selectionMode": "PERCENT(50)"
+        }
+    },
+    "stopConditions": [
+        {
+            "source": "none"
+        }
+    ],
+    "roleArn": "arn:aws:iam::YOUR_ACCOUNT_NUMBER_HERE:role/FisWorkshopServiceRole",
+    "logConfiguration": {
+        "cloudWatchLogsConfiguration": {
+            "logGroupArn": "arn:aws:logs:YOUR_REGION_HERE:YOUR_ACCOUNT_NUMBER_HERE:log-group:/fis-workshop/fis-logs:*"
+        },
+        "logSchemaVersion": 2
+    },
+    "experimentOptions": {
+        "accountTargeting": "single-account",
+        "emptyTargetResolutionMode": "fail"
+    }
+}
