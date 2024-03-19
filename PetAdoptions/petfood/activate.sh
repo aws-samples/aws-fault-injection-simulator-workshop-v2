@@ -2,7 +2,7 @@
 
 
 deploy () {
-    cd $HOME/environment/workshopfiles/one-observability-demo/PetAdoptions/${service}
+    cd $HOME/environment/workshopfiles/fis-workshop/PetAdoptions/${service}
     echo In directory `pwd`
     echo "Startng deployment of ${service}"
 
@@ -37,7 +37,7 @@ permissions () {
 
     if [ ! "`aws iam get-role-policy --role-name ${role} --policy-name evidently`" ] ; then
         echo Attaching new Evidently policy to role
-        aws iam put-role-policy --role-name ${role} --policy-name evidently --policy-document file://$HOME/environment/workshopfiles/one-observability-demo/PetAdoptions/${service}/policy.json
+        aws iam put-role-policy --role-name ${role} --policy-name evidently --policy-document file://$HOME/environment/workshopfiles/fis-workshop/PetAdoptions/${service}/policy.json
     else
         echo Role has an Evidently policy already
     fi
