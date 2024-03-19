@@ -36,7 +36,7 @@ export class Cloud9Stack extends cdk.Stack {
         vpcId: theVPC.vpcId,
         subnetId: theVPC.publicSubnets[0].subnetId,
         cloud9OwnerArn: "assumed-role/WSParticipantRole/Participant",
-        templateFile: __dirname + "/../../../../cloud9-cfn.yaml"
+        templateFile: __dirname + "/../../../cloud9-cfn.yaml"
       });
 
       var c9role = c9Env.c9Role;
