@@ -40,7 +40,7 @@ for tg in $target_groups; do
     echo "Updating cross-zone load balancing for target group: $tg"
     aws elbv2 modify-target-group-attributes \
         --target-group-arn "$tg" \
-        --attributes Key=load_balancing.cross_zone.enabled,Value="$attribute_value"
+        --attributes Key=load_balancing.cross_zone.enabled,Value="$attribute_value" > /dev/null 2>&1
 done
 
 # Verify that the attribute was updated correctly
