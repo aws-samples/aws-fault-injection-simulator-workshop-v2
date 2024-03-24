@@ -11,6 +11,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 from bs4 import BeautifulSoup
 import logging
+from retry import retry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -66,8 +67,8 @@ def configure_web_driver():
         raise WebDriverError(f"Error configuring web driver: {str(e)}")
 
 # Function to search and adopt pets
+@retry(exceptions=TimeoutException, tries=3, delay=5, backoff=2, logger=logging.getLogger(__name__))
 def search_by_color_and_type(driver, home_url, color, pet_type):
-    
     '''
     #Navigate to home page and view pets already adopted
     try:
@@ -98,6 +99,8 @@ def search_by_color_and_type(driver, home_url, color, pet_type):
     except NoSuchElementException as e:
         raise PetSearchError(f"Error selecting pet type or color: {str(e)}")
     
+    pet_name_text = None
+    
     try:
         # Click the "Take me home" button by submitting the form
         wait = WebDriverWait(driver, 10)
@@ -106,18 +109,27 @@ def search_by_color_and_type(driver, home_url, color, pet_type):
 
         # Parse the HTML with BeautifulSoup
         soup = BeautifulSoup(driver.page_source, 'html.parser')
+
         # Find the pet name element within the current pet item
         pet_name_element = soup.find('div', class_='pet-name')
-        pet_name_text = pet_name_element.find('span').get_text(strip=True)
+        if pet_name_element:
+            pet_name_text = pet_name_element.find('span').get_text(strip=True)
+            logging.info(f"Successfully adopted the pet named: {pet_name_text}")
+        else:
+            logging.warning("Could not find the pet name element on the page.")
 
     except (NoSuchElementException, TimeoutException) as e:
         raise PetSearchError(f"Error finding or submitting pet form: {str(e)}")
     
     try:
-        payment_form = driver.find_element(By.XPATH, "//form[@action='/Payment/MakePayment']")
-        payment_form.submit()
-    
-        logging.info(f"Successfully adopted the pet named: {pet_name_text}")
+        if pet_name_element:
+            payment_form = driver.find_element(By.XPATH, "//form[@action='/Payment/MakePayment']")
+            payment_form.submit()
+        
+            logging.info(f"Successfully adopted the pet named: {pet_name_text}")
+        else:
+            logging.warning("No pet to adopt on the page.")
+
 
     except NoSuchElementException as e:
         raise PetSearchError(f"Error submitting payment form: {str(e)}")
@@ -155,6 +167,7 @@ try:
             for pet_type in types:
                 try:
                     chrome_driver = configure_web_driver()
+                    chrome_driver.set_page_load_timeout(30)
                     search_by_color_and_type(chrome_driver, petsite_url, color, pet_type)
                     chrome_driver.quit()
                 except (WebDriverError, PetSearchError) as e:
