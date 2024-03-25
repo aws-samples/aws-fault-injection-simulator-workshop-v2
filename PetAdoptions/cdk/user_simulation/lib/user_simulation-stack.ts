@@ -6,7 +6,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs'
 
-export class LoadTesting extends Stack {
+export class UserSimulationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -36,7 +36,7 @@ export class LoadTesting extends Stack {
 
     // Add a container to the task definition using your Docker image
     const container = taskDefinition.addContainer('Load_Test_Container', {
-      image: ecs.ContainerImage.fromAsset('./lib/load_testing_app/app'), 
+      image: ecs.ContainerImage.fromAsset('./lib/app'), 
       logging: new ecs.AwsLogDriver({ streamPrefix: 'LoadTesting' }),
     });
     
