@@ -31,7 +31,7 @@ git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-
 # Navigate to the project directory:
 cd user-simulation/lib/app
 pip install -r requirements.txt
-python3 load_test.py 
+python3 path_testing.py
 ```
 
 ### AWS Deployment 
