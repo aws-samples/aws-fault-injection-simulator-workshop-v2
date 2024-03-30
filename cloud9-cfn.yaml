@@ -653,49 +653,6 @@ Resources:
           inputs:
             runCommand:
             - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop' 
-        - action: aws:runShellScript
-          name: createloginbanner
-          inputs:
-            runCommand:
-            - |
-              set -e 
-              cat << 'EOF' > /home/ubuntu/greetings.sh
-              #!/bin/bash
-              get_mysite_value() {
-              local retry_delay=10  # Delay between retries in seconds
-      
-              while true; do
-                  MYSITE=$(aws ssm get-parameter --name '/petstore/petsiteurl' 2>/dev/null)
-                  if [ -n "$MYSITE" ]; then
-                                  export MYSITE=$(aws ssm get-parameter --name '/petstore/petsiteurl'  | jq -r .Parameter.Value | tr '[:upper:]' '[:lower:]' | cut -f 3 -d '/')
-                  fi
-                  if [ -n "$MYSITE" ]; then
-                      return 0
-                  else
-                      sleep $retry_delay
-                  fi
-              done
-              }
-      
-              get_mysite_value
-      
-              if [ $? -eq 0 ]; then
-                  echo ""
-                  echo -e "\e[1;31m==========================================================================================================================================\e[0m"
-                  echo -e "\e[1;32m Your petsite URL: http://$MYSITE \e[0m"
-                  echo -e "\e[1;31m==========================================================================================================================================\e[0m"      
-              else
-                echo "Failed to get MYSITE value." >&2
-              fi
-
-              EOF
-              chmod +x /home/ubuntu/greetings.sh
-              chown ubuntu.ubuntu /home/ubuntu/greetings.sh
-              echo "(/home/ubuntu/greetings.sh &)" > /home/ubuntu/.bash_profile
-    
-    
-          name: createloginbanner
-          action: "aws:runShellScript"
 
   FisWorkshopC9InstanceProfile:
     Type: AWS::IAM::InstanceProfile
