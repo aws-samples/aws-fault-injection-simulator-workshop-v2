@@ -116,7 +116,10 @@ export class FisServerless extends Stack {
                 "iam:PassRole"]
         }));
 
-        const logGroup = new LogGroup(this, 'StateMachineECSFISLogs');
+        const logGroup = new LogGroup(this, `StateMachineECSFISLogs`, {
+                  logGroupName: `/aws/vendedlogs/StateMachineECSFIS`
+        });
+
 
         const stateMachine = new stepfunctions.StateMachine(this, 'StateMachineECSFIS', {
             definitionBody: stepfunctions.DefinitionBody.fromString(machineDefinition.replace("${FISRole}", fisRole.roleArn)),
