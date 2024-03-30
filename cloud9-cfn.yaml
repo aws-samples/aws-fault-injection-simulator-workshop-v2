@@ -338,6 +338,7 @@ Resources:
   FisWorkshopC9Role:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub "${EnvironmentName}-admin"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -652,7 +653,6 @@ Resources:
           inputs:
             runCommand:
             - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop' 
-
 
   FisWorkshopC9InstanceProfile:
     Type: AWS::IAM::InstanceProfile
