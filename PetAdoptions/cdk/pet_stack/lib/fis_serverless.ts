@@ -6,6 +6,7 @@ import * as stepfunctions from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 import { readFileSync } from 'fs';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
+import { RemovalPolicy } from 'aws-cdk-lib';
 
 export class FisServerless extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -116,8 +117,9 @@ export class FisServerless extends Stack {
                 "iam:PassRole"]
         }));
 
-        const logGroup = new LogGroup(this, `StateMachineECSFISLogs`, {
-                  logGroupName: `/aws/vendedlogs/StateMachineECSFIS`
+        const logGroup = new LogGroup(this, 'StateMachineECSFISLogs', {
+                  logGroupName: '/aws/vendedlogs/StateMachineECSFIS',
+                  removalPolicy: RemovalPolicy.DESTROY
         });
 
 
