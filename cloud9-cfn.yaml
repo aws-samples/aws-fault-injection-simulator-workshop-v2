@@ -118,7 +118,6 @@ Metadata:
           - C9InstanceVolumeSize
           - C9Image
           - PatchC9Instance
-          - Cloud9OwnerRole
 
 Resources:
   VPC:
