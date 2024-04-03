@@ -20,13 +20,17 @@ export class Cloud9Environment extends Construct {
             parameters: {
                 'CreateVPC': false,
                 'Cloud9VPC': props.vpcId,
-                'Cloud9Subnet': props.subnetId
+                'Cloud9Subnet': props.subnetId,
             },
             preserveLogicalIds: false
         });
 
         if (props.name) {
             template.getParameter("EnvironmentName").default = props.name;
+        }
+
+        if (props.cloud9OwnerArn) {
+            template.getParameter("WorkshopOwnerArn").default = props.cloud9OwnerArn.valueOf();
         }
 
         this.c9Role = template.getResource("FisWorkshopC9Role") as CfnRole;
