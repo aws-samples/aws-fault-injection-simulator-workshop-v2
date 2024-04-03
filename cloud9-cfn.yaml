@@ -91,6 +91,9 @@ Parameters:
 
 Conditions: 
   Create3rdPartyResources: !Equals [ !Ref FisWorkshopC9EnvType, 3rdParty ]
+  SkipOwnerArn: !Equals
+    - !Ref WorkshopOwnerArn
+    - AWS::NoValue
   CreateVPC: !Equals
     - !Ref CreateVPC
     - True
@@ -670,7 +673,7 @@ Resources:
         Ref: FisWorkshopC9InstanceType
       SubnetId: !If [CreateVPC, !Ref PublicSubnet1, !Ref Cloud9Subnet ]
       Name: !Ref Cloud9Name
-      OwnerArn: !If [ Create3rdPartyResources, !Ref WorkshopOwnerArn, !Ref "AWS::NoValue" ]
+      OwnerArn: !If [SkipOwnerArn, !Ref "AWS::NoValue", !Ref WorkshopOwnerArn]
       Tags: 
         - Key: SSMBootstrap
           Value: Active
