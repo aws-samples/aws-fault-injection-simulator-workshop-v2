@@ -33,7 +33,6 @@ export class Cloud9Environment extends Construct {
             template.getParameter("WorkshopOwnerArn").default = props.cloud9OwnerArn.valueOf();
         }
 
-
         this.c9Role = template.getResource("FisWorkshopC9Role") as CfnRole;
     }
 }
