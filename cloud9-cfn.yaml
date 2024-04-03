@@ -673,7 +673,7 @@ Resources:
         Ref: FisWorkshopC9InstanceType
       SubnetId: !If [CreateVPC, !Ref PublicSubnet1, !Ref Cloud9Subnet ]
       Name: !Ref Cloud9Name
-      OwnerArn: !If [SkipOwnerArn, !Ref "AWS::NoValue", !Ref WorkshopOwnerArn]
+      OwnerArn: !If [SkipOwnerArn, !Ref "AWS::NoValue", !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:${WorkshopOwnerArn}"]
       Tags: 
         - Key: SSMBootstrap
           Value: Active
