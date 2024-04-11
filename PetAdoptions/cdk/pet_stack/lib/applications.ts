@@ -10,136 +10,179 @@ import { ContainerImageBuilderProps, ContainerImageBuilder } from './common/cont
 import { PetAdoptionsHistory } from './applications/pet-adoptions-history-application'
 
 export class Applications extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope,id,props);
+    constructor(scope: Construct, id: string, props?: StackProps) {
+        super(scope, id, props);
 
-    const stackName = id;
+        const stackName = id;
 
-    const roleArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamClusterAdmin', { parameterName: "/eks/petsite/EKSMasterRoleArn"}).stringValue;
-    const targetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamTargetGroupArn', { parameterName: "/eks/petsite/TargetGroupArn"}).stringValue;
-    const oidcProviderUrl = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderUrl', { parameterName: "/eks/petsite/OIDCProviderUrl"}).stringValue;
-    const oidcProviderArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderArn', { parameterName: "/eks/petsite/OIDCProviderArn"}).stringValue;
-    const rdsSecretArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getRdsSecretArn', { parameterName: "/petstore/rdssecretarn"}).stringValue;
-    const petHistoryTargetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getPetHistoryParamTargetGroupArn', { parameterName: "/eks/pethistory/TargetGroupArn"}).stringValue;
+        const roleArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamClusterAdmin', { parameterName: "/eks/petsite/EKSMasterRoleArn" }).stringValue;
+        const targetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamTargetGroupArn', { parameterName: "/eks/petsite/TargetGroupArn" }).stringValue;
+        const oidcProviderUrl = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderUrl', { parameterName: "/eks/petsite/OIDCProviderUrl" }).stringValue;
+        const oidcProviderArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderArn', { parameterName: "/eks/petsite/OIDCProviderArn" }).stringValue;
+        const rdsSecretArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getRdsSecretArn', { parameterName: "/petstore/rdssecretarn" }).stringValue;
+        const petHistoryTargetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getPetHistoryParamTargetGroupArn', { parameterName: "/eks/pethistory/TargetGroupArn" }).stringValue;
 
-    const cluster = eks.Cluster.fromClusterAttributes(this, 'MyCluster', {
-      clusterName: 'PetSite',
-      kubectlRoleArn: roleArn,
-    });
-    // Create metrics server
-    new eks.HelmChart(this, 'metrics-server', {
-      cluster,
-      chart: 'metrics-server',
-      repository: 'https://kubernetes-sigs.github.io/metrics-server/',
-      namespace: 'kube-system',
-    });
-
-
-    // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
-    // Thsos might be an issue
-    const clusterId = Fn.select(4, Fn.split('/', oidcProviderUrl)) // Remove https:// from the URL as workaround to get ClusterID
-
-    const stack = Stack.of(this);
-    const region = stack.region;
-
-    const app_federatedPrincipal = new iam.FederatedPrincipal(
-        oidcProviderArn,
-        {
-            StringEquals: new CfnJson(this, "App_FederatedPrincipalCondition", {
-                value: {
-                    [`oidc.eks.${region}.amazonaws.com/id/${clusterId}:aud` ]: "sts.amazonaws.com"
-                }
-            })
-        }
-    );
-    const app_trustRelationship = new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        principals: [ app_federatedPrincipal ],
-        actions: ["sts:AssumeRoleWithWebIdentity"]
-    })
-
-
-    // FrontEnd SA (SSM, SQS, SNS)
-    const petstoreserviceaccount = new iam.Role(this, 'PetSiteServiceAccount', {
-//                assumedBy: eksFederatedPrincipal,
-            assumedBy: new iam.AccountRootPrincipal(),
-        managedPolicies: [
-            iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AmazonSSMFullAccess', 'arn:aws:iam::aws:policy/AmazonSSMFullAccess'),
-            iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AmazonSQSFullAccess', 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'),
-            iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AmazonSNSFullAccess', 'arn:aws:iam::aws:policy/AmazonSNSFullAccess'),
-            iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AWSXRayDaemonWriteAccess', 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess')
-        ],
-    });
-    petstoreserviceaccount.assumeRolePolicy?.addStatements(app_trustRelationship);
-
-    const startStepFnExecutionPolicy = new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-            'states:StartExecution'
-        ],
-        resources: ['*']
+        const cluster = eks.Cluster.fromClusterAttributes(this, 'MyCluster', {
+            clusterName: 'PetSite',
+            kubectlRoleArn: roleArn,
         });
 
-    petstoreserviceaccount.addToPrincipalPolicy(startStepFnExecutionPolicy);
+        // Create metrics server
+        new eks.HelmChart(this, 'metrics-server', {
+            cluster,
+            chart: 'metrics-server',
+            repository: 'https://kubernetes-sigs.github.io/metrics-server/',
+            namespace: 'kube-system',
+        });
 
-    const petsiteAsset = new DockerImageAsset(this, 'petsiteAsset', {
-        directory: "./resources/microservices/petsite/petsite/"
-    });
+        // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
+        // Those might be an issue
+        const clusterId = Fn.select(4, Fn.split('/', oidcProviderUrl)) // Remove https:// from the URL as workaround to get ClusterID
 
+        const stack = Stack.of(this);
+        const region = stack.region;
+        const account = stack.account;
 
-    var manifest = readFileSync("./resources/k8s_petsite/deployment.yaml","utf8");
-    var deploymentYaml = yaml.loadAll(manifest) as Record<string,any>[];
+        const app_federatedPrincipal = new iam.FederatedPrincipal(
+            oidcProviderArn,
+            {
+                StringEquals: new CfnJson(this, "App_FederatedPrincipalCondition", {
+                    value: {
+                        [`oidc.eks.${region}.amazonaws.com/id/${clusterId}:aud`]: "sts.amazonaws.com"
+                    }
+                })
+            }
+        );
+        const app_trustRelationship = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            principals: [app_federatedPrincipal],
+            actions: ["sts:AssumeRoleWithWebIdentity"]
+        })
 
-    deploymentYaml[0].metadata.annotations["eks.amazonaws.com/role-arn"] = new CfnJson(this, "deployment_Role", { value : `${petstoreserviceaccount.roleArn}` });
-    deploymentYaml[2].spec.template.spec.containers[0].image = new CfnJson(this, "deployment_Image", { value : `${petsiteAsset.imageUri}` });
-    deploymentYaml[3].spec.targetGroupARN = new CfnJson(this,"targetgroupArn", { value: `${targetGroupArn}`})
+        // FrontEnd SA (SSM, SQS, SNS)
+        const petstoreserviceaccount = new iam.Role(this, 'PetSiteServiceAccount', {
+            //  assumedBy: eksFederatedPrincipal,
+            assumedBy: new iam.AccountRootPrincipal(),
+            managedPolicies: [
+                iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AmazonSSMFullAccess', 'arn:aws:iam::aws:policy/AmazonSSMFullAccess'),
+                iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AmazonSQSFullAccess', 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'),
+                iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AmazonSNSFullAccess', 'arn:aws:iam::aws:policy/AmazonSNSFullAccess'),
+                iam.ManagedPolicy.fromManagedPolicyArn(this, 'PetSiteServiceAccount-AWSXRayDaemonWriteAccess', 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess')
+            ],
+        });
 
-    const deploymentManifest = new eks.KubernetesManifest(this,"petsitedeployment",{
-        cluster: cluster,
-        manifest: deploymentYaml
-    });
+        petstoreserviceaccount.assumeRolePolicy?.addStatements(app_trustRelationship);
 
-    // PetAdoptionsHistory application definitions-----------------------------------------------------------------------
-    const petAdoptionsHistoryContainerImage = new ContainerImageBuilder(this, 'pet-adoptions-history-container-image', {
-       repositoryName: "pet-adoptions-history",
-       dockerImageAssetDirectory: "./resources/microservices/petadoptionshistory-py",
-    });
-    new ssm.StringParameter(this,"putPetAdoptionHistoryRepositoryName",{
-        stringValue: petAdoptionsHistoryContainerImage.repositoryUri,
-        parameterName: '/petstore/pethistoryrepositoryuri'
-    });
+        const startStepFnExecutionPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: [
+                'states:StartExecution'
+            ],
+            resources: ['*']
+        });
 
-    const petAdoptionsHistoryApplication = new PetAdoptionsHistory(this, 'pet-adoptions-history-application', {
-        cluster: cluster,
-        app_trustRelationship: app_trustRelationship,
-        kubernetesManifestPath: "./resources/microservices/petadoptionshistory-py/deployment.yaml",
-        otelConfigMapPath: "./resources/microservices/petadoptionshistory-py/otel-collector-config.yaml",
-        rdsSecretArn: rdsSecretArn,
-        region: region,
-        imageUri: petAdoptionsHistoryContainerImage.imageUri,
-        targetGroupArn: petHistoryTargetGroupArn
-    });
+        petstoreserviceaccount.addToPrincipalPolicy(startStepFnExecutionPolicy);
 
-    this.createSsmParameters(new Map(Object.entries({
-        '/eks/petsite/stackname': stackName
-    })));
+        const petsiteAsset = new DockerImageAsset(this, 'petsiteAsset', {
+            directory: "./resources/microservices/petsite/petsite/"
+        });
 
-    this.createOuputs(new Map(Object.entries({
-        'PetSiteECRImageURL': petsiteAsset.imageUri,
-        'PetStoreServiceAccountArn': petstoreserviceaccount.roleArn,
-    })));
-  }
+        var manifest = readFileSync("./resources/k8s_petsite/deployment.yaml", "utf8");
+        var deploymentYaml = yaml.loadAll(manifest) as Record<string, any>[];
 
-  private createSsmParameters(params: Map<string, string>) {
-    params.forEach((value, key) => {
-        //const id = key.replace('/', '_');
-        new ssm.StringParameter(this, key, { parameterName: key, stringValue: value });
-    });
+        deploymentYaml[0].metadata.annotations["eks.amazonaws.com/role-arn"] = new CfnJson(this, "deployment_Role", { value: `${petstoreserviceaccount.roleArn}` });
+        deploymentYaml[2].spec.template.spec.containers[0].image = new CfnJson(this, "deployment_Image", { value: `${petsiteAsset.imageUri}` });
+        deploymentYaml[3].spec.targetGroupARN = new CfnJson(this, "targetgroupArn", { value: `${targetGroupArn}` })
+
+        const deploymentManifest = new eks.KubernetesManifest(this, "petsitedeployment", {
+            cluster: cluster,
+            manifest: deploymentYaml
+        });
+
+        // PetAdoptionsHistory application definitions-----------------------------------------------------------------------
+        const petAdoptionsHistoryContainerImage = new ContainerImageBuilder(this, 'pet-adoptions-history-container-image', {
+            repositoryName: "pet-adoptions-history",
+            dockerImageAssetDirectory: "./resources/microservices/petadoptionshistory-py",
+        });
+        new ssm.StringParameter(this, "putPetAdoptionHistoryRepositoryName", {
+            stringValue: petAdoptionsHistoryContainerImage.repositoryUri,
+            parameterName: '/petstore/pethistoryrepositoryuri'
+        });
+
+        const petAdoptionsHistoryApplication = new PetAdoptionsHistory(this, 'pet-adoptions-history-application', {
+            cluster: cluster,
+            app_trustRelationship: app_trustRelationship,
+            kubernetesManifestPath: "./resources/microservices/petadoptionshistory-py/deployment.yaml",
+            otelConfigMapPath: "./resources/microservices/petadoptionshistory-py/otel-collector-config.yaml",
+            rdsSecretArn: rdsSecretArn,
+            region: region,
+            imageUri: petAdoptionsHistoryContainerImage.imageUri,
+            targetGroupArn: petHistoryTargetGroupArn
+        });
+
+        // PetFood application definitions-----------------------------------------------------------------------
+        const petFoodContainerImage = new ContainerImageBuilder(this, 'pet-food-container-image', {
+            repositoryName: "petfood",
+            dockerImageAssetDirectory: "../../petfood",
+        });
+
+        var petFoodManifest = readFileSync("../../petfood/deployment.yaml", "utf8");
+        var petFoodDeploymentYaml = yaml.loadAll(petFoodManifest) as Record<string, any>[];
+        petFoodDeploymentYaml[0].spec.template.spec.containers[0].image = `${account}.dkr.ecr.${region}.amazonaws.com/petfood:latest`;
+
+        petFoodDeploymentYaml[0].spec.template.spec.containers[0].env.forEach((envVar: { name: string, value: string }) => {
+            if (envVar.name === "AWS_DEFAULT_REGION" && envVar.value === "DEPLOYMENTREGION") {
+                envVar.value = region;
+            }
+        });
+
+        const petFoodDeploymentManifest = new eks.KubernetesManifest(this, "petfooddeployment", {
+            cluster: cluster,
+            manifest: petFoodDeploymentYaml
+        });
+
+        // PetFoodMetric application definitions-----------------------------------------------------------------------
+        const petFoodMetricContainerImage = new ContainerImageBuilder(this, 'pet-food-metric-container-image', {
+            repositoryName: "petfood-metric",
+            dockerImageAssetDirectory: "../../petfood-metric",
+        });
+
+        var petFoodMetricManifest = readFileSync("../../petfood-metric/deployment.yaml", "utf8");
+        var petFoodMetricDeploymentYaml = yaml.loadAll(petFoodMetricManifest) as Record<string, any>[];
+        petFoodMetricDeploymentYaml[0].spec.template.spec.containers[0].image = `${account}.dkr.ecr.${region}.amazonaws.com/petfood-metric:latest`;
+
+        petFoodMetricDeploymentYaml[0].spec.template.spec.containers[0].env.forEach((envVar: { name: string, value: string }) => {
+            if (envVar.name === "AWS_DEFAULT_REGION" && envVar.value === "DEPLOYMENTREGION") {
+                envVar.value = region;
+            }
+        });
+
+        const petFoodMetricDeploymentManifest = new eks.KubernetesManifest(this, "petfoodmetricdeployment", {
+            cluster: cluster,
+            manifest: petFoodMetricDeploymentYaml
+        });
+
+        // SSM parameters and outputs-----------------------------------------------------------------------
+        this.createSsmParameters(new Map(Object.entries({
+            '/eks/petsite/stackname': stackName
+        })));
+
+        this.createOuputs(new Map(Object.entries({
+            'PetSiteECRImageURL': petsiteAsset.imageUri,
+            'PetStoreServiceAccountArn': petstoreserviceaccount.roleArn,
+        })));
+    }
+
+    private createSsmParameters(params: Map<string, string>) {
+        params.forEach((value, key) => {
+            //const id = key.replace('/', '_');
+            new ssm.StringParameter(this, key, { parameterName: key, stringValue: value });
+        });
     }
 
     private createOuputs(params: Map<string, string>) {
-    params.forEach((value, key) => {
-        new CfnOutput(this, key, { value: value })
-    });
+        params.forEach((value, key) => {
+            new CfnOutput(this, key, { value: value })
+        });
     }
 }

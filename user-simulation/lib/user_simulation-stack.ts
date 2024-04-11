@@ -12,17 +12,70 @@ export class UserSimulationStack extends cdk.Stack {
 
     // Create a VPC
     const vpc = new ec2.Vpc(this, 'Vpc', { maxAzs: 2 }); 
+
     // Create an ECS cluster within the VPC
     const cluster = new ecs.Cluster(this, 'Cluster', {
       vpc,
       containerInsights: true,
     });
     
+    // DogAdopt
     // Define the ECS task definition
-    const taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDefinition');
+    const dogAdoptTaskDefinition = new ecs.FargateTaskDefinition(this, 'dogAdoptTaskDefinition');
 
     // Add permissions to query SSM parameter
-    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+    dogAdoptTaskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      resources: ['*'],
+      actions: [
+                "ssm:GetParameters",
+                "ssm:GetParameter",
+                "ssm:DescribeParameters", 
+                "ssm:GetParametersByPath",
+                "ssm:ListParameters",
+            ]
+    }));
+    
+    // Add a container to the task definition using your Docker image
+    const dogAdoptContainer = dogAdoptTaskDefinition.addContainer('dogAdoptContainer', {
+      image: ecs.ContainerImage.fromAsset('./lib/dogAdopt'), 
+      logging: new ecs.AwsLogDriver({ streamPrefix: 'dogAdopt' }),
+    });
+    
+    // Configure container settings, environment variables, etc.
+    dogAdoptContainer.addPortMappings({ containerPort: 80 });
+
+    // GetAllPets
+    // Define the ECS task definition
+    const getAllPetsTaskDefinition = new ecs.FargateTaskDefinition(this, 'getAllPetsTaskDefinition');
+
+    // Add permissions to query SSM parameter
+    getAllPetsTaskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      resources: ['*'],
+      actions: [
+                "ssm:GetParameters",
+                "ssm:GetParameter",
+                "ssm:DescribeParameters", 
+                "ssm:GetParametersByPath",
+                "ssm:ListParameters",
+            ]
+    }));
+    // Add a container to the task definition using your Docker image
+    const getAllPetsContainer = getAllPetsTaskDefinition.addContainer('getAllPetsContainer', {
+      image: ecs.ContainerImage.fromAsset('./lib/getallpets'), 
+      logging: new ecs.AwsLogDriver({ streamPrefix: 'getallpets' }),
+    });
+    
+    // Configure container settings, environment variables, etc.
+    getAllPetsContainer.addPortMappings({ containerPort: 80 });
+
+    // Search List
+    // Define the ECS task definition
+    const searchListTaskDefinition = new ecs.FargateTaskDefinition(this, 'searchListTaskDefinition');
+
+    // Add permissions to query SSM parameter
+    searchListTaskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       resources: ['*'],
       actions: [
@@ -35,18 +88,32 @@ export class UserSimulationStack extends cdk.Stack {
     }));
 
     // Add a container to the task definition using your Docker image
-    const container = taskDefinition.addContainer('Load_Test_Container', {
-      image: ecs.ContainerImage.fromAsset('./lib/app'), 
-      logging: new ecs.AwsLogDriver({ streamPrefix: 'LoadTesting' }),
+    const searchListContainer = searchListTaskDefinition.addContainer('searchListContainer', {
+      image: ecs.ContainerImage.fromAsset('./lib/searchlist'), 
+      logging: new ecs.AwsLogDriver({ streamPrefix: 'searchlist' }),
     });
     
     // Configure container settings, environment variables, etc.
-    container.addPortMappings({ containerPort: 80 });
+    searchListContainer.addPortMappings({ containerPort: 80 });
 
-    // Create an ECS service
-    new ecs.FargateService(this, 'Load_Test_Service', {
+    // Create dogAdoptService
+    new ecs.FargateService(this, 'dogAdoptService', {
       cluster,
-      taskDefinition,
+      taskDefinition: dogAdoptTaskDefinition,
+      desiredCount: 5, 
+    });
+
+    // Create getAllPetsService
+    new ecs.FargateService(this, 'getAllPetsService', {
+      cluster,
+      taskDefinition: getAllPetsTaskDefinition,
+      desiredCount: 5, 
+    });
+
+    // Create searchListService
+    new ecs.FargateService(this, 'searchListService', {
+      cluster,
+      taskDefinition: searchListTaskDefinition,
       desiredCount: 5, 
     });
   }
