@@ -62,4 +62,4 @@ RUN pip install --no-cache-dir -r ./requirements.txt
 EXPOSE 80
 
 # Run load_test.py when the container launches
-CMD ["python", "load_test.py"]
+CMD ["python", "path_testing.py"]
