@@ -41,6 +41,10 @@ for tg in $target_groups; do
     aws elbv2 modify-target-group-attributes \
         --target-group-arn "$tg" \
         --attributes Key=load_balancing.cross_zone.enabled,Value="$attribute_value" > /dev/null 2>&1
+     json_data=$(aws elbv2 describe-target-group-attributes --target-group-arn "$tg" )
+     cross_zone_enabled=$(echo $json_data | jq -r '.Attributes[] | select(.Key == "load_balancing.cross_zone.enabled") | .Value')
+     echo "The value for $tg of 'load_balancing.cross_zone.enabled' is: $cross_zone_enabled"
+done
 done
 
 # Verify that the attribute was updated correctly
