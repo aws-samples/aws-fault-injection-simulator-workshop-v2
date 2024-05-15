@@ -1,6 +1,7 @@
 #!/bin/bash
 
 AZ=$1
+TIME=$2
 
 # Function to list all load balancers
 function list_load_balancers() {
@@ -26,7 +27,7 @@ function start_zonal_shift() {
 
     # Print the Availability Zone ID
     echo "Failing away from:  $AZ_ID"
-    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in 12m --resource-identifier "$load_balancer_arn" --comment "shift away from AZ us-east-1a"
+    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$load_balancer_arn" --comment "shift away from AZ us-east-1a"
 }
 
 # Function to monitor the progress of the Zonal Shift
