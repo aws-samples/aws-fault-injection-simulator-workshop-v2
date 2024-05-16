@@ -14,15 +14,15 @@ function list_load_balancers() {
 function start_zonal_shift() {
     # Set the AWS region
     AWS_REGION=$AWS_REGION
-    echo $AWS_REGION
-    echo $AZ
+    #echo $AWS_REGION
+    #echo $AZ
 
     # Get the Availability Zone information
     AZ_INFO=$(aws ec2 describe-availability-zones --region $AWS_REGION --output json)
 
     # Extract the Availability Zone ID for us-east-1a
     AZ_ID=$(echo $AZ_INFO | jq -r '.AvailabilityZones[] | select(.ZoneName == "'"$AZ"'") | .ZoneId')
-    echo $AZ_ID
+    #echo $AZ_ID
 
 
     # Print the Availability Zone ID
@@ -52,7 +52,7 @@ while true; do
 json_data=$(aws fis list-experiments)
 
 
-experiment=$(echo "$json_data" | jq -r '.experiments[] | select(.tags.Name == "azpowerinterruption") | select(.state.status == "running") | .state.status')
+experiment=$(echo "$json_data" | jq -r '.experiments[] | select((.tags.Name // .tags.name) == "azpowerinterruption") | select(.state.status == "running") | .state.status')
 echo $experiment
 
   if [ "$experiment" == "running" ]; then
