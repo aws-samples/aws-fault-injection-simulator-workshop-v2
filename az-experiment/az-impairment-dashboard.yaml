@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   CloudWatchDashboardName:
     Type: String
-    Default: PetSite-Dashboard
+    Default: AZImpairment-Dashboard
     Description: Name of the CloudWatch Dashboard
   CloudWatchDashboardFilterTagKeyName:
     Type: String
