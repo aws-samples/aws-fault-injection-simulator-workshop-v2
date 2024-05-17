@@ -47,16 +47,9 @@ function monitor_zonal_shift() {
     echo $zonal_shift_status
 }
 
-
-while true; do
-json_data=$(aws fis list-experiments)
-
-
-experiment=$(echo "$json_data" | jq -r '.experiments[] | select((.tags.Name // .tags.name) == "azpowerinterruption") | select(.state.status == "running") | .state.status')
-echo $experiment
-
-  if [ "$experiment" == "running" ]; then
-    echo "Impact Detected!!!!! Disabling cross zone load balancing"
+function disable_enable_cross_zone_lb() {
+    all_args=("$@")
+    attribute=${all_args[0]}
     target_groups=$(aws elbv2 describe-target-groups --query "TargetGroups[].TargetGroupArn" --output text)
     for tg in $target_groups; do
         echo "Updating cross-zone load balancing for target group: $tg"
@@ -77,9 +70,21 @@ echo $experiment
             exit 1
         fi
     done
-
     echo "Cross-zone load balancing has been updated for all ALB target groups."
+}
 
+
+disable_enable_cross_zone_lb "false"
+
+while true; do
+json_data=$(aws fis list-experiments)
+
+
+experiment=$(echo "$json_data" | jq -r '.experiments[] | select((.tags.Name // .tags.name) == "azpowerinterruption") | select(.state.status == "running") | .state.status')
+echo $experiment
+
+  if [ "$experiment" == "running" ]; then
+    echo "Impact Detected!!!!! Disabling cross zone load balancing"
     echo "Enabling Zonal Shift"
 
    # Main script
@@ -105,27 +110,7 @@ echo $experiment
         if $all_processed; then
             echo "All load balancers have been processed."
             echo "Re-enabling cross-zone load balancing"
-            target_groups=$(aws elbv2 describe-target-groups --query "TargetGroups[].TargetGroupArn" --output text)
-            for tg in $target_groups; do
-            echo "Updating cross-zone load balancing for target group: $tg"
-            aws elbv2 modify-target-group-attributes \
-                --target-group-arn "$tg" \
-                --attributes Key=load_balancing.cross_zone.enabled,Value="true" > /dev/null 2>&1
-            json_data=$(aws elbv2 describe-target-group-attributes --target-group-arn "$tg" )
-            cross_zone_enabled=$(echo $json_data | jq -r '.Attributes[] | select(.Key == "load_balancing.cross_zone.enabled") | .Value')
-            attribute_value=$cross_zone_enabled
-            echo "The value for $tg of 'load_balancing.cross_zone.enabled' is: $cross_zone_enabled"
-            done
-            for tg in $target_groups; do
-                actual_value=$(aws elbv2 describe-target-group-attributes --target-group-arn "$tg" --query "Attributes[?Key=='load_balancing.cross_zone.enabled'].Value" --output text)
-               if [ "$actual_value" != "$attribute_value" ]; then
-                    echo "Error: Cross-zone load balancing attribute for target group $tg was not updated correctly. Expected: $attribute_value, Actual: $actual_value"
-                    exit 1
-               fi
-            done
-
-
-            break
+            disable_enable_cross_zone_lb "true"
         fi
 
     # Sleep for 5 seconds before the next iteration
