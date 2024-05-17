@@ -111,6 +111,7 @@ echo $experiment
             echo "All load balancers have been processed."
             echo "Re-enabling cross-zone load balancing"
             disable_enable_cross_zone_lb "true"
+            break
         fi
 
     # Sleep for 5 seconds before the next iteration
