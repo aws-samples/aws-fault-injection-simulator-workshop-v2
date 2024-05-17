@@ -55,7 +55,7 @@ function disable_enable_cross_zone_lb() {
         echo "Updating cross-zone load balancing for target group: $tg"
         aws elbv2 modify-target-group-attributes \
             --target-group-arn "$tg" \
-            --attributes Key=load_balancing.cross_zone.enabled,Value="false" > /dev/null 2>&1
+            --attributes Key=load_balancing.cross_zone.enabled,Value="$attribute" > /dev/null 2>&1
         json_data=$(aws elbv2 describe-target-group-attributes --target-group-arn "$tg" )
         cross_zone_enabled=$(echo $json_data | jq -r '.Attributes[] | select(.Key == "load_balancing.cross_zone.enabled") | .Value')
         attribute_value=$cross_zone_enabled
