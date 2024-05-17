@@ -45,7 +45,6 @@ for tg in $target_groups; do
      cross_zone_enabled=$(echo $json_data | jq -r '.Attributes[] | select(.Key == "load_balancing.cross_zone.enabled") | .Value')
      echo "The value for $tg of 'load_balancing.cross_zone.enabled' is: $cross_zone_enabled"
 done
-done
 
 # Verify that the attribute was updated correctly
 for tg in $target_groups; do
