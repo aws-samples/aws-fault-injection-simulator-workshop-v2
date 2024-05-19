@@ -78,4 +78,7 @@ echo "==========================================================================
 echo "Generating load for 10 minuites to build steady state for $MYSITE"
 echo "============================================================================================================================="
 
-docker run --rm -i --security-opt seccomp=$(pwd)/chrome.json grafana/k6:latest-with-browser run - <k6petsite.js
+while true; do
+    docker run --rm -i --security-opt seccomp=$(pwd)/chrome.json grafana/k6:latest-with-browser run - < k6petsite.js
+    sleep 1  # Pause for 10 seconds before restarting
+done
