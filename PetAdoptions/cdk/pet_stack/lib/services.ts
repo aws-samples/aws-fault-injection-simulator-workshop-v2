@@ -16,7 +16,7 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as cloud9 from 'aws-cdk-lib/aws-cloud9';
+////import * as cloud9 from 'aws-cdk-lib/aws-cloud9';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecrassets from 'aws-cdk-lib/aws-ecr-assets';
@@ -36,7 +36,7 @@ import { readFileSync } from 'fs';
 import 'ts-replace-all'
 import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch';
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
-import { Cloud9Environment } from './modules/core/cloud9';
+// import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 
 export class Services extends Stack {
@@ -408,6 +408,7 @@ export class Services extends Stack {
         })
 
         const secretsKey = new kms.Key(this, 'SecretsKey');
+
         const cluster = new eks.Cluster(this, 'petsite', {
             clusterName: 'PetSite',
             mastersRole: clusterAdmin,
@@ -415,13 +416,13 @@ export class Services extends Stack {
             defaultCapacity: 0,
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
-            version: KubernetesVersion.of('1.27'),
+            version: KubernetesVersion.of('1.29'),
             kubectlLayer: new KubectlLayer(this, 'kubectl')
         });
 
         const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
             cpuArch: eks.CpuArch.X86_64,
-            kubernetesVersion: '1.27',
+            kubernetesVersion: '1.29',
             nodeType: eks.NodeType.STANDARD,
         });
 
@@ -447,6 +448,17 @@ export class Services extends Stack {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
+
+        // Loading evidently policy
+        const policyName = 'evidently'; // Adjust the policy name as needed
+        const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
+    
+        // Attach inline IAM policy to the role
+        eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {
+            policyName: policyName,
+            document: policyDocument
+        }));
+        
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
@@ -588,30 +600,13 @@ export class Services extends Stack {
         }
 
         if (isEventEngine === 'true') {
-            var c9Env = new Cloud9Environment(this, 'Cloud9Environment', {
-                vpcId: theVPC.vpcId,
-                subnetId: theVPC.publicSubnets[0].subnetId,
-                cloud9OwnerArn: "assumed-role/WSParticipantRole/Participant",
-                templateFile: __dirname + "/../../../../cloud9-cfn.yaml"
-
-            });
-
-            var c9role = c9Env.c9Role;
-
-            // Dynamically check if AWSCloud9SSMAccessRole and AWSCloud9SSMInstanceProfile exists
-            const c9SSMRole = new iam.Role(this, 'AWSCloud9SSMAccessRole', {
-                path: '/service-role/',
-                roleName: 'AWSCloud9SSMAccessRole',
-                assumedBy: new iam.CompositePrincipal(new iam.ServicePrincipal("ec2.amazonaws.com"), new iam.ServicePrincipal("cloud9.amazonaws.com")),
-                managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("AWSCloud9SSMInstanceProfile"), iam.ManagedPolicy.fromAwsManagedPolicyName("AdministratorAccess")]
-            });
-
             const teamRole = iam.Role.fromRoleArn(this, 'TeamRole', "arn:aws:iam::" + stack.account + ":role/WSParticipantRole");
             cluster.awsAuth.addRoleMapping(teamRole, { groups: ["dashboard-view"] });
 
+            const c9role = ssm.StringParameter.valueForStringParameter(this, '/cloud9/c9iamrolearn');
 
             if (c9role != undefined) {
-                cluster.awsAuth.addMastersRole(iam.Role.fromRoleArn(this, 'c9role', c9role.attrArn, { mutable: false }));
+                cluster.awsAuth.addMastersRole(iam.Role.fromRoleArn(this, 'c9role', c9role, { mutable: false }));
             }
 
 

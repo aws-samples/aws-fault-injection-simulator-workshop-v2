@@ -1,0 +1,97 @@
+{
+    "widgets": [
+
+        {
+            "height": 6,
+            "width": 12,
+            "y": 18,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/AutoScaling", "GroupMaxSize",            "AutoScalingGroupName", "{{{asgName}}}", { "color": "#1f77b4" } ],
+                    [ ".",               "GroupDesiredCapacity",    ".",                    ".",             { "color": "#ff7f0e" } ],
+                    [ ".",               "GroupInServiceInstances", ".",                    ".",             { "color": "#2ca02c" } ],
+                    [ ".",               "GroupMinSize",            ".",                    ".",             { "color": "#1f77b4" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "{{{region}}}",
+                "stat": "Average",
+                "period": 10,
+                "title": "ASG number of instances",
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    }
+                }
+            }
+        },
+        {
+            "height": 6,
+            "width": 12,
+            "y": 30,
+            "x": 0,
+            "type": "metric",
+            "properties":
+            {
+                "metrics": [
+                    [ "AWS/ApplicationELB", "HealthyHostCount",   "TargetGroup", "{{{targetgroupName}}}", "LoadBalancer", "{{{lbName}}}", "AvailabilityZone", "{{{az1}}}", { "color": "#1f77b4" } ],
+                    [ ".",                  "UnHealthyHostCount", ".",           ".",                     ".",            ".",            ".",                ".",         { "color": "#aec7e8" } ],
+                    [ ".",                  "HealthyHostCount",   ".",           ".",                     ".",            ".",            ".",                "{{{az2}}}", { "color": "#ff7f0e" } ],
+                    [ ".",                  "UnHealthyHostCount", ".",           ".",                     ".",            ".",            ".",                ".",         { "color": "#ffbb78" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": true,
+                "region": "{{{region}}}",
+                "stat": "Maximum",
+                "period": 10,
+                "title": "HealthyHostCount, UnHealthyHostCount"
+            }
+        },
+        {
+            "height": 6,
+            "width": 12,
+            "y": 30,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "period": 10,
+                "metrics": [
+                    [ "AWS/ApplicationELB", "HealthyHostCount",  "TargetGroup", "{{{targetgroupName}}}", "LoadBalancer", "{{{lbName}}}", { "label": "ELB healthy" } ],
+                    [ ".",                  "UnHealthyHostCount", ".",          ".",                     ".",            ".",            { "label": "ELB unhealthy" } ]
+                ],
+                "region": "{{{region}}}",
+                "stat": "Average",
+                "title": "ELB Host HealthCheck",
+                "yAxis": {
+                    "left": {
+                        "min": 0
+                    }
+                },
+                "view": "timeSeries",
+                "stacked": false
+            }
+        },
+        {
+            "height": 6,
+            "width": 12,
+            "y": 36,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                    [ "AWS/AutoScaling", "GroupTotalInstances",       "AutoScalingGroupName", "{{{asgName}}}", { "label": "ASG GroupTotalInstances"} ],
+                    [ ".",               "GroupPendingInstances",     ".",                    ".",           { "label": "ASG GroupPendingInstances"} ],
+                    [ ".",               "GroupInServiceInstances",   ".",                    ".",           { "label": "ASG GroupInServiceInstances"} ],
+                    [ ".",               "GroupTerminatingInstances", ".",                    ".",           { "label": "ASG GroupTerminatingInstances"} ]
+                ],
+                "title": "ASG Instance Checks",
+                "region": "{{{region}}}",
+                "period": 10
+            }
+        }
+    ]
+}

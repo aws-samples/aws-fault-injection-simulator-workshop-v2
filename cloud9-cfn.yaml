@@ -1,12 +1,6 @@
-Description:  >
-  Cloud9 Environment for Fault Injection Simulation
-
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Cloud9 IDE for the Fis workshop
 Parameters:
-  EnvironmentName:
-    Description: An environment name that is prefixed to resource names
-    Type: String
-    Default: "fisworkshop"
-
   CreateVPC:
     Description: Create a VPC for Cloud9 instance
     Type: String
@@ -14,6 +8,51 @@ Parameters:
     AllowedValues:
       - True
       - False
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "fisworkshop"
+  FisWorkshopC9InstanceType:
+    Description: Cloud9 instance type
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t3.small
+      - t3.medium
+    ConstraintDescription: Must be a valid Cloud9 instance type
+  FisWorkshopC9EnvType: 
+    Description: Environment type.
+    Default: self
+    Type: String
+    AllowedValues: 
+      - self
+      - 3rdParty
+    ConstraintDescription: must specify self or 3rdParty.
+  WorkshopOwnerArn:
+    Type: String
+    Description: The Arn of the Cloud9 Owner to be set if 3rdParty deployment.
+    Default: "AWS::NoValue"
+  FisWorkshopC9InstanceVolumeSize: 
+    Type: Number
+    Description: The Size in GB of the Cloud9 Instance Volume. 
+    Default: 30
+  Cloud9Name: 
+    Type: String
+    Description: Name of the Cloud9 instance
+    Default: "FisWorkshop"
+  ResourcesPrecreated: 
+    Type: String
+    Description: Whether lab infrastructure has been pre-provisioned
+    Default: "false"
+    AllowedValues: 
+      - "false"
+      - "true"
+  UpdateTrigger:
+    Type: String
+    Description: Triggers the Cloud9 to update itself
+    Default: "0"
 
   Cloud9VPC:
     Description: If VPC is not created by the template, must provide the VPC Id to deploy the instance
@@ -50,59 +89,18 @@ Parameters:
     Type: String
     Default: 10.10.40.0/24
 
-  C9InstanceType:
-    Description: Example Cloud9 instance type
-    Type: String
-    Default: t3.medium
-    AllowedValues:
-      - t3.small
-      - t3.medium
-      - m5.large
-    ConstraintDescription: Must be a valid Cloud9 instance type
-  C9InstanceVolumeSize:
-    Type: Number
-    Description: The Size in GB of the Cloud9 Instance Volume.
-    Default: 30
-
-  C9Image:
-    Type: String
-    Description: The Image to use for the Cloud9Instance
-    Default: ubuntu-22.04-x86_64
-
-  PatchC9Instance:
-    Description: Creates an Association to patch the Cloud9 Instance upon launch.
-    Type: String
-    Default: False
-    AllowedValues:
-      - True
-      - False
-
-  Cloud9OwnerRole:
-    Description: Associate a specific owner role for the C9 Instance. Cloudformation will append 'arn:_partition_:iam::_account_id_:' to this value. 
-    Type: String
-    Default: AWS::NoValue
-
-
-Conditions:
-  CreatePatchAssociation: !Equals 
-    - !Ref PatchC9Instance
-    - True
+Conditions: 
+  Create3rdPartyResources: !Equals [ !Ref FisWorkshopC9EnvType, 3rdParty ]
+  SkipOwnerArn: !Equals
+    - !Ref WorkshopOwnerArn
+    - AWS::NoValue
   CreateVPC: !Equals
     - !Ref CreateVPC
     - True
-  SkipOwnerArn: !Equals
-    - !Ref Cloud9OwnerRole
-    - AWS::NoValue
-  
-
+    
 Metadata: 
   AWS::CloudFormation::Interface: 
     ParameterGroups:
-      - 
-        Label:
-          default: "General"
-        Parameters:
-          - EnvironmentName
       - 
         Label: 
           default: "Network Configuration"
@@ -123,7 +121,6 @@ Metadata:
           - C9InstanceVolumeSize
           - C9Image
           - PatchC9Instance
-          - Cloud9OwnerRole
 
 Resources:
   VPC:
@@ -340,28 +337,10 @@ Resources:
           CidrIp: 0.0.0.0/0
           Description: "HTTPS Outbound traffic"
 
-################## PERMISSIONS AND ROLES #################
-  C9Role:
+  FisWorkshopC9Role:
     Type: AWS::IAM::Role
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W43
-            reason: "C9 Instance will be used to deploy Infrastructure in the workshop"
-          - id: W28
-            reason: "Needed in order to check the proper role is attached to the instance before running CDK"
-          - id: W11
-            reason: "Describe calls doesn't support resource filter. Volume tags are not propagated by Cloud9"
-      cdk_nag:
-        rules_to_suppress:
-          - id: AwsSolutions-IAM5
-            reason: "Describe calls doesn't support resource filter. Volume tags are not propagated by Cloud9"
-
     Properties:
       RoleName: !Sub "${EnvironmentName}-admin"
-      Tags:
-        - Key: Environment
-          Value: !Sub ${EnvironmentName}
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -372,64 +351,13 @@ Resources:
             - ssm.amazonaws.com
           Action:
           - sts:AssumeRole
-
-
       ManagedPolicyArns:
-      - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess  #Pending least privilege update
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
       Path: "/"
 
-      Policies:
-      - PolicyName:
-          Fn::Join:
-          - ''
-          - - C9InstanceDenyPolicy-
-            - Ref: AWS::Region
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Deny
-            Action:
-            - cloud9:UpdateEnvironment
-            Resource: "*"
-
-      - PolicyName:
-          Fn::Join:
-          - ''
-          - - C9ResizeVolumeRead-
-            - Ref: AWS::Region
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - ec2:DescribeVolumesModifications
-            - ec2:DescribeInstances
-            Resource: "*"
-
-      - PolicyName:
-          Fn::Join:
-          - ''
-          - - C9ResizeVolumeWrite-
-            - Ref: AWS::Region
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - ec2:ModifyVolume
-            Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*"
-
-  C9LambdaExecutionRole:
+  FisWorkshopC9LambdaExecutionRole:
     Type: AWS::IAM::Role
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W11
-            reason: "Describe Action doesn't support any resource condition"
-      cdk_nag:
-        rules_to_suppress:
-          - id: AwsSolutions-IAM5
-            reason: "Lambda role must be able to describe and update the Instance profile associated with the C9 environment"
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -441,116 +369,85 @@ Resources:
           Action:
           - sts:AssumeRole
       Path: "/"
-      ManagedPolicyArns:
-#        - "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
       Policies:
       - PolicyName:
           Fn::Join:
           - ''
-          - - C9LambdaPolicy-
+          - - FisWorkshopC9LambdaPolicy-
             - Ref: AWS::Region
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
           - Effect: Allow
             Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+          - Effect: Allow
+            Action:
             - cloudformation:DescribeStacks
             - cloudformation:DescribeStackEvents
             - cloudformation:DescribeStackResource
             - cloudformation:DescribeStackResources
-            Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}"
-          - Effect: Allow
-            Action:
+            - ec2:DescribeInstances
             - ec2:AssociateIamInstanceProfile
             - ec2:ModifyInstanceAttribute
             - ec2:ReplaceIamInstanceProfileAssociation
-            Resource: !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
-          - Effect: Allow
-            Action:
-            - ec2:DescribeInstances
             - ec2:DescribeIamInstanceProfileAssociations
-            Resource: "*"
-          - Effect: Allow
-            Action:
+            - ec2:DescribeVolumes
+            - ec2:ModifyVolume
+            - ec2:DescribeVolumesModifications
+            - ec2:RebootInstances
             - iam:ListInstanceProfiles
-            Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:instance-profile/*
-          - Effect: Allow
-            Action:
             - iam:PassRole
-            Resource:
-              Fn::GetAtt:
-                - C9Role
-                - Arn
-################## LAMBDA BOOTSTRAP FUNCTION ################
+            - ssm:DescribeInstanceInformation
+            - ssm:SendCommand
+            - ssm:GetCommandInvocation
+            Resource: "*"
 
-  C9BootstrapInstanceLambda:
-    Type: Custom::C9BootstrapInstanceLambda
+  FisWorkshopC9BootstrapInstanceLambda:
+    Type: Custom::FisWorkshopC9BootstrapInstanceLambda
     DependsOn:
-    - C9LambdaExecutionRole
+    - FisWorkshopC9LambdaExecutionRole
     Properties:
-      Tags:
-        - Key: Environment
-          Value: !Sub ${EnvironmentName}
       ServiceToken:
         Fn::GetAtt:
-        - C9BootstrapInstanceLambdaFunction
+        - FisWorkshopC9BootstrapInstanceLambdaFunction
         - Arn
       REGION:
         Ref: AWS::Region
-      StackName:
-        Ref: AWS::StackName
+      Cloud9Name: !GetAtt FisWorkshopC9Instance.Name
       EnvironmentId:
-        Ref: C9Instance
+        Ref: FisWorkshopC9Instance
       LabIdeInstanceProfileName:
-        Ref: C9InstanceProfile
+        Ref: FisWorkshopC9InstanceProfile
       LabIdeInstanceProfileArn:
         Fn::GetAtt:
-        - C9InstanceProfile
+        - FisWorkshopC9InstanceProfile
         - Arn
+      SsmDocument:
+        Ref: FisWorkshopC9SSMDocument
+      UpdateTrigger:
+        Ref: UpdateTrigger
 
-  # LambdaSecurityGroup:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties:
-  #     GroupDescription: "HTTPS Outbound Traffic"
-  #     VpcId: !Ref VPC
-  #     SecurityGroupEgress:
-  #       - IpProtocol: tcp
-  #         FromPort: 443
-  #         ToPort: 443
-  #         CidrIp: 0.0.0.0/0
-  #         Description: "HTTPS Outbound traffic"
-
-  C9BootstrapInstanceLambdaFunction:
+  FisWorkshopC9BootstrapInstanceLambdaFunction:
     Type: AWS::Lambda::Function
-    #checkov:skip=CKV_AWS_116:DLQ not needed for a single invocation Lambda
-    #checkov:skip=CKV_AWS_117:Lambda only talks with AWS endpoints, no need for a VPC
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W89
-            reason: "VPC support not needed for this helper lambda"
     Properties:
-      Tags:
-        - Key: Environment
-          Value: AWS Example
       Handler: index.lambda_handler
       Role:
         Fn::GetAtt:
-        - C9LambdaExecutionRole
+        - FisWorkshopC9LambdaExecutionRole
         - Arn
-      Runtime: python3.11
-      # VpcConfig:
-      #   SecurityGroupIds:
-      #     - !Ref LambdaSecurityGroup
-      #   SubnetIds:
-      #     - !Ref PrivateSubnet1
-      #     - !Ref PrivateSubnet2      
+      Runtime: python3.12
+      Environment:
+        Variables:
+          DiskSize:
+            Ref: FisWorkshopC9InstanceVolumeSize
       MemorySize: 256
-      Timeout: 600
-      ReservedConcurrentExecutions: 1
+      Timeout: '900'
       Code:
-        ZipFile: !Sub |
+        ZipFile: |
           from __future__ import print_function
           import boto3
           import json
@@ -559,192 +456,171 @@ Resources:
           import traceback
           import cfnresponse
           import logging
-
           logger = logging.getLogger(__name__)
-          logger.setLevel(logging.INFO)
-
+          
           def lambda_handler(event, context):
-              logger.info('event: {}'.format(event))
-              logger.info('context: {}'.format(context))
+              print(event.values())
+              print('context: {}'.format(context))
               responseData = {}
 
-              if event['RequestType'] == 'Create':
+              status = cfnresponse.SUCCESS
+              
+              if event['RequestType'] == 'Delete':
+                  responseData = {'Success': 'Custom Resource removed'}
+                  cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')              
+              else:
                   try:
                       # Open AWS clients
                       ec2 = boto3.client('ec2')
-
+                      ssm = boto3.client('ssm')
+          
                       # Get the InstanceId of the Cloud9 IDE
-                      instance = ec2.describe_instances(Filters=[{'Name': 'tag:Name','Values': ['aws-cloud9-${EnvironmentName}'+'-'+event['ResourceProperties']['EnvironmentId']]}])['Reservations'][0]['Instances'][0]
-                      logger.info('instance: {}'.format(instance))
-
+                      instance = ec2.describe_instances(Filters=[{'Name': 'tag:Name','Values': ['aws-cloud9-'+event['ResourceProperties']['Cloud9Name']+'-'+event['ResourceProperties']['EnvironmentId']]}])['Reservations'][0]['Instances'][0]
+                      print('instance: {}'.format(instance))
+                      instance_id = instance['InstanceId']
+          
                       # Create the IamInstanceProfile request object
                       iam_instance_profile = {
                           'Arn': event['ResourceProperties']['LabIdeInstanceProfileArn'],
                           'Name': event['ResourceProperties']['LabIdeInstanceProfileName']
                       }
-                      logger.info('iam_instance_profile: {}'.format(iam_instance_profile))
+                      print('Found IAM instance profile: {}'.format(iam_instance_profile))
 
+                      time.sleep(10)
+
+                      print('Waiting for the instance to be ready...')
+          
                       # Wait for Instance to become ready before adding Role
                       instance_state = instance['State']['Name']
-                      logger.info('instance_state: {}'.format(instance_state))
+                      print('Instance is currently in state'.format(instance_state))
                       while instance_state != 'running':
                           time.sleep(5)
-                          instance_state = ec2.describe_instances(InstanceIds=[instance['InstanceId']])
-                          logger.info('instance_state: {}'.format(instance_state))
+                          di = ec2.describe_instances(InstanceIds=[instance_id])
+                          instance_state = di['Reservations'][0]['Instances'][0]['State']['Name']
+                          print('Waiting for instance in state: {}'.format(instance_state))
 
-                      # attach instance profile
-                      response = ec2.associate_iam_instance_profile(IamInstanceProfile=iam_instance_profile, InstanceId=instance['InstanceId'])
-                      logger.info('response - associate_iam_instance_profile: {}'.format(response))
-                      #r_ec2 = boto3.resource('ec2')
+                      print('Instance is ready')
 
-                      responseData = {'Success': 'Started bootstrapping for instance: '+instance['InstanceId']}
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, 'CustomResourcePhysicalID')
+                      reboot = False
 
+                      associations = ec2.describe_iam_instance_profile_associations(
+                          Filters=[
+                              {
+                                  'Name': 'instance-id',
+                                  'Values': [instance_id],
+                              },
+                          ],
+                      )
+
+                      if len(associations['IamInstanceProfileAssociations']) > 0:
+                        print('Replacing existing IAM profile...')
+                        for association in associations['IamInstanceProfileAssociations']:
+                          if association['State'] == 'associated':
+                            print("{} is active with state {}".format(association['AssociationId'], association['State']))
+
+                            if association['IamInstanceProfile']['Arn'] == event['ResourceProperties']['LabIdeInstanceProfileArn']:
+                              print("IAM instance profile is already set")
+                            else:
+                              print("Replacing IAM instance profile")
+                              reboot = True
+                              ec2.replace_iam_instance_profile_association(AssociationId=association['AssociationId'], IamInstanceProfile=iam_instance_profile)
+                      else:
+                        print('Associating IAM profile...')
+                        ec2.associate_iam_instance_profile(IamInstanceProfile=iam_instance_profile, InstanceId=instance_id)
+
+                      block_volume_id = instance['BlockDeviceMappings'][0]['Ebs']['VolumeId']
+
+                      block_device = ec2.describe_volumes(VolumeIds=[block_volume_id])['Volumes'][0]
+
+                      DiskSize = int(os.environ['DiskSize'])
+                      if block_device['Size'] < DiskSize:
+                        reboot = True
+
+                        print('Modifying block volume: {}'.format(block_volume_id))
+                        ec2.modify_volume(VolumeId=block_volume_id,Size=DiskSize)
+                        
+                        time.sleep(10)
+
+                        for i in range(1, 30):
+                          response = ec2.describe_volumes_modifications(
+                            VolumeIds=[
+                              block_volume_id
+                            ]
+                          )
+                          modify_state = response['VolumesModifications'][0]['ModificationState']
+                          if modify_state != 'modifying':
+                            print('Volume has been resized')
+                            break
+                          time.sleep(10)
+                      else:
+                        print('Volume is already sized')
+
+                      if reboot:
+                        # Reboot is required to avoid weird race condition with IAM role and SSM agent
+                        # It also causes the file system to expand in the OS
+                        print('Rebooting instance')
+
+                        ec2.reboot_instances(
+                            InstanceIds=[
+                                instance_id,
+                            ],
+                        )
+
+                        time.sleep(60)
+
+                        print('Waiting for instance to come online in SSM...')
+
+                        for i in range(1, 60):
+                          response = ssm.describe_instance_information(Filters=[{'Key': 'InstanceIds', 'Values': [instance_id]}])
+                          if len(response["InstanceInformationList"]) == 0:
+                            print('No instances in SSM')
+                          elif len(response["InstanceInformationList"]) > 0 and \
+                                response["InstanceInformationList"][0]["PingStatus"] == "Online" and \
+                                response["InstanceInformationList"][0]["InstanceId"] == instance_id:
+                            print('Instance is online in SSM')
+                            break
+                          time.sleep(10)
+
+                      ssm_document = event['ResourceProperties']['SsmDocument']
+
+                      print('Sending SSM command...')
+
+                      response = ssm.send_command(
+                        InstanceIds=[instance_id],
+                        DocumentName=ssm_document)
+
+                      command_id = response['Command']['CommandId']
+
+                      waiter = ssm.get_waiter('command_executed')
+
+                      waiter.wait(
+                        CommandId=command_id,
+                        InstanceId=instance_id,
+                        WaiterConfig={
+                          'Delay': 10,
+                          'MaxAttempts': 30
+                        }
+                      )
+  
+                      responseData = {'Success': 'Started bootstrapping for instance: '+instance_id}
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
+                      
                   except Exception as e:
-                      logger.error(e, exc_info=True)
-                      # responseData = {'Error': traceback.format_exc(e)}
-                      responseData = {'Error':'There was a problem associating IAM profile to the Cloud9 Instance'}
-                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData, 'CustomResourcePhysicalID')
+                      status = cfnresponse.FAILED
+                      print(traceback.format_exc())
+                      responseData = {'Error': traceback.format_exc(e)}
+                  finally:
+                      cfnresponse.send(event, context, status, responseData, 'CustomResourcePhysicalID')
 
-              else:
-                responseData = {'Success': 'Update or delete event'}
-                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, 'CustomResourcePhysicalID')
-################## SSM BOOTSTRAP HANDLER ###############
-  C9OutputBucket:
-    #checkov:skip=CKV_AWS_18:S3 Access Logs not needed for the Association result
-    Type: AWS::S3::Bucket
-    Metadata:
-      cfn_nag:
-        rules_to_suppress:
-          - id: W35
-            reason: "Access Logs aren't needed for this bucket"
-      cdk_nag:
-        rules_to_suppress:
-          - id: AwsSolutions-S1
-            reason: "Bucket used to store Systems Manager Association results for troubleshooting, no need for access logs"
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      VersioningConfiguration:
-        Status: Enabled
-      LifecycleConfiguration:
-        Rules:
-          - Id: Expire1Day
-            ExpirationInDays: 1
-            NoncurrentVersionExpirationInDays: 1
-            Status: Enabled
-
-      AccessControl: Private
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
-  C9OutputBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref C9OutputBucket
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - 's3:GetObject'
-              - 's3:PutObject'
-              - 's3:PutObjectAcl'
-            Effect: Allow
-            Resource: !Sub 'arn:${AWS::Partition}:s3:::${C9OutputBucket}/*'
-            Principal:
-              AWS: !GetAtt C9Role.Arn
-            Condition:
-              Bool:
-                'aws:SecureTransport': true
-          - Action: 's3:*'
-            Principal: '*'
-            Effect: Deny
-            Resource: 
-              - !Sub 'arn:${AWS::Partition}:s3:::${C9OutputBucket}/*'
-              - !Sub 'arn:${AWS::Partition}:s3:::${C9OutputBucket}'
-            Condition:
-              Bool:
-                'aws:SecureTransport': false
-
-  BootstrapWaitHandle:
-    Type: AWS::CloudFormation::WaitConditionHandle
-
-  BootstrapWaitCondition:
-    Type: AWS::CloudFormation::WaitCondition
-    Properties:
-      Handle: !Ref BootstrapWaitHandle
-      Timeout: "3600"
-
-  C9PatchDocument:
-    Condition: CreatePatchAssociation
+  FisWorkshopC9SSMDocument: 
     Type: AWS::SSM::Document
-    Properties:
-      Tags:
-        - Key: Environment
-          Value: !Sub ${EnvironmentName}
+    Properties: 
       DocumentType: Command
-      Content:
+      DocumentFormat: YAML
+      Content: 
         schemaVersion: '2.2'
         description: Bootstrap Cloud9 Instance
         mainSteps:
-        - action: aws:runDocument
-          name: PatchInstance
-          inputs:
-            documentPath: AWS-RunPatchBaseline
-            documentType: SSMDocument
-            documentParameters:
-              Operation: Install    
-
-  C9SSMDocument:
-    Type: AWS::SSM::Document
-    Properties:
-      Tags:
-        - Key: Environment
-          Value: !Sub ${EnvironmentName}
-      DocumentType: Command
-      Content:
-        schemaVersion: '2.2'
-        description: Bootstrap Cloud9 Instance
-        mainSteps:
-        - action: aws:runShellScript
-          name: ResizeVolume
-          inputs:
-            runCommand:
-            - !Sub SIZE=${C9InstanceVolumeSize}
-            - !Sub REGION=${AWS::Region}
-            - |
-              INSTANCEID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
-              VOLUMEID=$(aws ec2 describe-instances \
-                --instance-id $INSTANCEID \
-                --query "Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId" \
-                --output text --region $REGION)
-              aws ec2 modify-volume --volume-id $VOLUMEID --size $SIZE --region $REGION
-              while [ \
-                "$(aws ec2 describe-volumes-modifications \
-                  --volume-id $VOLUMEID \
-                  --filters Name=modification-state,Values="optimizing","completed" \
-                  --query "length(VolumesModifications)"\
-                  --output text --region $REGION)" != "1" ]; do
-              sleep 1
-              done
-              sudo growpart /dev/nvme0n1 1
-              sudo resize2fs /dev/nvme0n1p1
-        - action: aws:runShellScript
-          name: CreateSwap
-          inputs:
-            runCommand:
-            - sudo dd if=/dev/zero of=/swapfile bs=128M count=32
-            - sudo chmod 600 /swapfile
-            - sudo mkswap /swapfile
-            - sudo swapon /swapfile
-            - sudo /bin/bash -c 'echo "/swapfile swap swap defaults 0 0" >> /etc/fstab'
         - action: aws:runShellScript
           name: DependencyInstall
           inputs:
@@ -759,7 +635,7 @@ Resources:
           name: KubectlInstall
           inputs:
             runCommand:
-            - curl -o kubectl  https://s3.us-west-2.amazonaws.com/amazon-eks/1.27.4/2023-08-16/bin/linux/amd64/kubectl
+            - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.29.0/2024-01-04/bin/linux/amd64/kubectl
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "source <(kubectl completion bash)" >> /home/ubuntu/.bashrc
         - action: aws:runShellScript
@@ -779,128 +655,41 @@ Resources:
           inputs:
             runCommand:
             - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop' 
-        - action: aws:runShellScript
-          name: NotifyCloudformation
-          inputs:
-            finallyStep: true
-            runCommand:
-            - |
-              python --version &&
-              touch /home/ubuntu/environment/READY 
-            - !Sub |
-              /usr/bin/python -c " 
-              import json
-              import os
-              import urllib3
-              import uuid
-              signal_url='${BootstrapWaitHandle}'
-              result = 'FAILURE'
-              if os.path.exists('/home/ubuntu/environment/READY'):
-                result = 'SUCCESS'
 
-              encoded_body = json.dumps({
-                'Status': result,
-                'Reason': 'Association completed',
-                'UniqueId': str(uuid.uuid4()),
-                'Data': 'Association completed'
-              })
-
-              http = urllib3.PoolManager()
-              http.request('PUT', signal_url , body=encoded_body)
-              "
-            - |
-              [ -f /home/ubuntu/environment/READY ] && exit 0 || exit 2
- 
-
-
-  C9BootstrapAssociation:
-    Type: AWS::SSM::Association
-    Properties:
-      Name: !Ref C9SSMDocument
-      AssociationName: !Sub Cloud9Bootstrap-${EnvironmentName}
-      OutputLocation:
-        S3Location:
-          OutputS3BucketName: !Ref C9OutputBucket
-          OutputS3KeyPrefix: bootstrapoutput
-      Targets:
-        - Key: tag:SSMBootstrap
-          Values:
-          - !Ref EnvironmentName
-
-  C9PatchAssociation:
-    Type: AWS::SSM::Association
-    Condition: CreatePatchAssociation
-    Properties:
-      Name: !Ref C9PatchDocument
-      AssociationName: !Sub Cloud9Patch-${EnvironmentName}
-      OutputLocation:
-        S3Location:
-          OutputS3BucketName: !Ref C9OutputBucket
-          OutputS3KeyPrefix: bootstrapoutput
-      Targets:
-        - Key: tag:SSMBootstrap
-          Values:
-          - !Ref EnvironmentName
-
-################## INSTANCE #####################
-
-  # AWSCloud9SSMAccessRole:
-  #   Type: AWS::IAM::Role
-  #   Properties: 
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             Service:
-  #             - cloud9.amazonaws.com
-  #             - ec2.amazonaws.com
-  #           Action:
-  #             - 'sts:AssumeRole'
-  #     Description: 'Service linked role for AWS Cloud9'
-  #     Path: '/service-role/'
-  #     ManagedPolicyArns: 
-  #       - arn:${AWS::Partition}:iam::aws:policy/AWSCloud9SSMInstanceProfile
-  #     RoleName: 'AWSCloud9SSMAccessRole'
-
-  # AWSCloud9SSMInstanceProfile:
-  #   Type: "AWS::IAM::InstanceProfile"
-  #   Properties: 
-  #     InstanceProfileName: AWSCloud9SSMInstanceProfile
-  #     Path: "/cloud9/"
-  #     Roles: 
-  #       - 
-  #         Ref: AWSCloud9SSMAccessRole
-          
-  C9InstanceProfile:
+  FisWorkshopC9InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: "/"
       Roles:
-      - Ref: C9Role
+      - Ref: FisWorkshopC9Role
 
-  C9Instance:
-    DependsOn: C9BootstrapAssociation
+  FisWorkshopC9Instance:
     Type: AWS::Cloud9::EnvironmentEC2
     Properties:
-      Description: !Sub  AWS Cloud9 instance for ${EnvironmentName}
-      SubnetId: !If [CreateVPC, !Ref PublicSubnet1, !Ref Cloud9Subnet ]
+      Description: AWS Cloud9 instance for Fis Workshop
+      ImageId: ubuntu-22.04-x86_64
       AutomaticStopTimeMinutes: 3600
-      ConnectionType: CONNECT_SSH
-      ImageId: !Ref C9Image
       InstanceType:
-        Ref: C9InstanceType
-      Name: !Ref EnvironmentName
-      OwnerArn: !If [SkipOwnerArn, !Ref "AWS::NoValue", !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:${Cloud9OwnerRole}"]
-      Tags:
-        -
-          Key: SSMBootstrap
-          Value: !Ref EnvironmentName
-        -
-          Key: Environment
-          Value: !Ref EnvironmentName
+        Ref: FisWorkshopC9InstanceType
+      SubnetId: !If [CreateVPC, !Ref PublicSubnet1, !Ref Cloud9Subnet ]
+      Name: !Ref Cloud9Name
+      OwnerArn: !If [SkipOwnerArn, !Ref "AWS::NoValue", !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:${WorkshopOwnerArn}"]
+      Tags: 
+        - Key: SSMBootstrap
+          Value: Active
 
 Outputs:
+  Cloud9RoleArn:
+    Description: The ARN of the IAM role assigned to the Cloud9 instance
+    Value: !GetAtt FisWorkshopC9Role.Arn
+    
+  Cloud9InstanceName:
+    Description: Name of the Cloud9 EC2 instance
+    Value: !Sub 'aws-cloud9-${FisWorkshopC9Instance.Name}-${FisWorkshopC9Instance}'
+
+  Cloud9Url:
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloud9/ide/${FisWorkshopC9Instance}?region=${AWS::Region}'
+    
   VPC:
     Description: A reference to the created VPC
     Value: !If [ CreateVPC , !Ref VPC, AWS::NoValue ]
@@ -928,24 +717,7 @@ Outputs:
   PrivateSubnet2:
     Description: A reference to the private subnet in the 2nd Availability Zone
     Value: !If [ CreateVPC, !Ref PrivateSubnet2, AWS::NoValue]
-  
-  Cloud9RoleArn:
-    Description: Role used by the Cloud9 Instance
-    Value: !Ref C9Role
-    Export:
-      Name: !Sub "${AWS::StackName}-Cloud9Role"
 
   NoIngressSecurityGroup:
     Description: Security group with no ingress rule
     Value: !Ref NoIngressSecurityGroup
-
-  Cloud9IDE:
-    Value:
-      Fn::Join:
-      - ''
-      - - https://
-        - Ref: AWS::Region
-        - ".console.aws.amazon.com/cloud9/ide/"
-        - Ref: C9Instance
-        - "?region="
-        - Ref: AWS::Region
