@@ -15,7 +15,7 @@ Parameters:
   FisWorkshopC9InstanceType:
     Description: Cloud9 instance type
     Type: String
-    Default: t3.small
+    Default: t3.medium
     AllowedValues:
       - t2.micro
       - t3.micro
