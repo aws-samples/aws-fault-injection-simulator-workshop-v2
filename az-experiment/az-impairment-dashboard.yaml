@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   CloudWatchDashboardName:
     Type: String
-    Default: AZImpairment-Dashboard
+    Default: AZimpairment
     Description: Name of the CloudWatch Dashboard
   CloudWatchDashboardFilterTagKeyName:
     Type: String
@@ -120,7 +120,18 @@ Resources:
                     LoadBalancerArns=[item,]
                 )
               availability_zones = [az['ZoneName'] for az in response_elbs['LoadBalancers'][0]['AvailabilityZones']]
-              return availability_zones
+              
+              for item in elb_arn:
+                #print(item)
+                response_tg = elbv2.describe_target_groups(
+                    LoadBalancerArn=item
+                )
+              for target_group in response_tg['TargetGroups']:
+                if re.search(r'PetSi-', str(target_group['TargetGroupArn'])):
+                    target_group_info = f"targetgroup/{target_group['TargetGroupArn'].split('targetgroup/')[1]}"
+              print(target_group_info)
+              
+              return availability_zones, target_group_info
             ###### Widget template ######
             def create_widgets(widget_type, x, y, width, height, properties):
               return {
@@ -153,7 +164,7 @@ Resources:
                   metric_data.append(["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", db_name, {"color": color, "label": f"{az} - {db_name}"}])
                   # Create the output list
                   print(metric_data)
-          
+
               rds_writer_widget = create_widgets(
                   "metric",
                   0, 6, 6, 6,
@@ -260,6 +271,30 @@ Resources:
               "stat": "Sum"
               })
               return elb_ActiveConnectionCount_widget
+
+            # ELB UnHealthyHostCount Metrics
+            def elb_UnHealthyHostCount(elb_name, availability_zones, target_group_info):
+              elb_UnHealthyHostCount_widget = create_widgets(
+              "metric",
+              6, 6, 6, 6,
+              {
+              "metrics": [
+                  ["AWS/ApplicationELB", "UnHealthyHostCount", "TargetGroup",target_group_info, "AvailabilityZone", az, "LoadBalancer", elb, {"color": color, "label": f"[{az}] {elb}"}]
+                  for elb in elb_name
+                  for az in availability_zones
+                  for color in [
+                    "#1f77b4" if az == 'us-east-1a' else
+                    "#ff7f0e" if az == 'us-east-1b' else
+                    None
+                ]
+              ],
+              "view": "timeSeries",
+              "stacked": False,
+              "region": region,
+              "title": "ALB UnHealthyHostCount",
+              "stat": "Sum"
+              })
+              return elb_UnHealthyHostCount_widget
             ####Create Dashbaord with all Widgets
             def createDashboard(widgets):
               cw = boto3.client('cloudwatch')
@@ -288,7 +323,7 @@ Resources:
                   widgets = []
                   elb_arn, elb_name, rds_arn = getResources()
                   if elb_name:
-                    AvailabilityZ = getElbAzs(elb_arn)
+                    AvailabilityZ, target_group_info= getElbAzs(elb_arn)
                     elb_processed_bytes_response = elb_processed_bytes(elb_name, AvailabilityZ)
                     widgets.append(elb_processed_bytes_response)
                     elb_httpcode_target_5XX_response = elb_httpcode_target_5XX(elb_name, AvailabilityZ)
@@ -297,6 +332,8 @@ Resources:
                     widgets.append(elb_httpcode_target_4XX_response)
                     elb_ActiveConnectionCount_response = elb_ActiveConnectionCount(elb_name, AvailabilityZ)
                     widgets.append(elb_ActiveConnectionCount_response)
+                    elb_UnHealthyHostCount_response = elb_UnHealthyHostCount(elb_name, AvailabilityZ, target_group_info)
+                    widgets.append(elb_UnHealthyHostCount_response)
                   if rds_arn:
                     rdsConnectionCount_response = rdsConnectionCount(rds_arn)
                     widgets.append(rdsConnectionCount_response)
