@@ -18,16 +18,16 @@ sed -i "s/URI/$MYSITE/g" getallpets/main.js
 sed -i "s/URI/$MYSITE/g" searchlist/main.js
 
 docker build -f AdoptDogDockerfile   --platform linux/amd64 -t adoptdog . 
-#docker build -f SearchListDockerfile   --platform linux/amd64 -t searchlist . 
+docker build -f SearchListDockerfile   --platform linux/amd64 -t searchlist . 
 docker build -f AllPetsDockerfile   --platform linux/amd64 -t adoptall . 
 
 
 #Fix CW Evidently
-cd /home/ubuntu/environment/workshopfiles/fis-workshop/PetAdoptions/petfood
-sh activate.sh 
+#cd /home/ubuntu/environment/workshopfiles/fis-workshop/PetAdoptions/petfood
+#sh activate.sh 
 
-cd -
+#cd -
 
 docker run -d --restart unless-stopped -i --security-opt seccomp=chrome.json adoptdog
-#docker run -d --restart unless-stopped -i --security-opt seccomp=chrome.json searchlist
+docker run -d --restart unless-stopped -i --security-opt seccomp=chrome.json searchlist
 docker run -d --restart unless-stopped -i --security-opt seccomp=chrome.json adoptall
