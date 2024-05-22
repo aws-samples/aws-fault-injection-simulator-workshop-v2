@@ -1,0 +1,358 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  CloudWatchDashboardName:
+    Type: String
+    Default: AZImpairmentDashboard
+    Description: Name of the CloudWatch Dashboard
+  CloudWatchDashboardFilterTagKeyName:
+    Type: String
+    Default: AzImpairmentPower
+    Description: The Tag key name that will be used to find resources to add to the
+      dashboard
+  CloudWatchDashboardFilterTagKeyValue:
+    Type: String
+    Default: Ready
+    Description: The Tag key value that will be used to find resources to add to the
+      dashboard
+  CloudWatchDashboardELBPattern:
+    Type: String
+    Default: arn:aws:elasticloadbalancing:.*:loadbalancer/app/Servic-PetSi-
+    Description: The pattern used to match for ELBs
+  CloudWatchDashboardRDSPattern:
+    Type: String
+    Default: 'arn:aws:rds:.*:db:services-databasewriter\w*-\w*|arn:aws:rds:.*:db:services-databasereader\w*-\w*'
+    Description: The pattern used to match for RDS Cluster
+  CustomResourceForceUpdateVersion:
+    Type: String
+    Description: Increment this value if you changed the Lambda code after a
+      previous successful run, and you want to force the CustomResource to
+      UPDATE
+    Default: '1'
+
+Resources:
+  LambdaBasicExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/ResourceGroupsandTagEditorReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonRDSReadOnlyAccess
+
+  CustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CustomFunction.Arn
+      # As a general rule, if you have any parameters, include them in the CustomResource
+      # so that any changes to any of the parameters will trigger the CustomResource Lambda to re-run
+      # Changing CustomResourceForceUpdateVersion will forcefully trigger the CustomResource to re-run
+      Version: !Ref CustomResourceForceUpdateVersion
+      CloudWatchDashboardName: !Ref CloudWatchDashboardName
+      CloudWatchDashboardFilterTagKeyName: !Ref CloudWatchDashboardFilterTagKeyName
+      CloudWatchDashboardFilterTagKeyValue: !Ref CloudWatchDashboardFilterTagKeyValue
+      CloudWatchDashboardELBPattern: !Ref CloudWatchDashboardELBPattern
+      CloudWatchDashboardRDSPattern: !Ref CloudWatchDashboardRDSPattern
+
+  CustomFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Description: Lambda Custom Resource
+      Timeout: 30
+      Role: !GetAtt LambdaBasicExecutionRole.Arn
+      Runtime: python3.11
+      Code:
+        ZipFile: !Sub
+          - |
+            import json
+            import logging
+            import cfnresponse
+            import boto3
+            import os
+            import re
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+            region = os.environ['AWS_REGION']
+            def getResources():
+              # Create a ResourceGroupsTaggingAPI client
+              client = boto3.client('resourcegroupstaggingapi')
+              # Define the tag filters
+              tag_filters = [
+                  {
+                      'Key': '${tagKeyName}',
+                      'Values': ['${tagKeyValue}']
+                  }
+              ]
+              elb_pattern = r'${elbPattern}'
+              rds_pattern = r'(${rdsPattern})'
+              # Get all the resources with the specified tags
+              response_resources = client.get_resources(
+                TagFilters=tag_filters,
+                ResourceTypeFilters=['rds', 'elasticloadbalancing']
+              )
+              elb_arn = []
+              rds_arn = []
+              # Print the resource ARNs
+              for resource in response_resources['ResourceTagMappingList']:
+                resource_arn=resource['ResourceARN']
+                if re.match(elb_pattern, resource_arn):
+                    elb_arn.append(resource_arn)
+                    elb_name = []
+                    for arn in elb_arn:
+                        elb_name.append(arn.split("loadbalancer/")[-1])
+                elif re.match(rds_pattern, resource_arn):
+                  rds_arn.append(resource_arn)
+              return elb_arn, elb_name, rds_arn
+            ### Get AZs for ELB
+            def getElbAzs(elb_arn):
+              elbv2 = boto3.client('elbv2')
+              # Get the ALB Availability Zone information
+              for item in elb_arn:
+                response_elbs = elbv2.describe_load_balancers(
+                    LoadBalancerArns=[item,]
+                )
+              availability_zones = [az['ZoneName'] for az in response_elbs['LoadBalancers'][0]['AvailabilityZones']]
+              
+              for item in elb_arn:
+                #print(item)
+                response_tg = elbv2.describe_target_groups(
+                    LoadBalancerArn=item
+                )
+              for target_group in response_tg['TargetGroups']:
+                if re.search(r'PetSi-', str(target_group['TargetGroupArn'])):
+                    target_group_info = f"targetgroup/{target_group['TargetGroupArn'].split('targetgroup/')[1]}"
+              print(target_group_info)
+              
+              return availability_zones, target_group_info
+            ###### Widget template ######
+            def create_widgets(widget_type, x, y, width, height, properties):
+              return {
+                  "type": widget_type,
+                  "x": x,
+                  "y": y,
+                  "width": width,
+                  "height": height,
+                  "properties": properties
+              }
+            ########## Create  RDS Connections Widget #####
+            def rdsConnectionCount(rds_arn):
+              rds = boto3.client('rds')
+              metric_data = []
+              for arn in rds_arn:
+                  # Get the DB instance details
+                  response = rds.describe_db_instances(DBInstanceIdentifier=arn.split(':')[-1])
+                  db_instance = response['DBInstances'][0]
+                  
+                  # Get the DB instance name and Availability Zone
+                  db_name = db_instance['DBInstanceIdentifier']
+                  az = db_instance['AvailabilityZone']
+                  
+                  # Set the color based on the Availability Zone
+                  if az == 'us-east-1a':
+                      color = "#1f77b4"
+                  elif az == 'us-east-1b':
+                      color = "#ff7f0e"
+                  
+                  metric_data.append(["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", db_name, {"color": color, "label": f"{az} - {db_name}"}])
+                  # Create the output list
+                  print(metric_data)
+
+              rds_writer_widget = create_widgets(
+                  "metric",
+                  0, 6, 6, 6,
+                  {
+                      "metrics": metric_data,
+                      "view": "timeSeries",
+                      "stacked": False,
+                      "region": region,
+                      "title": "RDS Database Connections",
+                      "stat": "Sum"
+                  }
+              )
+              print(rds_writer_widget)
+              return rds_writer_widget
+            # ELB ProcessedBytes Metrics
+            def elb_processed_bytes(elb_name, availability_zones):
+              elb_processed_bytes_widget = create_widgets(
+              "metric",
+              6, 0, 6, 6,
+              {
+              "metrics": [
+                  ["AWS/ApplicationELB", "ProcessedBytes", "AvailabilityZone", az, "LoadBalancer", elb, {"color": color, "label": f"[{az}] {elb}"}]
+                  for elb in elb_name
+                  for az in availability_zones
+                  for color in [
+                    "#1f77b4" if az == 'us-east-1a' else
+                    "#ff7f0e" if az == 'us-east-1b' else
+                    None
+                  ]
+              ],
+              "view": "timeSeries",
+              "stacked": False,
+              "region": region,
+              "title": "ALB ProcessedBytes",
+              "stat": "Sum"
+              })
+              return elb_processed_bytes_widget
+            # ELB 5XX Metrics
+            def elb_httpcode_target_5XX(elb_name, availability_zones):
+              elb_httpcode_target_5XX_widget = create_widgets(
+              "metric",
+              0, 0, 6, 6,
+              {
+              "metrics": [
+                  ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "AvailabilityZone", az, "LoadBalancer", elb, {"color": color, "label": f"[{az}] {elb}"}]
+                  for elb in elb_name
+                  for az in availability_zones
+                  for color in [
+                    "#1f77b4" if az == 'us-east-1a' else
+                    "#ff7f0e" if az == 'us-east-1b' else
+                    None
+                ]
+              ],
+              "view": "timeSeries",
+              "stacked": False,
+              "region": region,
+              "title": "ALB HTTP 5XX codes",
+              "stat": "Sum"
+              })
+              return elb_httpcode_target_5XX_widget
+            # ELB 4XX Metrics
+            def elb_httpcode_target_4XX(elb_name, availability_zones):
+              elb_httpcode_target_4XX_widget = create_widgets(
+              "metric",
+              18, 0, 6, 6,
+              {
+              "metrics": [
+                  ["AWS/ApplicationELB", "HTTPCode_Target_4XX_Count", "AvailabilityZone", az, "LoadBalancer", elb, {"color": color, "label": f"[{az}] {elb}"}]
+                  for elb in elb_name
+                  for az in availability_zones
+                  for color in [
+                    "#1f77b4" if az == 'us-east-1a' else
+                    "#ff7f0e" if az == 'us-east-1b' else
+                    None
+                ]
+              ],
+              "view": "timeSeries",
+              "stacked": False,
+              "region": region,
+              "title": "ALB HTTP 4XX codes",
+              "stat": "Sum"
+              })
+              return elb_httpcode_target_4XX_widget
+            # ELB AcitiveConnection Metrics
+            def elb_ActiveConnectionCount(elb_name, availability_zones):
+              elb_ActiveConnectionCount_widget = create_widgets(
+              "metric",
+              12, 0, 6, 6,
+              {
+              "metrics": [
+                  ["AWS/ApplicationELB", "ActiveConnectionCount", "AvailabilityZone", az, "LoadBalancer", elb, {"color": color, "label": f"[{az}] {elb}"}]
+                  for elb in elb_name
+                  for az in availability_zones
+                  for color in [
+                    "#1f77b4" if az == 'us-east-1a' else
+                    "#ff7f0e" if az == 'us-east-1b' else
+                    None
+                ]
+              ],
+              "view": "timeSeries",
+              "stacked": False,
+              "region": region,
+              "title": "ALB Active Connections",
+              "stat": "Sum"
+              })
+              return elb_ActiveConnectionCount_widget
+
+            # ELB UnHealthyHostCount Metrics
+            def elb_UnHealthyHostCount(elb_name, availability_zones, target_group_info):
+              elb_UnHealthyHostCount_widget = create_widgets(
+              "metric",
+              6, 6, 6, 6,
+              {
+              "metrics": [
+                  ["AWS/ApplicationELB", "UnHealthyHostCount", "TargetGroup",target_group_info, "AvailabilityZone", az, "LoadBalancer", elb, {"color": color, "label": f"[{az}] {elb}"}]
+                  for elb in elb_name
+                  for az in availability_zones
+                  for color in [
+                    "#1f77b4" if az == 'us-east-1a' else
+                    "#ff7f0e" if az == 'us-east-1b' else
+                    None
+                ]
+              ],
+              "view": "timeSeries",
+              "stacked": False,
+              "region": region,
+              "title": "ALB UnHealthyHostCount",
+              "stat": "Sum"
+              })
+              return elb_UnHealthyHostCount_widget
+            ####Create Dashbaord with all Widgets
+            def createDashboard(widgets):
+              cw = boto3.client('cloudwatch')
+              # Define the dashboard layout
+              dashboard_body = {"widgets": widgets}
+              DashboardName='${dashboardName}'
+              cw.delete_dashboards(DashboardNames=[DashboardName])
+              # Create the CloudWatch dashboard
+              response_dashboard = cw.put_dashboard(
+                DashboardName=DashboardName,
+                DashboardBody=json.dumps(dashboard_body)
+              )
+              return response_dashboard
+            def lambda_handler(event, context):
+              logger.info('Received event {}'.format(event))
+              try:
+                responseData = {}
+                if event['RequestType'] == 'Delete':
+                  logger.info('Incoming RequestType: Delete operation')
+                  cw = boto3.client('cloudwatch')
+                  DashboardName='${dashboardName}'
+                  cw.delete_dashboards(DashboardNames=[DashboardName])
+                  logger.info('SUCCESS: Dashboard deleted')
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, "CustomResourcePhysicalID")
+                if event['RequestType'] in ["Create", "Update"]:
+                  widgets = []
+                  elb_arn, elb_name, rds_arn = getResources()
+                  if elb_name:
+                    AvailabilityZ, target_group_info= getElbAzs(elb_arn)
+                    elb_processed_bytes_response = elb_processed_bytes(elb_name, AvailabilityZ)
+                    widgets.append(elb_processed_bytes_response)
+                    elb_httpcode_target_5XX_response = elb_httpcode_target_5XX(elb_name, AvailabilityZ)
+                    widgets.append(elb_httpcode_target_5XX_response)
+                    elb_httpcode_target_4XX_response = elb_httpcode_target_4XX(elb_name, AvailabilityZ)
+                    widgets.append(elb_httpcode_target_4XX_response)
+                    elb_ActiveConnectionCount_response = elb_ActiveConnectionCount(elb_name, AvailabilityZ)
+                    widgets.append(elb_ActiveConnectionCount_response)
+                    elb_UnHealthyHostCount_response = elb_UnHealthyHostCount(elb_name, AvailabilityZ, target_group_info)
+                    widgets.append(elb_UnHealthyHostCount_response)
+                  if rds_arn:
+                    rdsConnectionCount_response = rdsConnectionCount(rds_arn)
+                    widgets.append(rdsConnectionCount_response)
+                  createDashboard(widgets)
+                  responseData = {}
+                  logger.info('SUCCESS: Dashboard created')
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID" )
+              except Exception as err:
+                logger.error(err)
+                responseData = {"Data": str(err)}
+                cfnresponse.send(event,context,cfnresponse.FAILED,responseData,"CustomResourcePhysicalID")
+              return
+          - dashboardName: !Ref CloudWatchDashboardName
+            tagKeyName: !Ref CloudWatchDashboardFilterTagKeyName
+            tagKeyValue: !Ref CloudWatchDashboardFilterTagKeyValue
+            elbPattern: !Ref CloudWatchDashboardELBPattern
+            rdsPattern: !Ref CloudWatchDashboardRDSPattern
+
+Outputs:
+  LambdaFunctionArn:
+    Description: The ARN of the Lambda function
+    Value: !GetAtt CustomFunction.Arn
