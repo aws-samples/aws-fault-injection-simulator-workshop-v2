@@ -42,7 +42,7 @@ export const options = {
       executor: 'constant-vus',
       exec: 'browserTest',
       vus: 4,
-      duration: '540s',
+      duration: '599s',
       options: {
         browser: {
           type: 'chromium',
