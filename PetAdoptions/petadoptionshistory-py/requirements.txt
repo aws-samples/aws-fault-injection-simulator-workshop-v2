@@ -20,3 +20,4 @@ opentelemetry-semantic-conventions==0.32b0
 opentelemetry-util-http==0.32b0
 prometheus-flask-exporter==0.20.2
 Werkzeug==3.0.3
+
