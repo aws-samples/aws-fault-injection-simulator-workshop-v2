@@ -143,7 +143,7 @@ Resources:
                   "properties": properties
               }
             ########## Create  RDS Connections Widget #####
-            def rdsConnectionCount(rds_arn):
+            def rdsConnectionCount(rds_arn, availability_zones):
               rds = boto3.client('rds')
               metric_data = []
               for arn in rds_arn:
@@ -156,9 +156,9 @@ Resources:
                   az = db_instance['AvailabilityZone']
                   
                   # Set the color based on the Availability Zone
-                  if az == 'us-east-1a':
+                  if az == availability_zones[0]:
                       color = "#1f77b4"
-                  elif az == 'us-east-1b':
+                  elif az == availability_zones[1]:
                       color = "#ff7f0e"
                   
                   metric_data.append(["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", db_name, {"color": color, "label": f"{az} - {db_name}"}])
@@ -190,8 +190,8 @@ Resources:
                   for elb in elb_name
                   for az in availability_zones
                   for color in [
-                    "#1f77b4" if az == 'us-east-1a' else
-                    "#ff7f0e" if az == 'us-east-1b' else
+                    "#1f77b4" if az == availability_zones[0] else
+                    "#ff7f0e" if az == availability_zones[1] else
                     None
                   ]
               ],
@@ -213,8 +213,8 @@ Resources:
                   for elb in elb_name
                   for az in availability_zones
                   for color in [
-                    "#1f77b4" if az == 'us-east-1a' else
-                    "#ff7f0e" if az == 'us-east-1b' else
+                    "#1f77b4" if az == availability_zones[0] else
+                    "#ff7f0e" if az == availability_zones[1] else
                     None
                 ]
               ],
@@ -236,8 +236,8 @@ Resources:
                   for elb in elb_name
                   for az in availability_zones
                   for color in [
-                    "#1f77b4" if az == 'us-east-1a' else
-                    "#ff7f0e" if az == 'us-east-1b' else
+                    "#1f77b4" if az == availability_zones[0] else
+                    "#ff7f0e" if az == availability_zones[1] else
                     None
                 ]
               ],
@@ -259,8 +259,8 @@ Resources:
                   for elb in elb_name
                   for az in availability_zones
                   for color in [
-                    "#1f77b4" if az == 'us-east-1a' else
-                    "#ff7f0e" if az == 'us-east-1b' else
+                    "#1f77b4" if az == availability_zones[0] else
+                    "#ff7f0e" if az == availability_zones[1] else
                     None
                 ]
               ],
@@ -283,8 +283,8 @@ Resources:
                   for elb in elb_name
                   for az in availability_zones
                   for color in [
-                    "#1f77b4" if az == 'us-east-1a' else
-                    "#ff7f0e" if az == 'us-east-1b' else
+                    "#1f77b4" if az == availability_zones[0] else
+                    "#ff7f0e" if az == availability_zones[1] else
                     None
                 ]
               ],
@@ -322,8 +322,8 @@ Resources:
                 if event['RequestType'] in ["Create", "Update"]:
                   widgets = []
                   elb_arn, elb_name, rds_arn = getResources()
+                  AvailabilityZ, target_group_info= getElbAzs(elb_arn)
                   if elb_name:
-                    AvailabilityZ, target_group_info= getElbAzs(elb_arn)
                     elb_processed_bytes_response = elb_processed_bytes(elb_name, AvailabilityZ)
                     widgets.append(elb_processed_bytes_response)
                     elb_httpcode_target_5XX_response = elb_httpcode_target_5XX(elb_name, AvailabilityZ)
@@ -335,7 +335,7 @@ Resources:
                     elb_UnHealthyHostCount_response = elb_UnHealthyHostCount(elb_name, AvailabilityZ, target_group_info)
                     widgets.append(elb_UnHealthyHostCount_response)
                   if rds_arn:
-                    rdsConnectionCount_response = rdsConnectionCount(rds_arn)
+                    rdsConnectionCount_response = rdsConnectionCount(rds_arn, AvailabilityZ)
                     widgets.append(rdsConnectionCount_response)
                   createDashboard(widgets)
                   responseData = {}
