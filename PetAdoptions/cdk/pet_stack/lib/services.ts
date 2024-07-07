@@ -140,7 +140,7 @@ export class Services extends Stack {
 
             engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
             writer: rds.ClusterInstance.provisioned('writer', {
-                instanceType: ec2.InstanceType.of(ec2.InstanceClass.R6G, ec2.InstanceSize.XLARGE4),
+                instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
             }),
             readers: [
                 rds.ClusterInstance.provisioned('reader', {
