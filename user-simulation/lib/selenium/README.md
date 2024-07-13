@@ -29,15 +29,15 @@ git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-
 ### Local usage
 ```bash
 # Navigate to the project directory:
-cd PetAdoptions/cdk/pet_stack/lib/load_testing_app/app
+cd user-simulation/lib/app
 pip install -r requirements.txt
-python3 load_test.py 
+python3 path_testing.py
 ```
 
 ### AWS Deployment 
 ```bash
-cd /PetAdoptions/cdk/pet_stack/
-cdk deploy LoadTesting
+cd /user-simulation
+cdk deploy UserSimulationStack
 ```
 The default task count is 5 but can be scaled utilizing the following command.
 
