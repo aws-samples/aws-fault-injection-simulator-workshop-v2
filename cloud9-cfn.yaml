@@ -627,7 +627,7 @@ Resources:
             runCommand:
             - apt update -y
             - apt install -y jq gettext bash-completion moreutils
-            - pip install --user --upgrade awscli
+            - pip install --upgrade awscli
             - sudo -i -u ubuntu bash -l -c "nvm install node --default"
             - sudo -i -u ubuntu bash -l -c "nvm alias default node"
             - sudo -i -u ubuntu bash -l -c "nvm exec node npm install -g aws-cdk --force"
