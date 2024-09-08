@@ -31,7 +31,18 @@ const stack = new Services(app, stackName, {
 },
 MainRegion: MAIN_REGION,
 SecondaryRegion: SECONDARY_REGION,
+// DeploymentType: 'primary'
 });
+
+// const stack_secondary = new Services(app, stackName+"Secondary", { 
+//   env: { 
+//     account: process.env.CDK_DEFAULT_ACCOUNT, 
+//     region: SECONDARY_REGION 
+// },
+// MainRegion: MAIN_REGION,
+// SecondaryRegion: SECONDARY_REGION,
+// // DeploymentType: 'secondary'
+// });
 
 const applications = new Applications(app, "Applications", {
   env: { 

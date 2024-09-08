@@ -38,11 +38,23 @@ import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { REGION,ServiceStackProps } from '../lib/common/shared-properties';
+import { REGION, ServiceStackProps } from '../lib/common/shared-properties';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props?: ServiceStackProps) {
         super(scope, id, props);
+        let isPrimaryRegionDeployment
+
+        // checking if stack has been called to deploy the primary or secondary region
+        if (!props?.env?.region && !props?.MainRegion) {
+            throw Error('No props passed. Could not resolve region. Please pass it with the region environment variable.');
+        } else {
+            if (props?.env?.region == props?.MainRegion as string) {
+                isPrimaryRegionDeployment = true
+            } else {
+                isPrimaryRegionDeployment = false
+            }
+        }
 
         var isEventEngine = 'false';
         if (this.node.tryGetContext('is_event_engine') != undefined) {
@@ -73,54 +85,82 @@ export class Services extends Stack {
 
         // Creates the DynamoDB table for Petadoption data
         // Define the DynamoDB table properties 
-        let dynamodb_petadoption
-        let tableProps: any = {
-            partitionKey: {
-                name: 'pettype',
-                type: ddb.AttributeType.STRING
-            },
-            sortKey: {
-                name: 'petid',
-                type: ddb.AttributeType.STRING
-            },
-            removalPolicy: RemovalPolicy.DESTROY,
-            billing: ddb.Billing.onDemand(),
-          };
-          
+        let dynamodb_petadoption: ddb.TableV2;
+        let dynamoDBTableName = 'undefined';
 
-          if (!props?.SecondaryRegion) {
-            console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
-            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-          } else {
-            console.log("SecondaryRegion provided as [" + props?.SecondaryRegion + "]. Creating Global DynamoDB Table")
-            tableProps["replicas"] ={region: props?.SecondaryRegion as string};
-            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-          } 
-       
-        // const dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', {
-            
-        //     replicas: [
-        //         { region: }, // Replica in us-east-1
-        //       ],
+        if (isPrimaryRegionDeployment) {
+            console.log("Primary Region Deployment; deploying DynamoDB")
+            let tableProps: any = {
+                partitionKey: {
+                    name: 'pettype',
+                    type: ddb.AttributeType.STRING
+                },
+                sortKey: {
+                    name: 'petid',
+                    type: ddb.AttributeType.STRING
+                },
+                removalPolicy: RemovalPolicy.DESTROY,
+                billing: ddb.Billing.onDemand(),
+                // billing: ddb.Billing.provisioned({
+                //     readCapacity: ddb.Capacity.fixed(10),
+                //     writeCapacity: ddb.Capacity.autoscaled({ maxCapacity: 15 }),
+                //   }),
+                
+            };
+            if (!props?.SecondaryRegion) {
+                console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
+                dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
+            } else {
+                console.log("SecondaryRegion provided as [" + props?.SecondaryRegion + "]. Creating Global DynamoDB Table")
+                tableProps["replicas"] = [{ region: props?.SecondaryRegion as string }];
+                dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
+            }
+
+            dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
+                threshold: 0,
+                treatMissingData: TreatMissingData.NOT_BREACHING,
+                comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 1,
+                alarmName: `${dynamodb_petadoption.tableName}-WriteThrottleEvents-BasicAlarm`,
+            });
+
+            dynamodb_petadoption.metric('ReadThrottleEvents', { statistic: "avg" }).createAlarm(this, 'ReadThrottleEvents-BasicAlarm', {
+                threshold: 0,
+                treatMissingData: TreatMissingData.NOT_BREACHING,
+                comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 1,
+                alarmName: `${dynamodb_petadoption.tableName}-ReadThrottleEvents-BasicAlarm`,
+            });
+            dynamoDBTableName = dynamodb_petadoption.tableName
+        } else {
+            console.log("Not deploying DymanoDB as it is Secondary Region Deployment. Getting DynamoDB information from SSM")
+            // Create an SSM client instance for the specified region
+            // const ssmClient = new ssm.
+            // .SSMClient({ region });
+
+            // // Define the parameter name you want to retrieve
+            // const parameterName = "/myapp/config/database_password";
+
+            // // Create the GetParameterCommand
+            // const getParameterCommand = new GetParameterCommand({
+            //     Name: parameterName,
+            //     WithDecryption: true, // Set to true if the parameter is encrypted
+            // });
+
+            // // Call the getParameter method to retrieve the parameter value
+            // const response = await ssmClient.send(getParameterCommand);
+
+            // // Access the parameter value
+            // const parameterValue = response.Parameter?.Value;
+
+            // console.log(`Parameter value: ${parameterValue}`);
 
 
-        // });
 
-        dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
-            threshold: 0,
-            treatMissingData: TreatMissingData.NOT_BREACHING,
-            comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 1,
-            alarmName: `${dynamodb_petadoption.tableName}-WriteThrottleEvents-BasicAlarm`,
-        });
 
-        dynamodb_petadoption.metric('ReadThrottleEvents', { statistic: "avg" }).createAlarm(this, 'ReadThrottleEvents-BasicAlarm', {
-            threshold: 0,
-            treatMissingData: TreatMissingData.NOT_BREACHING,
-            comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 1,
-            alarmName: `${dynamodb_petadoption.tableName}-ReadThrottleEvents-BasicAlarm`,
-        });
+        }
+
+
 
 
         // Seeds the S3 bucket with pet images
@@ -358,8 +398,9 @@ export class Services extends Stack {
 
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
-            tableName: dynamodb_petadoption.tableName
+            tableName: dynamoDBTableName
         });
+
 
 
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
@@ -475,13 +516,13 @@ export class Services extends Stack {
         // Loading evidently policy
         const policyName = 'evidently'; // Adjust the policy name as needed
         const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
-    
+
         // Attach inline IAM policy to the role
         eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {
             policyName: policyName,
             document: policyDocument
         }));
-        
+
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
@@ -827,6 +868,8 @@ export class Services extends Stack {
             'PetSiteUrl': `http://${alb.loadBalancerDnsName}`
         })));
 
+       
+        
 
         const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn');
 
@@ -837,7 +880,7 @@ export class Services extends Stack {
             '/petstore/updateadoptionstatusurl': statusUpdaterService.api.url,
             '/petstore/queueurl': sqsQueue.queueUrl,
             '/petstore/snsarn': topic_petadoption.topicArn,
-            '/petstore/dynamodbtablename': dynamodb_petadoption.tableName,
+            '/petstore/dynamodbtablename': dynamoDBTableName,
             '/petstore/s3bucketname': s3_observabilitypetadoptions.bucketName,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,
