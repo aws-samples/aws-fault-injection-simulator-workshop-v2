@@ -38,9 +38,10 @@ import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
+import { REGION,ServiceStackProps } from '../lib/common/shared-properties';
 
 export class Services extends Stack {
-    constructor(scope: Construct, id: string, props?: StackProps) {
+    constructor(scope: Construct, id: string, props?: ServiceStackProps) {
         super(scope, id, props);
 
         var isEventEngine = 'false';
@@ -71,7 +72,9 @@ export class Services extends Stack {
         });
 
         // Creates the DynamoDB table for Petadoption data
-        const dynamodb_petadoption = new ddb.Table(this, 'ddb_petadoption', {
+        // Define the DynamoDB table properties 
+        let dynamodb_petadoption
+        let tableProps: any = {
             partitionKey: {
                 name: 'pettype',
                 type: ddb.AttributeType.STRING
@@ -81,8 +84,27 @@ export class Services extends Stack {
                 type: ddb.AttributeType.STRING
             },
             removalPolicy: RemovalPolicy.DESTROY,
-            billingMode: ddb.BillingMode.PAY_PER_REQUEST,
-        });
+            billing: ddb.Billing.onDemand(),
+          };
+          
+
+          if (!props?.SecondaryRegion) {
+            console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
+            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
+          } else {
+            console.log("SecondaryRegion provided as [" + props?.SecondaryRegion + "]. Creating Global DynamoDB Table")
+            tableProps["replicas"] ={region: props?.SecondaryRegion as string};
+            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
+          } 
+       
+        // const dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', {
+            
+        //     replicas: [
+        //         { region: }, // Replica in us-east-1
+        //       ],
+
+
+        // });
 
         dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
             threshold: 0,
