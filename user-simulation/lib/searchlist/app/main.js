@@ -21,10 +21,19 @@ async function getParameterValue(parameterName) {
 const main = async () => {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox'],
+      args: [
+       '--no-sandbox',
+       '--disable-setuid-sandbox',
+       '--disable-dev-shm-usage',
+       '--disable-accelerated-2d-canvas',
+       '--no-first-run',
+       '--no-zygote',
+       '--disable-gpu'
+      ],
+       timeout: 60000,
     });
     const page = await browser.newPage();
-    const timeout = 30000;
+    const timeout = 60000;
     page.setDefaultTimeout(timeout);
 
     {
