@@ -873,8 +873,16 @@ export class Services extends Stack {
         var costControlDashboardBody = readFileSync("./resources/cw_dashboard_cost_control.json", "utf-8");
         costControlDashboardBody = costControlDashboardBody.replaceAll("{{YOUR_LAMBDA_ARN}}", customWidgetFunction.functionArn);
 
-        const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, "PetSiteCostControlDashboard", {
-            dashboardName: "PetSite_Cost_Control_Dashboard",
+        let petSiteCostControlDashboardName
+
+        if (isPrimaryRegionDeployment) {
+            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard'
+        } else {
+            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard' + props.DeploymentType
+        }
+
+        const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, petSiteCostControlDashboardName, {
+            dashboardName: petSiteCostControlDashboardName,
             dashboardBody: costControlDashboardBody
         });
 
