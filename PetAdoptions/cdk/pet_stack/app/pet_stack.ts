@@ -9,6 +9,7 @@ import { FisServerless } from '../lib/fis_serverless';
 import { Observability } from '../lib/observability'
 import { LoadTesting } from '../lib/load_testing';
 import { REGION,ServiceStackProps } from '../lib/common/shared-properties';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 
 
 
@@ -31,18 +32,19 @@ const stack = new Services(app, stackName, {
 },
 MainRegion: MAIN_REGION,
 SecondaryRegion: SECONDARY_REGION,
-// DeploymentType: 'primary'
+DeploymentType: 'primary'
 });
 
-// const stack_secondary = new Services(app, stackName+"Secondary", { 
-//   env: { 
-//     account: process.env.CDK_DEFAULT_ACCOUNT, 
-//     region: SECONDARY_REGION 
-// },
-// MainRegion: MAIN_REGION,
-// SecondaryRegion: SECONDARY_REGION,
-// // DeploymentType: 'secondary'
-// });
+
+const stack_secondary = new Services(app, "ServicesSecondary", { 
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: SECONDARY_REGION as string
+},
+MainRegion: MAIN_REGION,
+SecondaryRegion: SECONDARY_REGION,
+DeploymentType: 'secondary'
+});
 
 const applications = new Applications(app, "Applications", {
   env: { 

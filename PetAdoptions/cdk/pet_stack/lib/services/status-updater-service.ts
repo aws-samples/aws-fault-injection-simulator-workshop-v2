@@ -5,6 +5,7 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs'
 
 export interface StatusUpdaterServiceProps {
+  region: string,
   tableName: string
 }
 
@@ -25,7 +26,7 @@ export class StatusUpdaterService extends Construct {
       ]
     });
     
-    var layerArn = "arn:aws:lambda:"+ process.env.CDK_DEFAULT_REGION +":580247275435:layer:LambdaInsightsExtension:21";
+    var layerArn = "arn:aws:lambda:"+ props.region +":580247275435:layer:LambdaInsightsExtension:21";
     var layer = lambda.LayerVersion.fromLayerVersionArn(this, `LayerFromArn`, layerArn);
 
     const lambdaFunction = new nodejslambda.NodejsFunction(this, 'lambdafn', {

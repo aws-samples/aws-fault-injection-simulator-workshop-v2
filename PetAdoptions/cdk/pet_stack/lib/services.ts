@@ -38,23 +38,43 @@ import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { REGION, ServiceStackProps } from '../lib/common/shared-properties';
+import { ServiceStackProps } from '../lib/common/shared-properties';
+import { SSMParameterReader } from '../lib/common/ssm-parameter-reader';
 
 export class Services extends Stack {
-    constructor(scope: Construct, id: string, props?: ServiceStackProps) {
+    constructor(scope: Construct, id: string, props: ServiceStackProps) {
         super(scope, id, props);
         let isPrimaryRegionDeployment
 
         // checking if stack has been called to deploy the primary or secondary region
-        if (!props?.env?.region && !props?.MainRegion) {
-            throw Error('No props passed. Could not resolve region. Please pass it with the region environment variable.');
+        // if (!props?.env?.region && !props?.MainRegion) {
+        //     throw Error('No props passed. Could not resolve region. Please pass it with the region environment variable.');
+        // } else {
+        //     if (props.DeploymentType as string == 'primary') {
+        //         console.log("Primary Region Deployment Selected")
+        //         console.log("DeploymentType Selected", props.DeploymentType)
+        //         console.log("Deployment Region provided as [", props?.env?.region, "]. Primary Region provided as [", props?.MainRegion, "]{")
+        //         isPrimaryRegionDeployment = true
+        //     } else if (props.DeploymentType as string == 'secondary') {
+        //         isPrimaryRegionDeployment = false
+        //         console.log("Secondary Region Deployment Selected")
+        //         console.log("DeploymentType Selected", props.DeploymentType)
+        //         console.log("Deployment Region provided as [", props?.env?.region, "]. Primary Region provided as [", props?.MainRegion, "]{")
+        //     } else {
+        //         throw Error('No DeploymentType passed. Please pass either "primary" or "secondary" as the DeploymentType.');
+        //     }
+        // }
+
+        if (props.DeploymentType as string == 'primary') {
+            console.log("DeploymentType provided as [",props.DeploymentType,"]" )
+            isPrimaryRegionDeployment = true
+            console.log("isPrimaryRegionDeployment set as [",isPrimaryRegionDeployment,"]" )
         } else {
-            if (props?.env?.region == props?.MainRegion as string) {
-                isPrimaryRegionDeployment = true
-            } else {
-                isPrimaryRegionDeployment = false
-            }
+            console.log("DeploymentType provided as [",props.DeploymentType,"]" )
+            isPrimaryRegionDeployment = false
+            console.log("isPrimaryRegionDeployment set as [",isPrimaryRegionDeployment,"]" )
         }
+
 
         var isEventEngine = 'false';
         if (this.node.tryGetContext('is_event_engine') != undefined) {
@@ -76,7 +96,10 @@ export class Services extends Stack {
         }
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
 
+
         // Creates an S3 bucket to store pet images
+
+
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
             publicReadAccess: false,
             autoDeleteObjects: true,
@@ -105,7 +128,7 @@ export class Services extends Stack {
                 //     readCapacity: ddb.Capacity.fixed(10),
                 //     writeCapacity: ddb.Capacity.autoscaled({ maxCapacity: 15 }),
                 //   }),
-                
+
             };
             if (!props?.SecondaryRegion) {
                 console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
@@ -133,35 +156,15 @@ export class Services extends Stack {
             });
             dynamoDBTableName = dynamodb_petadoption.tableName
         } else {
-            console.log("Not deploying DymanoDB as it is Secondary Region Deployment. Getting DynamoDB information from SSM")
-            // Create an SSM client instance for the specified region
-            // const ssmClient = new ssm.
-            // .SSMClient({ region });
-
-            // // Define the parameter name you want to retrieve
-            // const parameterName = "/myapp/config/database_password";
-
-            // // Create the GetParameterCommand
-            // const getParameterCommand = new GetParameterCommand({
-            //     Name: parameterName,
-            //     WithDecryption: true, // Set to true if the parameter is encrypted
-            // });
-
-            // // Call the getParameter method to retrieve the parameter value
-            // const response = await ssmClient.send(getParameterCommand);
-
-            // // Access the parameter value
-            // const parameterValue = response.Parameter?.Value;
-
-            // console.log(`Parameter value: ${parameterValue}`);
-
-
-
+            console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM")
+            const ssmDynamoDBTableName = new SSMParameterReader(this, 'dynamodbtablename', {
+                parameterName: "/petstore/dynamodbtablename",
+                region: props.MainRegion as string
+            });
+            dynamoDBTableName = ssmDynamoDBTableName.getParameterValue();
+            console.log("DynamoDB Table name: ", dynamoDBTableName)
 
         }
-
-
-
 
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
@@ -183,14 +186,14 @@ export class Services extends Stack {
 
         });
 
-        // Adding tags to the VPC for AzImpairmentPower
-        //cdk.Tags.of(theVPC).add('AzImpairmentPower', 'DisruptSubnet');
-
-        // Create RDS Aurora PG cluster
+// Create RDS Aurora PG cluster
+        // if (isPrimaryRegionDeployment) {
+        // console.log("Primary Region Deployment; deploying RDS")
+        
         const rdssecuritygroup = new ec2.SecurityGroup(this, 'petadoptionsrdsSG', {
             vpc: theVPC
         });
-
+//Todo -  need to include CIDR from the second region here.
         rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
 
         var rdsUsername = this.node.tryGetContext('rdsusername');
@@ -398,11 +401,9 @@ export class Services extends Stack {
 
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
+            region: props.MainRegion as string,
             tableName: dynamoDBTableName
         });
-
-
-
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,
             securityGroupName: 'ALBSecurityGroup',
@@ -502,8 +503,18 @@ export class Services extends Stack {
 
         // Adding ClusterNodeGroupRole
         // Add SSM Permissions to the node role and EKS Node required permissions
-        const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, 'eksPetsiteASGClusterNodeGroupRole', {
-            roleName: 'eksPetsiteASGClusterNodeGroupRole',
+
+        let eksPNodeGroupRoleName
+        if (isPrimaryRegionDeployment) {
+            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole'
+        } else {
+            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole' + props.DeploymentType
+        }
+
+
+
+        const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, eksPNodeGroupRoleName, {
+            roleName: eksPNodeGroupRoleName,
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
             managedPolicies: [
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -791,8 +802,17 @@ export class Services extends Stack {
         dashboardBody = dashboardBody.replaceAll("{{YOUR_CLUSTER_NAME}}", "PetSite");
         dashboardBody = dashboardBody.replaceAll("{{YOUR_AWS_REGION}}", region);
 
-        const fluentBitDashboard = new cloudwatch.CfnDashboard(this, "FluentBitDashboard", {
-            dashboardName: "EKS_FluentBit_Dashboard",
+
+        let fluentBitDashboardName
+
+        if (isPrimaryRegionDeployment) {
+            fluentBitDashboardName = 'EKS_FluentBit_Dashboard'
+        } else {
+            fluentBitDashboardName = 'EKS_FluentBit_Dashboard' + props.DeploymentType
+        }
+
+        const fluentBitDashboard = new cloudwatch.CfnDashboard(this, fluentBitDashboardName, {
+            dashboardName: fluentBitDashboardName,
             dashboardBody: dashboardBody
         });
 
@@ -868,10 +888,15 @@ export class Services extends Stack {
             'PetSiteUrl': `http://${alb.loadBalancerDnsName}`
         })));
 
-       
-        
 
-        const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn');
+
+
+        const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn', {
+            env: {
+                account: props.env?.account,
+                region: props.env?.region
+            }
+        });
 
         this.createSsmParameters(new Map(Object.entries({
             '/petstore/trafficdelaytime': "1",
