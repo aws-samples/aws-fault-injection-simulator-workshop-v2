@@ -18,6 +18,8 @@ async function getParameterValue(parameterName) {
     }
   }
 
+let petSiteUrl; 
+
 const main = async () => {
     const browser = await puppeteer.launch({
       headless: true,
@@ -50,10 +52,7 @@ const main = async () => {
             promises.push(targetPage.waitForNavigation());
         }
         startWaitingForEvents();
-        const pet_site_url_parameter_name = '/petstore/petsiteurl';
-        const petSiteUrl = await getParameterValue(pet_site_url_parameter_name);
         await targetPage.goto(petSiteUrl);
-        // await targetPage.goto('URI/');
         await Promise.all(promises);
     }
     {
@@ -998,7 +997,14 @@ const main = async () => {
 
 const restartInterval = 10000; // 5 seconds (adjust as needed)
 
+
 const runForever = async () => {
+  // Fetch the URL once before entering the loop
+  if (!petSiteUrl) {
+    const pet_site_url_parameter_name = '/petstore/petsiteurl';
+    petSiteUrl = await getParameterValue(pet_site_url_parameter_name);
+  } 
+
   while (true) {
     try {
       await main();
