@@ -628,9 +628,12 @@ Resources:
             - apt update -y
             - apt install -y jq gettext bash-completion moreutils
             - pip install --upgrade awscli
-            - sudo -i -u ubuntu bash -l -c "nvm install node --default"
-            - sudo -i -u ubuntu bash -l -c "nvm alias default node"
-            - sudo -i -u ubuntu bash -l -c "nvm exec node npm install -g aws-cdk --force"
+            - sudo -i -u ubuntu bash -l -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+            - sudo -i -u ubuntu bash -l -c 'export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"'
+            - sudo -i -u ubuntu bash -l -c '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
+            - sudo -i -u ubuntu bash -l -c 'nvm install node --default'
+            - sudo -i -u ubuntu bash -l -c 'nvm alias default node'
+            - sudo -i -u ubuntu bash -l -c 'nvm exec node npm install -g aws-cdk --force'
         - action: aws:runShellScript
           name: KubectlInstall
           inputs:
