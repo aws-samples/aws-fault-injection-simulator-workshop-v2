@@ -55,6 +55,7 @@ const main = async () => {
         startWaitingForEvents();
         await targetPage.goto(petSiteUrl);
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
     {
         const targetPage = page;
@@ -78,6 +79,7 @@ const main = async () => {
               },
             });
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
     {
         const targetPage = page;
@@ -100,6 +102,7 @@ const main = async () => {
               },
             });
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
     {
         const targetPage = page;
@@ -150,6 +153,7 @@ const main = async () => {
               },
             });
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
     {
         const targetPage = page;
@@ -171,6 +175,7 @@ const main = async () => {
               },
             });
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
     {
         const targetPage = page;
@@ -256,6 +261,7 @@ const main = async () => {
               },
             });
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
     {
         const timeout = 5000;
@@ -281,6 +287,7 @@ const main = async () => {
               },
             });
         await Promise.all(promises);
+        console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
 
     await browser.close();
