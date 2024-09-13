@@ -1030,7 +1030,7 @@ const main = async () => {
 
 };
 
-const restartInterval = 10000; // 5 seconds (adjust as needed)
+const restartInterval = 15000; // 15 seconds (adjust as needed)
 
 
 const runForever = async () => {
