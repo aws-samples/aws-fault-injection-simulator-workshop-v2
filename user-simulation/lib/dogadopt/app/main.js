@@ -33,7 +33,10 @@ const main = async () => {
        '--disable-gpu'
       ],
        timeout: 60000,
-    });
+      }).catch((err)=> {
+      console.error('Failed to launch browser:', err);
+      process.exit(1);
+      });
     const page = await browser.newPage();
     const timeout = 60000;
     page.setDefaultTimeout(timeout);
@@ -52,7 +55,7 @@ const main = async () => {
             promises.push(targetPage.waitForNavigation());
         }
         startWaitingForEvents();
-        await targetPage.goto(petSiteUrl);
+        await targetPage.goto(petSiteUrl, {waitUntil: 'load', timeout: 0}); // Added to remove WS timemout
         await Promise.all(promises);
         console.log(`Navigation successful: ${targetPage.url()}`); // Log successful URL
     }
