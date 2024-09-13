@@ -34,6 +34,7 @@ const main = async () => {
        '--disable-gpu'
       ],
        timeout: 60000,
+       protocolTimeout: 20000, 
       }).catch((err)=> {
       console.error('Failed to launch browser:', err);
       process.exit(1);
