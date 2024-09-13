@@ -8,8 +8,9 @@ import { AwsSolutionsChecks } from 'cdk-nag';
 import { FisServerless } from '../lib/fis_serverless';
 import { Observability } from '../lib/observability'
 import { LoadTesting } from '../lib/load_testing';
-import { REGION,ServiceStackProps } from '../lib/common/shared-properties';
+import { REGION } from '../lib/common/services-shared-properties';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { ServicesSecondary } from '../lib/servicesecondary';
 
 
 
@@ -25,26 +26,30 @@ const SECONDARY_REGION: REGION = 'us-west-2' as REGION;
 const stackName = "Services";
 const app = new App();
 
-const stack = new Services(app, stackName, { 
+const stack_primary = new Services(app, stackName, { 
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
 },
+crossRegionReferences: true,
 MainRegion: MAIN_REGION,
 SecondaryRegion: SECONDARY_REGION,
 DeploymentType: 'primary'
 });
 
 
-const stack_secondary = new Services(app, "ServicesSecondary", { 
+const stack_secondary = new ServicesSecondary(app, "ServicesSecondary", { 
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: SECONDARY_REGION as string
 },
+crossRegionReferences: true,
 MainRegion: MAIN_REGION,
 SecondaryRegion: SECONDARY_REGION,
-DeploymentType: 'secondary'
+DeploymentType: 'secondary',
+RDSdatabase: stack_primary.auroraCluster
 });
+stack_secondary.addDependency(stack_primary);
 
 const applications = new Applications(app, "Applications", {
   env: { 

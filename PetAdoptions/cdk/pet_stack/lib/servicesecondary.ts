@@ -38,18 +38,12 @@ import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { REGION,ServiceStackProps } from './common/services-shared-properties';
+import { ServiceSecondaryStackProps } from './common/services-shared-properties';
+import { SSMParameterReader } from './common/ssm-parameter-reader';
 
-export class Services extends Stack {
-public readonly auroraCluster: rds.DatabaseCluster;
-    constructor(scope: Construct, id: string, props: ServiceStackProps) {
+export class ServicesSecondary extends Stack {
+    constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
         super(scope, id, props);
-
-        const stack = Stack.of(this);
-        const region = stack.region;
-
-
-
         let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
             console.log("DeploymentType provided as [", props.DeploymentType, "]")
@@ -60,12 +54,10 @@ public readonly auroraCluster: rds.DatabaseCluster;
             isPrimaryRegionDeployment = false
             console.log("isPrimaryRegionDeployment set as [", isPrimaryRegionDeployment, "]")
         }
-
         var isEventEngine = 'false';
         if (this.node.tryGetContext('is_event_engine') != undefined) {
             isEventEngine = this.node.tryGetContext('is_event_engine');
         }
-
         const stackName = id;
 
         // Create SQS resource to send Pet adoption messages to
@@ -81,7 +73,10 @@ public readonly auroraCluster: rds.DatabaseCluster;
         }
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
 
+
         // Creates an S3 bucket to store pet images
+
+
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
             publicReadAccess: false,
             autoDeleteObjects: true,
@@ -90,55 +85,62 @@ public readonly auroraCluster: rds.DatabaseCluster;
 
         // Creates the DynamoDB table for Petadoption data
         // Define the DynamoDB table properties 
-        let dynamodb_petadoption
-        let tableProps: any = {
-            partitionKey: {
-                name: 'pettype',
-                type: ddb.AttributeType.STRING
-            },
-            sortKey: {
-                name: 'petid',
-                type: ddb.AttributeType.STRING
-            },
-            removalPolicy: RemovalPolicy.DESTROY,
-            billing: ddb.Billing.onDemand(),
-          };
-          
+        // let dynamodb_petadoption: ddb.TableV2;
+        let dynamoDBTableName = 'undefined';
+        // if (isPrimaryRegionDeployment) {
+        //     console.log("Primary Region Deployment; deploying DynamoDB")
+        //     let tableProps: any = {
+        //         partitionKey: {
+        //             name: 'pettype',
+        //             type: ddb.AttributeType.STRING
+        //         },
+        //         sortKey: {
+        //             name: 'petid',
+        //             type: ddb.AttributeType.STRING
+        //         },
+        //         removalPolicy: RemovalPolicy.DESTROY,
+        //         billing: ddb.Billing.onDemand(),
+        //         // billing: ddb.Billing.provisioned({
+        //         //     readCapacity: ddb.Capacity.fixed(10),
+        //         //     writeCapacity: ddb.Capacity.autoscaled({ maxCapacity: 15 }),
+        //         //   }),
 
-          if (!props.SecondaryRegion) {
-            console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
-            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-          } else {
-            console.log("SecondaryRegion provided as [" + props.SecondaryRegion + "]. Creating Global DynamoDB Table")
-            tableProps["replicas"] =[{ region: props.SecondaryRegion as string }];
-            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-          } 
-       
-        // const dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', {
-            
-        //     replicas: [
-        //         { region: }, // Replica in us-east-1
-        //       ],
+        //     };
+        //     if (!props?.SecondaryRegion) {
+        //         console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
+        //         dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
+        //     } else {
+        //         console.log("SecondaryRegion provided as [" + props?.SecondaryRegion + "]. Creating Global DynamoDB Table")
+        //         tableProps["replicas"] = [{ region: props?.SecondaryRegion as string }];
+        //         dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
+        //     }
 
+        //     dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
+        //         threshold: 0,
+        //         treatMissingData: TreatMissingData.NOT_BREACHING,
+        //         comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+        //         evaluationPeriods: 1,
+        //         alarmName: `${dynamodb_petadoption.tableName}-WriteThrottleEvents-BasicAlarm`,
+        //     });
 
-        // });
-
-        dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
-            threshold: 0,
-            treatMissingData: TreatMissingData.NOT_BREACHING,
-            comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 1,
-            alarmName: `${dynamodb_petadoption.tableName}-WriteThrottleEvents-BasicAlarm`,
+        //     dynamodb_petadoption.metric('ReadThrottleEvents', { statistic: "avg" }).createAlarm(this, 'ReadThrottleEvents-BasicAlarm', {
+        //         threshold: 0,
+        //         treatMissingData: TreatMissingData.NOT_BREACHING,
+        //         comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+        //         evaluationPeriods: 1,
+        //         alarmName: `${dynamodb_petadoption.tableName}-ReadThrottleEvents-BasicAlarm`,
+        //     });
+        //     dynamoDBTableName = dynamodb_petadoption.tableName
+        // } else {
+        console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM")
+        const ssmDynamoDBTableName = new SSMParameterReader(this, 'dynamodbtablename', {
+            parameterName: "/petstore/dynamodbtablename",
+            region: props.MainRegion as string
         });
+        dynamoDBTableName = ssmDynamoDBTableName.getParameterValue();
+        console.log("DynamoDB Table name: ", dynamoDBTableName)
 
-        dynamodb_petadoption.metric('ReadThrottleEvents', { statistic: "avg" }).createAlarm(this, 'ReadThrottleEvents-BasicAlarm', {
-            threshold: 0,
-            treatMissingData: TreatMissingData.NOT_BREACHING,
-            comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 1,
-            alarmName: `${dynamodb_petadoption.tableName}-ReadThrottleEvents-BasicAlarm`,
-        });
-
+        // }
 
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
@@ -160,45 +162,54 @@ public readonly auroraCluster: rds.DatabaseCluster;
 
         });
 
-        // Adding tags to the VPC for AzImpairmentPower
-        //cdk.Tags.of(theVPC).add('AzImpairmentPower', 'DisruptSubnet');
 
         // Create RDS Aurora PG cluster
-        const rdssecuritygroup = new ec2.SecurityGroup(this, 'petadoptionsrdsSG', {
-            vpc: theVPC
-        });
+        // let auroraClusterPrimary: rds.DatabaseCluster;
+        // if (isPrimaryRegionDeployment) {
+        //     console.log("Primary Region Deployment; deploying RDS")
+        //     const rdssecuritygroup = new ec2.SecurityGroup(this, 'petadoptionsrdsSG', {
+        //         vpc: theVPC
+        //     });
+        //     //Todo -  need to include CIDR from the second region here.
+        //     rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
 
-        rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
+        //     var rdsUsername = this.node.tryGetContext('rdsusername');
+        //     if (rdsUsername == undefined) {
+        //         rdsUsername = "petadmin"
+        //     }
 
-        var rdsUsername = this.node.tryGetContext('rdsusername');
-        if (rdsUsername == undefined) {
-            rdsUsername = "petadmin"
-        }
+        //     auroraClusterPrimary = new rds.DatabaseCluster(this, 'Database', {
 
-        const auroraCluster = new rds.DatabaseCluster(this, 'Database', {
+        //         engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
+        //         writer: rds.ClusterInstance.provisioned('writer', {
+        //             instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
+        //         }),
+        //         readers: [
+        //             rds.ClusterInstance.provisioned('reader', {
+        //                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
+        //             },
+        //             ),
+        //         ],
+        //         parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql13'),
+        //         vpc: theVPC,
+        //         securityGroups: [rdssecuritygroup],
+        //         defaultDatabaseName: 'adoptions'
+        //         // scaling: {
+        //         //     autoPause: Duration.minutes(60),
+        //         //     minCapacity: rds.AuroraCapacityUnit.ACU_2,
+        //         //     maxCapacity: rds.AuroraCapacityUnit.ACU_8,
+        //         // }
+        //     });
+        // } 
 
-            engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
-            writer: rds.ClusterInstance.provisioned('writer', {
-                instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
-            }),
-            readers: [
-                rds.ClusterInstance.provisioned('reader', {
-                    instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
-                },
-                ),
-            ],
-            parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql13'),
-            vpc: theVPC,
-            securityGroups: [rdssecuritygroup],
-            defaultDatabaseName: 'adoptions'
-            // scaling: {
-            //     autoPause: Duration.minutes(60),
-            //     minCapacity: rds.AuroraCapacityUnit.ACU_2,
-            //     maxCapacity: rds.AuroraCapacityUnit.ACU_8,
-            // }
-        });
+        // else {
 
-
+        // if (props.RDSdatabase == undefined) {
+        //     throw Error('RDSdatabase is not defined');
+        // } else {
+         const  auroraClusterPrimary = props.RDSdatabase
+        // }
+        // }
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -225,6 +236,9 @@ public readonly auroraCluster: rds.DatabaseCluster;
 
         const repositoryURI = "public.ecr.aws/one-observability-workshop";
 
+        const stack = Stack.of(this);
+        const region = stack.region;
+
         const ecsServicesSecurityGroup = new ec2.SecurityGroup(this, 'ECSServicesSG', {
             vpc: theVPC
         });
@@ -246,7 +260,7 @@ public readonly auroraCluster: rds.DatabaseCluster;
             enableSSM: true,
             // build locally
             //repositoryURI: repositoryURI,
-            database: auroraCluster,
+            database: auroraClusterPrimary,
             desiredTaskCount: 2,
             region: region,
             securityGroup: ecsServicesSecurityGroup
@@ -270,7 +284,7 @@ public readonly auroraCluster: rds.DatabaseCluster;
             enableSSM: true,
             // build locally
             //repositoryURI: repositoryURI,
-            database: auroraCluster,
+            database: auroraClusterPrimary,
             desiredTaskCount: 2,
             region: region,
             securityGroup: ecsServicesSecurityGroup
@@ -372,11 +386,9 @@ public readonly auroraCluster: rds.DatabaseCluster;
 
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
-            region: props.MainRegion,
-            tableName: dynamodb_petadoption.tableName
+            region: props.MainRegion as string,
+            tableName: dynamoDBTableName
         });
-
-
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,
             securityGroupName: 'ALBSecurityGroup',
@@ -476,8 +488,18 @@ public readonly auroraCluster: rds.DatabaseCluster;
 
         // Adding ClusterNodeGroupRole
         // Add SSM Permissions to the node role and EKS Node required permissions
-        const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, 'eksPetsiteASGClusterNodeGroupRole', {
-            roleName: 'eksPetsiteASGClusterNodeGroupRole',
+
+        let eksPNodeGroupRoleName
+        if (isPrimaryRegionDeployment) {
+            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole'
+        } else {
+            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole' + props.DeploymentType
+        }
+
+
+
+        const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, eksPNodeGroupRoleName, {
+            roleName: eksPNodeGroupRoleName,
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
             managedPolicies: [
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -490,13 +512,13 @@ public readonly auroraCluster: rds.DatabaseCluster;
         // Loading evidently policy
         const policyName = 'evidently'; // Adjust the policy name as needed
         const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
-    
+
         // Attach inline IAM policy to the role
         eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {
             policyName: policyName,
             document: policyDocument
         }));
-        
+
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
@@ -765,8 +787,17 @@ public readonly auroraCluster: rds.DatabaseCluster;
         dashboardBody = dashboardBody.replaceAll("{{YOUR_CLUSTER_NAME}}", "PetSite");
         dashboardBody = dashboardBody.replaceAll("{{YOUR_AWS_REGION}}", region);
 
-        const fluentBitDashboard = new cloudwatch.CfnDashboard(this, "FluentBitDashboard", {
-            dashboardName: "EKS_FluentBit_Dashboard",
+
+        let fluentBitDashboardName
+
+        if (isPrimaryRegionDeployment) {
+            fluentBitDashboardName = 'EKS_FluentBit_Dashboard'
+        } else {
+            fluentBitDashboardName = 'EKS_FluentBit_Dashboard' + props.DeploymentType
+        }
+
+        const fluentBitDashboard = new cloudwatch.CfnDashboard(this, fluentBitDashboardName, {
+            dashboardName: fluentBitDashboardName,
             dashboardBody: dashboardBody
         });
 
@@ -827,8 +858,16 @@ public readonly auroraCluster: rds.DatabaseCluster;
         var costControlDashboardBody = readFileSync("./resources/cw_dashboard_cost_control.json", "utf-8");
         costControlDashboardBody = costControlDashboardBody.replaceAll("{{YOUR_LAMBDA_ARN}}", customWidgetFunction.functionArn);
 
-        const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, "PetSiteCostControlDashboard", {
-            dashboardName: "PetSite_Cost_Control_Dashboard",
+        let petSiteCostControlDashboardName
+
+        if (isPrimaryRegionDeployment) {
+            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard'
+        } else {
+            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard' + props.DeploymentType
+        }
+
+        const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, petSiteCostControlDashboardName, {
+            dashboardName: petSiteCostControlDashboardName,
             dashboardBody: costControlDashboardBody
         });
 
@@ -841,6 +880,8 @@ public readonly auroraCluster: rds.DatabaseCluster;
             'OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
             'PetSiteUrl': `http://${alb.loadBalancerDnsName}`
         })));
+
+
 
 
         const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn', {
@@ -857,7 +898,7 @@ public readonly auroraCluster: rds.DatabaseCluster;
             '/petstore/updateadoptionstatusurl': statusUpdaterService.api.url,
             '/petstore/queueurl': sqsQueue.queueUrl,
             '/petstore/snsarn': topic_petadoption.topicArn,
-            '/petstore/dynamodbtablename': dynamodb_petadoption.tableName,
+            '/petstore/dynamodbtablename': dynamoDBTableName,
             '/petstore/s3bucketname': s3_observabilitypetadoptions.bucketName,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,
@@ -867,8 +908,8 @@ public readonly auroraCluster: rds.DatabaseCluster;
             '/petstore/payforadoptionmetricsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/metrics`,
             '/petstore/cleanupadoptionsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/cleanupadoptions`,
             '/petstore/petsearch-collector-manual-config': readFileSync("./resources/collector/ecs-xray-manual.yaml", "utf8"),
-            '/petstore/rdssecretarn': `${auroraCluster.secret?.secretArn}`,
-            '/petstore/rdsendpoint': auroraCluster.clusterEndpoint.hostname,
+            '/petstore/rdssecretarn': `${auroraClusterPrimary.secret?.secretArn}`,
+            '/petstore/rdsendpoint': auroraClusterPrimary.clusterEndpoint.hostname,
             '/petstore/stackname': stackName,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
@@ -881,7 +922,7 @@ public readonly auroraCluster: rds.DatabaseCluster;
             'QueueURL': sqsQueue.queueUrl,
             'UpdateAdoptionStatusurl': statusUpdaterService.api.url,
             'SNSTopicARN': topic_petadoption.topicArn,
-            'RDSServerName': auroraCluster.clusterEndpoint.hostname
+            'RDSServerName': auroraClusterPrimary.clusterEndpoint.hostname
         })));
     }
 
