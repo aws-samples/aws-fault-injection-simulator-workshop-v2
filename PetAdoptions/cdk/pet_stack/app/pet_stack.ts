@@ -48,13 +48,19 @@ MainRegion: MAIN_REGION,
 SecondaryRegion: SECONDARY_REGION,
 DeploymentType: 'secondary',
 });
-// stack_secondary.addDependency(stack_primary);
 
 const applications = new Applications(app, "Applications", {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
 }});
+
+const applications_secondary = new Applications(app, "ApplicationsSecondary", {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: SECONDARY_REGION as string
+}});
+
 
 const fis_serverless = new FisServerless(app, "FisServerless", {
   env: { 
