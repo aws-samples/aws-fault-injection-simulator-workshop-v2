@@ -8,6 +8,7 @@ import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as ddb from 'aws-cdk-lib/aws-dynamodb'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3seeder from 'aws-cdk-lib/aws-s3-deployment'
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as kms from 'aws-cdk-lib/aws-kms';
@@ -40,6 +41,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceSecondaryStackProps } from './common/services-shared-properties';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
+import { createListAdoptionsService, createPayForAdoptionService } from './common/services-shared';
 
 export class ServicesSecondary extends Stack {
     constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
@@ -87,51 +89,7 @@ export class ServicesSecondary extends Stack {
         // Define the DynamoDB table properties 
         // let dynamodb_petadoption: ddb.TableV2;
         let dynamoDBTableName = 'undefined';
-        // if (isPrimaryRegionDeployment) {
-        //     console.log("Primary Region Deployment; deploying DynamoDB")
-        //     let tableProps: any = {
-        //         partitionKey: {
-        //             name: 'pettype',
-        //             type: ddb.AttributeType.STRING
-        //         },
-        //         sortKey: {
-        //             name: 'petid',
-        //             type: ddb.AttributeType.STRING
-        //         },
-        //         removalPolicy: RemovalPolicy.DESTROY,
-        //         billing: ddb.Billing.onDemand(),
-        //         // billing: ddb.Billing.provisioned({
-        //         //     readCapacity: ddb.Capacity.fixed(10),
-        //         //     writeCapacity: ddb.Capacity.autoscaled({ maxCapacity: 15 }),
-        //         //   }),
-
-        //     };
-        //     if (!props?.SecondaryRegion) {
-        //         console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
-        //         dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-        //     } else {
-        //         console.log("SecondaryRegion provided as [" + props?.SecondaryRegion + "]. Creating Global DynamoDB Table")
-        //         tableProps["replicas"] = [{ region: props?.SecondaryRegion as string }];
-        //         dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-        //     }
-
-        //     dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
-        //         threshold: 0,
-        //         treatMissingData: TreatMissingData.NOT_BREACHING,
-        //         comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-        //         evaluationPeriods: 1,
-        //         alarmName: `${dynamodb_petadoption.tableName}-WriteThrottleEvents-BasicAlarm`,
-        //     });
-
-        //     dynamodb_petadoption.metric('ReadThrottleEvents', { statistic: "avg" }).createAlarm(this, 'ReadThrottleEvents-BasicAlarm', {
-        //         threshold: 0,
-        //         treatMissingData: TreatMissingData.NOT_BREACHING,
-        //         comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-        //         evaluationPeriods: 1,
-        //         alarmName: `${dynamodb_petadoption.tableName}-ReadThrottleEvents-BasicAlarm`,
-        //     });
-        //     dynamoDBTableName = dynamodb_petadoption.tableName
-        // } else {
+   
         console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM")
         const ssmDynamoDBTableName = new SSMParameterReader(this, 'dynamodbtablename', {
             parameterName: "/petstore/dynamodbtablename",
@@ -140,7 +98,34 @@ export class ServicesSecondary extends Stack {
         dynamoDBTableName = ssmDynamoDBTableName.getParameterValue();
         console.log("DynamoDB Table name: ", dynamoDBTableName)
 
+        // RDS secret
+
+        // let rdsSecret:cdk.aws_secretsmanager.ISecret
+        // if (props.rdsSecret==undefined){
+        //     throw Error("RDS Doesn't have a secret");
         // }
+        // else {
+        //  rdsSecret = props.rdsSecret
+        // }
+        let rdsSecretName = 'undefined';
+        console.log("Secondary Region Deployment. Getting rdsSecretName information from SSM")
+        const ssmrdsSecretName = new SSMParameterReader(this, 'rdsSecretName', {
+            parameterName: "/petstore/rdssecretname",
+            region: props.MainRegion as string
+        });
+        rdsSecretName = ssmrdsSecretName.getParameterValue();
+        const rdsSecret = secretsmanager.Secret.fromSecretNameV2(this, 'rdsSecret', rdsSecretName)
+
+        let rdsEndpoint = 'undefined';
+        console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM")
+        const ssmrdsEndpointName = new SSMParameterReader(this, 'ssmrdsEndpointName', {
+            parameterName: "/petstore/rdsendpoint",
+            region: props.MainRegion as string
+        });
+        rdsEndpoint = ssmrdsEndpointName.getParameterValue();
+
+        
+
 
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
@@ -163,53 +148,6 @@ export class ServicesSecondary extends Stack {
         });
 
 
-        // Create RDS Aurora PG cluster
-        // let auroraClusterPrimary: rds.DatabaseCluster;
-        // if (isPrimaryRegionDeployment) {
-        //     console.log("Primary Region Deployment; deploying RDS")
-        //     const rdssecuritygroup = new ec2.SecurityGroup(this, 'petadoptionsrdsSG', {
-        //         vpc: theVPC
-        //     });
-        //     //Todo -  need to include CIDR from the second region here.
-        //     rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
-
-        //     var rdsUsername = this.node.tryGetContext('rdsusername');
-        //     if (rdsUsername == undefined) {
-        //         rdsUsername = "petadmin"
-        //     }
-
-        //     auroraClusterPrimary = new rds.DatabaseCluster(this, 'Database', {
-
-        //         engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
-        //         writer: rds.ClusterInstance.provisioned('writer', {
-        //             instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
-        //         }),
-        //         readers: [
-        //             rds.ClusterInstance.provisioned('reader', {
-        //                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
-        //             },
-        //             ),
-        //         ],
-        //         parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql13'),
-        //         vpc: theVPC,
-        //         securityGroups: [rdssecuritygroup],
-        //         defaultDatabaseName: 'adoptions'
-        //         // scaling: {
-        //         //     autoPause: Duration.minutes(60),
-        //         //     minCapacity: rds.AuroraCapacityUnit.ACU_2,
-        //         //     maxCapacity: rds.AuroraCapacityUnit.ACU_8,
-        //         // }
-        //     });
-        // } 
-
-        // else {
-
-        // if (props.RDSdatabase == undefined) {
-        //     throw Error('RDSdatabase is not defined');
-        // } else {
-         const  auroraClusterPrimary = props.RDSdatabase
-        // }
-        // }
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -251,20 +189,23 @@ export class ServicesSecondary extends Stack {
         });
 
         // PayForAdoption service definitions-----------------------------------------------------------------------
-        const payForAdoptionService = new PayForAdoptionService(this, 'pay-for-adoption-service', {
+        const payForAdoptionService = createPayForAdoptionService({
+            scope: this,
+            id: 'pay-for-adoption-service',
             cluster: ecsPayForAdoptionCluster,
             logGroupName: "/ecs/PayForAdoption",
             cpu: 1024,
             memoryLimitMiB: 2048,
             healthCheck: '/health/status',
             enableSSM: true,
-            // build locally
-            //repositoryURI: repositoryURI,
-            database: auroraClusterPrimary,
+            databaseSecret: rdsSecret,
             desiredTaskCount: 2,
             region: region,
-            securityGroup: ecsServicesSecurityGroup
-        });
+            securityGroup: ecsServicesSecurityGroup,
+            // Uncomment the following line if you want to include repositoryURI
+            // repositoryURI: repositoryURI,
+          });
+
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(ddbSeedPolicy);
 
@@ -274,7 +215,9 @@ export class ServicesSecondary extends Stack {
             containerInsights: true
         });
         // PetListAdoptions service definitions-----------------------------------------------------------------------
-        const listAdoptionsService = new ListAdoptionsService(this, 'list-adoptions-service', {
+        const listAdoptionsService =  createListAdoptionsService( {
+            scope: this,
+            id: 'list-adoptions-service',
             cluster: ecsPetListAdoptionCluster,
             logGroupName: "/ecs/PetListAdoptions",
             cpu: 1024,
@@ -282,13 +225,12 @@ export class ServicesSecondary extends Stack {
             healthCheck: '/health/status',
             instrumentation: 'otel',
             enableSSM: true,
-            // build locally
-            //repositoryURI: repositoryURI,
-            database: auroraClusterPrimary,
+            databaseSecret: rdsSecret,
             desiredTaskCount: 2,
             region: region,
             securityGroup: ecsServicesSecurityGroup
         });
+        
         listAdoptionsService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
         /*
@@ -386,7 +328,7 @@ export class ServicesSecondary extends Stack {
 
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
-            region: props.MainRegion as string,
+            region: stack.region,
             tableName: dynamoDBTableName
         });
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
@@ -908,8 +850,8 @@ export class ServicesSecondary extends Stack {
             '/petstore/payforadoptionmetricsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/metrics`,
             '/petstore/cleanupadoptionsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/cleanupadoptions`,
             '/petstore/petsearch-collector-manual-config': readFileSync("./resources/collector/ecs-xray-manual.yaml", "utf8"),
-            '/petstore/rdssecretarn': `${auroraClusterPrimary.secret?.secretArn}`,
-            '/petstore/rdsendpoint': auroraClusterPrimary.clusterEndpoint.hostname,
+            '/petstore/rdssecretarn': `${rdsSecret.secretArn}`,
+            '/petstore/rdsendpoint': rdsEndpoint,
             '/petstore/stackname': stackName,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
@@ -922,7 +864,7 @@ export class ServicesSecondary extends Stack {
             'QueueURL': sqsQueue.queueUrl,
             'UpdateAdoptionStatusurl': statusUpdaterService.api.url,
             'SNSTopicARN': topic_petadoption.topicArn,
-            'RDSServerName': auroraClusterPrimary.clusterEndpoint.hostname
+            // 'RDSServerName': auroraClusterPrimary.clusterEndpoint.hostname
         })));
     }
 

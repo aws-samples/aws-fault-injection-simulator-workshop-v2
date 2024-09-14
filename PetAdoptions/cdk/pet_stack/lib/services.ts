@@ -39,9 +39,10 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { REGION,ServiceStackProps } from './common/services-shared-properties';
+import { createListAdoptionsService, createPayForAdoptionService } from './common/services-shared';
 
 export class Services extends Stack {
-public readonly auroraCluster: rds.DatabaseCluster;
+public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
     constructor(scope: Construct, id: string, props: ServiceStackProps) {
         super(scope, id, props);
 
@@ -176,7 +177,10 @@ public readonly auroraCluster: rds.DatabaseCluster;
         }
 
         const auroraCluster = new rds.DatabaseCluster(this, 'Database', {
-
+            credentials: {
+                username: rdsUsername,
+                replicaRegions: [{ region: props.SecondaryRegion as string }],
+            },
             engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
             writer: rds.ClusterInstance.provisioned('writer', {
                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
@@ -198,6 +202,15 @@ public readonly auroraCluster: rds.DatabaseCluster;
             // }
         });
 
+
+        let rdsSecret:cdk.aws_secretsmanager.ISecret
+
+        if (auroraCluster.secret==undefined){
+            throw Error("RDS Doesn't have a secret");
+        }
+        else {
+         rdsSecret = auroraCluster.secret 
+        }
 
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
@@ -237,30 +250,36 @@ public readonly auroraCluster: rds.DatabaseCluster;
         });
 
         // PayForAdoption service definitions-----------------------------------------------------------------------
-        const payForAdoptionService = new PayForAdoptionService(this, 'pay-for-adoption-service', {
+        const payForAdoptionService = createPayForAdoptionService({
+            scope: this,
+            id: 'pay-for-adoption-service',
             cluster: ecsPayForAdoptionCluster,
             logGroupName: "/ecs/PayForAdoption",
             cpu: 1024,
             memoryLimitMiB: 2048,
             healthCheck: '/health/status',
             enableSSM: true,
-            // build locally
-            //repositoryURI: repositoryURI,
-            database: auroraCluster,
+            databaseSecret: rdsSecret,
             desiredTaskCount: 2,
             region: region,
-            securityGroup: ecsServicesSecurityGroup
-        });
+            securityGroup: ecsServicesSecurityGroup,
+            // Uncomment the following line if you want to include repositoryURI
+            // repositoryURI: repositoryURI,
+          });
+        
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(ddbSeedPolicy);
 
+        
 
         const ecsPetListAdoptionCluster = new ecs.Cluster(this, "PetListAdoptions", {
             vpc: theVPC,
             containerInsights: true
         });
         // PetListAdoptions service definitions-----------------------------------------------------------------------
-        const listAdoptionsService = new ListAdoptionsService(this, 'list-adoptions-service', {
+        const listAdoptionsService =  createListAdoptionsService( {
+            scope: this,
+            id: 'list-adoptions-service',
             cluster: ecsPetListAdoptionCluster,
             logGroupName: "/ecs/PetListAdoptions",
             cpu: 1024,
@@ -268,13 +287,13 @@ public readonly auroraCluster: rds.DatabaseCluster;
             healthCheck: '/health/status',
             instrumentation: 'otel',
             enableSSM: true,
-            // build locally
-            //repositoryURI: repositoryURI,
-            database: auroraCluster,
+            databaseSecret: rdsSecret,
             desiredTaskCount: 2,
             region: region,
             securityGroup: ecsServicesSecurityGroup
         });
+
+
         listAdoptionsService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
         /*
@@ -868,6 +887,7 @@ public readonly auroraCluster: rds.DatabaseCluster;
             '/petstore/cleanupadoptionsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/cleanupadoptions`,
             '/petstore/petsearch-collector-manual-config': readFileSync("./resources/collector/ecs-xray-manual.yaml", "utf8"),
             '/petstore/rdssecretarn': `${auroraCluster.secret?.secretArn}`,
+            '/petstore/rdssecretname': `${auroraCluster.secret?.secretName}`,
             '/petstore/rdsendpoint': auroraCluster.clusterEndpoint.hostname,
             '/petstore/stackname': stackName,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,

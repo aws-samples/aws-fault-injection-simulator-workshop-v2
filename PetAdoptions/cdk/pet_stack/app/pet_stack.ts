@@ -47,9 +47,8 @@ crossRegionReferences: true,
 MainRegion: MAIN_REGION,
 SecondaryRegion: SECONDARY_REGION,
 DeploymentType: 'secondary',
-RDSdatabase: stack_primary.auroraCluster
 });
-stack_secondary.addDependency(stack_primary);
+// stack_secondary.addDependency(stack_primary);
 
 const applications = new Applications(app, "Applications", {
   env: { 
@@ -79,3 +78,4 @@ Tags.of(app).add("Workshop","true")
 Tags.of(app).add("AzImpairmentPower","Ready")
 //Aspects.of(stack).add(new AwsSolutionsChecks({verbose: true}));
 //Aspects.of(applications).add(new AwsSolutionsChecks({verbose: true}));
+app.synth();
