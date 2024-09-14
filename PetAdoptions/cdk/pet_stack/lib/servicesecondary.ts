@@ -41,11 +41,15 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceSecondaryStackProps } from './common/services-shared-properties';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
-import { createListAdoptionsService, createPayForAdoptionService } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster } from './common/services-shared';
 
 export class ServicesSecondary extends Stack {
     constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
         super(scope, id, props);
+        const stack = Stack.of(this);
+        const region = stack.region;
+
+
         let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
             console.log("DeploymentType provided as [", props.DeploymentType, "]")
@@ -74,66 +78,8 @@ export class ServicesSecondary extends Stack {
             topic_email = "someone@example.com";
         }
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
-
-
-        // Creates an S3 bucket to store pet images
-
-
-        const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
-            publicReadAccess: false,
-            autoDeleteObjects: true,
-            removalPolicy: RemovalPolicy.DESTROY,
-        });
-
-        // Creates the DynamoDB table for Petadoption data
-        // Define the DynamoDB table properties 
-        // let dynamodb_petadoption: ddb.TableV2;
-        let dynamoDBTableName = 'undefined';
-   
-        console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM")
-        const ssmDynamoDBTableName = new SSMParameterReader(this, 'dynamodbtablename', {
-            parameterName: "/petstore/dynamodbtablename",
-            region: props.MainRegion as string
-        });
-        dynamoDBTableName = ssmDynamoDBTableName.getParameterValue();
-        console.log("DynamoDB Table name: ", dynamoDBTableName)
-
-        // RDS secret
-
-        // let rdsSecret:cdk.aws_secretsmanager.ISecret
-        // if (props.rdsSecret==undefined){
-        //     throw Error("RDS Doesn't have a secret");
-        // }
-        // else {
-        //  rdsSecret = props.rdsSecret
-        // }
-        let rdsSecretName = 'undefined';
-        console.log("Secondary Region Deployment. Getting rdsSecretName information from SSM")
-        const ssmrdsSecretName = new SSMParameterReader(this, 'rdsSecretName', {
-            parameterName: "/petstore/rdssecretname",
-            region: props.MainRegion as string
-        });
-        rdsSecretName = ssmrdsSecretName.getParameterValue();
-        const rdsSecret = secretsmanager.Secret.fromSecretNameV2(this, 'rdsSecret', rdsSecretName)
-
-        let rdsEndpoint = 'undefined';
-        console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM")
-        const ssmrdsEndpointName = new SSMParameterReader(this, 'ssmrdsEndpointName', {
-            parameterName: "/petstore/rdsendpoint",
-            region: props.MainRegion as string
-        });
-        rdsEndpoint = ssmrdsEndpointName.getParameterValue();
-
         
-
-
-        // Seeds the S3 bucket with pet images
-        new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
-            destinationBucket: s3_observabilitypetadoptions,
-            sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
-        });
-
-
+        // Create VPC
         var cidrRange = this.node.tryGetContext('vpc_cidr');
         if (cidrRange == undefined) {
             cidrRange = "11.0.0.0/16";
@@ -147,7 +93,42 @@ export class ServicesSecondary extends Stack {
 
         });
 
+        // Creates an S3 bucket to store pet images
+        const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
+            publicReadAccess: false,
+            autoDeleteObjects: true,
+            removalPolicy: RemovalPolicy.DESTROY,
+        });
 
+        // Creates the DynamoDB table for Petadoption data
+        // Define the DynamoDB table properties 
+        const dynamoDBTableName = createOrGetDynamoDBTable({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            secondaryRegion: props.SecondaryRegion,
+            mainRegion: props.MainRegion
+          });
+
+        // RDS secret
+        const rdsResult = createOrGetRDSCluster({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            vpc: theVPC,
+            secondaryRegion: props.SecondaryRegion,
+            mainRegion: props.MainRegion,
+            rdsUsername: this.node.tryGetContext('rdsusername')
+          });
+          
+          const rdsSecret = rdsResult.secret;
+          const rdsEndpoint = rdsResult.endpoint; 
+        
+
+
+        // Seeds the S3 bucket with pet images
+        new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
+            destinationBucket: s3_observabilitypetadoptions,
+            sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
+        });
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -174,8 +155,7 @@ export class ServicesSecondary extends Stack {
 
         const repositoryURI = "public.ecr.aws/one-observability-workshop";
 
-        const stack = Stack.of(this);
-        const region = stack.region;
+
 
         const ecsServicesSecurityGroup = new ec2.SecurityGroup(this, 'ECSServicesSG', {
             vpc: theVPC
@@ -328,7 +308,7 @@ export class ServicesSecondary extends Stack {
 
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
-            region: stack.region,
+            region: region,
             tableName: dynamoDBTableName
         });
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
@@ -829,7 +809,7 @@ export class ServicesSecondary extends Stack {
         const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn', {
             env: {
                 account: props.env?.account,
-                region: props.env?.region
+                region: region
             }
         });
 

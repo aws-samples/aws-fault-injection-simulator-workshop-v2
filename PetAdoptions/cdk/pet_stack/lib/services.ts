@@ -5,7 +5,6 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as sns from 'aws-cdk-lib/aws-sns'
 import * as sqs from 'aws-cdk-lib/aws-sqs'
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
-import * as ddb from 'aws-cdk-lib/aws-dynamodb'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3seeder from 'aws-cdk-lib/aws-s3-deployment'
 import * as rds from 'aws-cdk-lib/aws-rds';
@@ -39,7 +38,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { REGION,ServiceStackProps } from './common/services-shared-properties';
-import { createListAdoptionsService, createPayForAdoptionService } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster } from './common/services-shared';
 
 export class Services extends Stack {
 public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
@@ -91,56 +90,13 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
 
         // Creates the DynamoDB table for Petadoption data
         // Define the DynamoDB table properties 
-        let dynamodb_petadoption
-        let tableProps: any = {
-            partitionKey: {
-                name: 'pettype',
-                type: ddb.AttributeType.STRING
-            },
-            sortKey: {
-                name: 'petid',
-                type: ddb.AttributeType.STRING
-            },
-            removalPolicy: RemovalPolicy.DESTROY,
-            billing: ddb.Billing.onDemand(),
-          };
-          
-
-          if (!props.SecondaryRegion) {
-            console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table")
-            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-          } else {
-            console.log("SecondaryRegion provided as [" + props.SecondaryRegion + "]. Creating Global DynamoDB Table")
-            tableProps["replicas"] =[{ region: props.SecondaryRegion as string }];
-            dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', tableProps);
-          } 
-       
-        // const dynamodb_petadoption = new ddb.TableV2(this, 'ddb_petadoption', {
-            
-        //     replicas: [
-        //         { region: }, // Replica in us-east-1
-        //       ],
-
-
-        // });
-
-        dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(this, 'WriteThrottleEvents-BasicAlarm', {
-            threshold: 0,
-            treatMissingData: TreatMissingData.NOT_BREACHING,
-            comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 1,
-            alarmName: `${dynamodb_petadoption.tableName}-WriteThrottleEvents-BasicAlarm`,
-        });
-
-        dynamodb_petadoption.metric('ReadThrottleEvents', { statistic: "avg" }).createAlarm(this, 'ReadThrottleEvents-BasicAlarm', {
-            threshold: 0,
-            treatMissingData: TreatMissingData.NOT_BREACHING,
-            comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluationPeriods: 1,
-            alarmName: `${dynamodb_petadoption.tableName}-ReadThrottleEvents-BasicAlarm`,
-        });
-
-
+        const dynamoDBTableName = createOrGetDynamoDBTable({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            secondaryRegion: props.SecondaryRegion,
+            mainRegion: props.MainRegion
+          });
+     
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
             destinationBucket: s3_observabilitypetadoptions,
@@ -161,56 +117,18 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
 
         });
 
-        // Adding tags to the VPC for AzImpairmentPower
-        //cdk.Tags.of(theVPC).add('AzImpairmentPower', 'DisruptSubnet');
-
-        // Create RDS Aurora PG cluster
-        const rdssecuritygroup = new ec2.SecurityGroup(this, 'petadoptionsrdsSG', {
-            vpc: theVPC
+        const rdsResult = createOrGetRDSCluster({
+          scope: this,
+          isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+          vpc: theVPC,
+          secondaryRegion: props.SecondaryRegion,
+          mainRegion: props.MainRegion,
+          rdsUsername: this.node.tryGetContext('rdsusername')
         });
+        
+        const rdsSecret = rdsResult.secret;
+        const rdsEndpoint = rdsResult.endpoint; 
 
-        rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
-
-        var rdsUsername = this.node.tryGetContext('rdsusername');
-        if (rdsUsername == undefined) {
-            rdsUsername = "petadmin"
-        }
-
-        const auroraCluster = new rds.DatabaseCluster(this, 'Database', {
-            credentials: {
-                username: rdsUsername,
-                replicaRegions: [{ region: props.SecondaryRegion as string }],
-            },
-            engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
-            writer: rds.ClusterInstance.provisioned('writer', {
-                instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
-            }),
-            readers: [
-                rds.ClusterInstance.provisioned('reader', {
-                    instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
-                },
-                ),
-            ],
-            parameterGroup: rds.ParameterGroup.fromParameterGroupName(this, 'ParameterGroup', 'default.aurora-postgresql13'),
-            vpc: theVPC,
-            securityGroups: [rdssecuritygroup],
-            defaultDatabaseName: 'adoptions'
-            // scaling: {
-            //     autoPause: Duration.minutes(60),
-            //     minCapacity: rds.AuroraCapacityUnit.ACU_2,
-            //     maxCapacity: rds.AuroraCapacityUnit.ACU_8,
-            // }
-        });
-
-
-        let rdsSecret:cdk.aws_secretsmanager.ISecret
-
-        if (auroraCluster.secret==undefined){
-            throw Error("RDS Doesn't have a secret");
-        }
-        else {
-         rdsSecret = auroraCluster.secret 
-        }
 
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
@@ -391,8 +309,8 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
 
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
-            region: props.MainRegion,
-            tableName: dynamodb_petadoption.tableName
+            region: region,
+            tableName: dynamoDBTableName
         });
 
 
@@ -865,7 +783,7 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn', {
             env: {
                 account: props.env?.account,
-                region: props.env?.region
+                region: region
             }
         });
 
@@ -876,7 +794,7 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             '/petstore/updateadoptionstatusurl': statusUpdaterService.api.url,
             '/petstore/queueurl': sqsQueue.queueUrl,
             '/petstore/snsarn': topic_petadoption.topicArn,
-            '/petstore/dynamodbtablename': dynamodb_petadoption.tableName,
+            '/petstore/dynamodbtablename': dynamoDBTableName,
             '/petstore/s3bucketname': s3_observabilitypetadoptions.bucketName,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,
@@ -886,9 +804,9 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             '/petstore/payforadoptionmetricsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/metrics`,
             '/petstore/cleanupadoptionsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/cleanupadoptions`,
             '/petstore/petsearch-collector-manual-config': readFileSync("./resources/collector/ecs-xray-manual.yaml", "utf8"),
-            '/petstore/rdssecretarn': `${auroraCluster.secret?.secretArn}`,
-            '/petstore/rdssecretname': `${auroraCluster.secret?.secretName}`,
-            '/petstore/rdsendpoint': auroraCluster.clusterEndpoint.hostname,
+            '/petstore/rdssecretarn': rdsSecret.secretArn,
+            '/petstore/rdssecretname': rdsSecret.secretName,
+            '/petstore/rdsendpoint': rdsEndpoint,
             '/petstore/stackname': stackName,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
@@ -901,7 +819,7 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             'QueueURL': sqsQueue.queueUrl,
             'UpdateAdoptionStatusurl': statusUpdaterService.api.url,
             'SNSTopicARN': topic_petadoption.topicArn,
-            'RDSServerName': auroraCluster.clusterEndpoint.hostname
+            'RDSServerName': rdsEndpoint
         })));
     }
 
@@ -918,3 +836,5 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         });
     }
 }
+
+
