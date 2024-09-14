@@ -41,7 +41,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceSecondaryStackProps } from './common/services-shared-properties';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster,createVPC } from './common/services-shared';
 
 export class ServicesSecondary extends Stack {
     constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
@@ -80,18 +80,18 @@ export class ServicesSecondary extends Stack {
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
         
         // Create VPC
-        var cidrRange = this.node.tryGetContext('vpc_cidr');
-        if (cidrRange == undefined) {
-            cidrRange = "11.0.0.0/16";
-        }
-        // The VPC where all the microservices will be deployed into
-        const theVPC = new ec2.Vpc(this, 'Microservices', {
-            ipAddresses: ec2.IpAddresses.cidr(cidrRange),
-            // cidr: cidrRange,
-            natGateways: 1,
-            maxAzs: 2,
+        const theVPC = createVPC({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            contextId: 'Microservices',
+            // Optionally, you can override the default CIDR ranges:
+            // defaultPrimaryCIDR: "10.0.0.0/16",
+            // defaultSecondaryCIDR: "10.3.0.0/16",
+            // And optionally override natGateways and maxAzs:
+            // natGateways: 2,
+            // maxAzs: 3,
+          });
 
-        });
 
         // Creates an S3 bucket to store pet images
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {

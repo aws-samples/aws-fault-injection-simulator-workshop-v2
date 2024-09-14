@@ -222,3 +222,41 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
     return { secret: rdsSecret, endpoint: rdsEndpoint };
   }
 }
+
+// Create VPC
+export interface CreateVPCProps {
+  scope: Construct;
+  isPrimaryRegionDeployment: boolean;
+  contextId: string;
+  defaultPrimaryCIDR?: string;
+  defaultSecondaryCIDR?: string;
+  natGateways?: number;
+  maxAzs?: number;
+}
+
+export function createVPC(props: CreateVPCProps): ec2.Vpc {
+  const {
+    scope,
+    isPrimaryRegionDeployment,
+    contextId,
+    defaultPrimaryCIDR = "10.1.0.0/16",
+    defaultSecondaryCIDR = "10.2.0.0/16",
+    natGateways = 1,
+    maxAzs = 2
+  } = props;
+
+  let cidrRange: string;
+
+  if (isPrimaryRegionDeployment) {
+    cidrRange = scope.node.tryGetContext('vpc_cidr_primary') || defaultPrimaryCIDR;
+  } else {
+    cidrRange = scope.node.tryGetContext('vpc_cidr_secondary') || defaultSecondaryCIDR;
+  }
+
+  return new ec2.Vpc(scope, contextId, {
+    ipAddresses: ec2.IpAddresses.cidr(cidrRange),
+    natGateways: natGateways,
+    maxAzs: maxAzs,
+  });
+}
+

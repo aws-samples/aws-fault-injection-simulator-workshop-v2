@@ -38,7 +38,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { REGION,ServiceStackProps } from './common/services-shared-properties';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPC } from './common/services-shared';
 
 export class Services extends Stack {
 public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
@@ -102,20 +102,39 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             destinationBucket: s3_observabilitypetadoptions,
             sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
-
-
-        var cidrRange = this.node.tryGetContext('vpc_cidr');
-        if (cidrRange == undefined) {
-            cidrRange = "11.0.0.0/16";
-        }
-        // The VPC where all the microservices will be deployed into
-        const theVPC = new ec2.Vpc(this, 'Microservices', {
-            ipAddresses: ec2.IpAddresses.cidr(cidrRange),
-            // cidr: cidrRange,
-            natGateways: 1,
-            maxAzs: 2,
-
+        
+        // Create VPC
+        const theVPC = createVPC({
+          scope: this,
+          isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+          contextId: 'Microservices',
+          // Optionally, you can override the default CIDR ranges:
+          // defaultPrimaryCIDR: "10.0.0.0/16",
+          // defaultSecondaryCIDR: "10.3.0.0/16",
+          // And optionally override natGateways and maxAzs:
+          // natGateways: 2,
+          // maxAzs: 3,
         });
+        
+        // if (isPrimaryRegionDeployment) {
+        // var cidrRange = this.node.tryGetContext('vpc_cidr_primary');
+        // if (cidrRange == undefined) {
+        //     cidrRange = "10.1.0.0/16";
+        // }
+        // }else {cidrRange = this.node.tryGetContext('vpc_cidr_secondary');
+        // if (cidrRange == undefined) {
+        //     cidrRange = "10.2.0.0/16";
+        // }
+        
+
+        // // The VPC where all the microservices will be deployed into
+        // const theVPC = new ec2.Vpc(this, 'Microservices', {
+        //     ipAddresses: ec2.IpAddresses.cidr(cidrRange),
+        //     // cidr: cidrRange,
+        //     natGateways: 1,
+        //     maxAzs: 2,
+
+        // });
 
         const rdsResult = createOrGetRDSCluster({
           scope: this,
