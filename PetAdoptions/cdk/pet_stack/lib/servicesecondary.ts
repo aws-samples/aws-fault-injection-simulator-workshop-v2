@@ -41,7 +41,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceSecondaryStackProps } from './common/services-shared-properties';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster,createVPC } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster,createVPCWithTransitGateway } from './common/services-shared';
 
 export class ServicesSecondary extends Stack {
     constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
@@ -80,7 +80,8 @@ export class ServicesSecondary extends Stack {
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
         
         // Create VPC
-        const theVPC = createVPC({
+
+        const VPCwitTGW = createVPCWithTransitGateway({
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             contextId: 'Microservices',
@@ -91,7 +92,8 @@ export class ServicesSecondary extends Stack {
             // natGateways: 2,
             // maxAzs: 3,
           });
-
+          
+          const theVPC = VPCwitTGW.vpc
 
         // Creates an S3 bucket to store pet images
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {

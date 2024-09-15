@@ -224,39 +224,89 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
 }
 
 // Create VPC
-export interface CreateVPCProps {
-  scope: Construct;
-  isPrimaryRegionDeployment: boolean;
-  contextId: string;
-  defaultPrimaryCIDR?: string;
-  defaultSecondaryCIDR?: string;
-  natGateways?: number;
-  maxAzs?: number;
-}
-
-export function createVPC(props: CreateVPCProps): ec2.Vpc {
-  const {
-    scope,
-    isPrimaryRegionDeployment,
-    contextId,
-    defaultPrimaryCIDR = "10.1.0.0/16",
-    defaultSecondaryCIDR = "10.2.0.0/16",
-    natGateways = 1,
-    maxAzs = 2
-  } = props;
-
-  let cidrRange: string;
-
-  if (isPrimaryRegionDeployment) {
-    cidrRange = scope.node.tryGetContext('vpc_cidr_primary') || defaultPrimaryCIDR;
-  } else {
-    cidrRange = scope.node.tryGetContext('vpc_cidr_secondary') || defaultSecondaryCIDR;
+export interface CreateVPCWithTransitGatewayProps {
+    scope: Construct;
+    isPrimaryRegionDeployment: boolean;
+    contextId: string;
+    defaultPrimaryCIDR?: string;
+    defaultSecondaryCIDR?: string;
+    natGateways?: number;
+    maxAzs?: number;
+    createTransitGateway?: boolean;
   }
+  
+  interface VPCTransitGatewayResult {
+    vpc: ec2.Vpc;
+    transitGateway?: ec2.CfnTransitGateway;
+    transitGatewayAttachment?: ec2.CfnTransitGatewayAttachment;
+  }
+  
+export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayProps): VPCTransitGatewayResult {
+    const {
+      scope,
+      isPrimaryRegionDeployment,
+      contextId,
+      defaultPrimaryCIDR = "10.1.0.0/16",
+      defaultSecondaryCIDR = "10.2.0.0/16",
+      natGateways = 1,
+      maxAzs = 2,
+      createTransitGateway = true
+    } = props;
+  
+    let cidrRange: string;
+  
+    if (isPrimaryRegionDeployment) {
+      cidrRange = scope.node.tryGetContext('vpc_cidr_primary') || defaultPrimaryCIDR;
+    } else {
+      cidrRange = scope.node.tryGetContext('vpc_cidr_secondary') || defaultSecondaryCIDR;
+    }
+  
+    const vpc = new ec2.Vpc(scope, contextId, {
+      ipAddresses: ec2.IpAddresses.cidr(cidrRange),
+      natGateways: natGateways,
+      maxAzs: maxAzs,
+    });
+  
+    if (!createTransitGateway) {
+      return { vpc };
+    }
+  
+    // Create Transit Gateway
+    const transitGateway = new ec2.CfnTransitGateway(scope, `${contextId}TransitGateway`, {
+      amazonSideAsn: 64512, // Default ASN
+      autoAcceptSharedAttachments: 'disable',
+      defaultRouteTableAssociation: 'enable',
+      defaultRouteTablePropagation: 'enable',
+      dnsSupport: 'enable',
+      vpnEcmpSupport: 'enable',
+      tags: [{ key: 'Name', value: `${contextId}TransitGateway` }]
+    });
+  
+    // Attach VPC to Transit Gateway
+    const transitGatewayAttachment = new ec2.CfnTransitGatewayAttachment(scope, `${contextId}TransitGatewayAttachment`, {
+      transitGatewayId: transitGateway.ref,
+      vpcId: vpc.vpcId,
+      subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
+      tags: [{ key: 'Name', value: `${contextId}TransitGatewayAttachment` }]
+    });
+  
+    // Add a route to the Transit Gateway in each private subnet's route table
+    vpc.privateSubnets.forEach((subnet, index) => {
+      new ec2.CfnRoute(scope, `${contextId}TransitGatewayPrivateRoute${index}`, {
+        routeTableId: subnet.routeTable.routeTableId,
+        destinationCidrBlock: '10.0.0.0/8',
+        transitGatewayId: transitGateway.ref
+      });
+    });
 
-  return new ec2.Vpc(scope, contextId, {
-    ipAddresses: ec2.IpAddresses.cidr(cidrRange),
-    natGateways: natGateways,
-    maxAzs: maxAzs,
-  });
-}
+    // Add a route to the Transit Gateway in each public subnet's route table
+    vpc.publicSubnets.forEach((subnet, index) => {
+        new ec2.CfnRoute(scope, `${contextId}TransitGatewayPublicRoute${index}`, {
+          routeTableId: subnet.routeTable.routeTableId,
+          destinationCidrBlock: '10.0.0.0/8',
+          transitGatewayId: transitGateway.ref
+        });
+      });
 
+    return { vpc, transitGateway, transitGatewayAttachment };
+  }
