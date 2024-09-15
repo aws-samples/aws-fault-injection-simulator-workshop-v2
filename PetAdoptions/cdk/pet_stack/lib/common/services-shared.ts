@@ -274,14 +274,15 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
     // Create Transit Gateway
     const transitGateway = new ec2.CfnTransitGateway(scope, `${contextId}TransitGateway`, {
       amazonSideAsn: 64512, // Default ASN
-      autoAcceptSharedAttachments: 'disable',
+      autoAcceptSharedAttachments: 'enable',
       defaultRouteTableAssociation: 'enable',
       defaultRouteTablePropagation: 'enable',
       dnsSupport: 'enable',
       vpnEcmpSupport: 'enable',
       tags: [{ key: 'Name', value: `${contextId}TransitGateway` }]
     });
-  
+
+
     // Attach VPC to Transit Gateway
     const transitGatewayAttachment = new ec2.CfnTransitGatewayAttachment(scope, `${contextId}TransitGatewayAttachment`, {
       transitGatewayId: transitGateway.ref,
@@ -289,23 +290,29 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
       subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
       tags: [{ key: 'Name', value: `${contextId}TransitGatewayAttachment` }]
     });
-  
+
+    transitGatewayAttachment.addDependency(transitGateway);
+
+    let privateRoute
     // Add a route to the Transit Gateway in each private subnet's route table
     vpc.privateSubnets.forEach((subnet, index) => {
-      new ec2.CfnRoute(scope, `${contextId}TransitGatewayPrivateRoute${index}`, {
+      privateRoute = new ec2.CfnRoute(scope, `${contextId}TransitGatewayPrivateRoute${index}`, {
         routeTableId: subnet.routeTable.routeTableId,
         destinationCidrBlock: '10.0.0.0/8',
         transitGatewayId: transitGateway.ref
       });
+      privateRoute.addDependency(transitGatewayAttachment)
     });
-
+    
+    let publicRoute
     // Add a route to the Transit Gateway in each public subnet's route table
     vpc.publicSubnets.forEach((subnet, index) => {
-        new ec2.CfnRoute(scope, `${contextId}TransitGatewayPublicRoute${index}`, {
+        publicRoute = new ec2.CfnRoute(scope, `${contextId}TransitGatewayPublicRoute${index}`, {
           routeTableId: subnet.routeTable.routeTableId,
           destinationCidrBlock: '10.0.0.0/8',
           transitGatewayId: transitGateway.ref
         });
+        publicRoute.addDependency(transitGatewayAttachment)
       });
 
     return { vpc, transitGateway, transitGatewayAttachment };
