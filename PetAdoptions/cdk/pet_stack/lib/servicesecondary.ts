@@ -41,7 +41,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceSecondaryStackProps } from './common/services-shared-properties';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster,createVPCWithTransitGateway } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway } from './common/services-shared';
 
 export class ServicesSecondary extends Stack {
     constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
@@ -78,7 +78,7 @@ export class ServicesSecondary extends Stack {
             topic_email = "someone@example.com";
         }
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
-        
+
         // Create VPC
 
         const VPCwitTGW = createVPCWithTransitGateway({
@@ -91,9 +91,41 @@ export class ServicesSecondary extends Stack {
             // And optionally override natGateways and maxAzs:
             // natGateways: 2,
             // maxAzs: 3,
-          });
-          
-          const theVPC = VPCwitTGW.vpc
+        });
+
+        const theVPC = VPCwitTGW.vpc
+        const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
+
+
+        const ssmTGWId = new SSMParameterReader(this, 'ssmTGWId', {
+            parameterName: "/petstore/tgwid",
+            region: props.MainRegion
+        });
+        const mainTGWId = ssmTGWId.getParameterValue();
+
+        const ssmVPCCIDR = new SSMParameterReader(this, 'ssmVPCCIDR', {
+            parameterName: "/petstore/vpccidr",
+            region: props.MainRegion
+        });
+        const mainVPCCIDR = ssmVPCCIDR.getParameterValue();
+
+        // Crete TGW Peering
+        const TransitGatewayPeeringAttachment = new ec2.CfnTransitGatewayPeeringAttachment(this, 'MyCfnTransitGatewayPeeringAttachment', {
+            peerAccountId: `${props.env?.account}`,
+            peerRegion: props.MainRegion as string,
+            peerTransitGatewayId: mainTGWId,
+            transitGatewayId: `${VPCwitTGW.transitGateway?.attrId}`,
+        });
+
+        // const TransitGatewayRoute = new ec2.CfnTransitGatewayRoute(this, 'MyCfnTransitGatewayRoute', {
+        //     destinationCidrBlock: mainVPCCIDR,
+        //     transitGatewayRouteTableId: `${transitGatewayRouteTable?.ref}`,
+        //     // the properties below are optional
+        //     blackhole: false,
+        //     transitGatewayAttachmentId: TransitGatewayPeeringAttachment.attrTransitGatewayAttachmentId,
+        // });
+        // TransitGatewayRoute.addDependency(TransitGatewayPeeringAttachment);
+
 
         // Creates an S3 bucket to store pet images
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
@@ -109,7 +141,7 @@ export class ServicesSecondary extends Stack {
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             secondaryRegion: props.SecondaryRegion,
             mainRegion: props.MainRegion
-          });
+        });
 
         // RDS secret
         const rdsResult = createOrGetRDSCluster({
@@ -119,11 +151,11 @@ export class ServicesSecondary extends Stack {
             secondaryRegion: props.SecondaryRegion,
             mainRegion: props.MainRegion,
             rdsUsername: this.node.tryGetContext('rdsusername')
-          });
-          
-          const rdsSecret = rdsResult.secret;
-          const rdsEndpoint = rdsResult.endpoint; 
-        
+        });
+
+        const rdsSecret = rdsResult.secret;
+        const rdsEndpoint = rdsResult.endpoint;
+
 
 
         // Seeds the S3 bucket with pet images
@@ -186,7 +218,7 @@ export class ServicesSecondary extends Stack {
             securityGroup: ecsServicesSecurityGroup,
             // Uncomment the following line if you want to include repositoryURI
             // repositoryURI: repositoryURI,
-          });
+        });
 
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(ddbSeedPolicy);
@@ -197,7 +229,7 @@ export class ServicesSecondary extends Stack {
             containerInsights: true
         });
         // PetListAdoptions service definitions-----------------------------------------------------------------------
-        const listAdoptionsService =  createListAdoptionsService( {
+        const listAdoptionsService = createListAdoptionsService({
             scope: this,
             id: 'list-adoptions-service',
             cluster: ecsPetListAdoptionCluster,
@@ -212,7 +244,7 @@ export class ServicesSecondary extends Stack {
             region: region,
             securityGroup: ecsServicesSecurityGroup
         });
-        
+
         listAdoptionsService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
         /*

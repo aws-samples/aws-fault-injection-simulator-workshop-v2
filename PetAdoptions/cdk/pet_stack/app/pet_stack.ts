@@ -16,7 +16,6 @@ import { ServicesSecondary } from '../lib/servicesecondary';
 
 if (!process.env.CDK_DEFAULT_REGION) {
   throw Error('Could not resolve region. Please pass it with the AWS_REGION environment variable.');
-  const MAIN_REGION: REGION = 'us-east-1' as REGION;
 }
 
 const MAIN_REGION: REGION = process.env.CDK_DEFAULT_REGION as REGION;

@@ -117,6 +117,7 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         });
         
         const theVPC = VPCwitTGW.vpc
+        const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
 
         // if (isPrimaryRegionDeployment) {
         // var cidrRange = this.node.tryGetContext('vpc_cidr_primary');
@@ -829,6 +830,12 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             '/petstore/rdssecretname': rdsSecret.secretName,
             '/petstore/rdsendpoint': rdsEndpoint,
             '/petstore/stackname': stackName,
+            '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
+            '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref}`,
+            // '/petstore/tgwassociationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.associationDefaultRouteTableId}`,
+            // '/petstore/tgwpropagationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.propagationDefaultRouteTableId}`,
+            '/petstore/vpcid': `${VPCwitTGW.vpc.vpcId}`,
+            '/petstore/vpccidr': `${VPCwitTGW.vpc.vpcCidrBlock}`,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
