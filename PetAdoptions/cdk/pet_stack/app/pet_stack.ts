@@ -11,6 +11,7 @@ import { LoadTesting } from '../lib/load_testing';
 import { REGION } from '../lib/common/services-shared-properties';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ServicesSecondary } from '../lib/servicesecondary';
+import { RegionNetworkConnect } from '../lib/region_network_connect';
 
 
 
@@ -48,6 +49,15 @@ SecondaryRegion: SECONDARY_REGION,
 DeploymentType: 'secondary',
 });
 
+const network_connector = new RegionNetworkConnect(app, "NetworkMultiRegion", {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: MAIN_REGION as string},
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'primary',
+});
+
 const applications = new Applications(app, "Applications", {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
@@ -59,6 +69,7 @@ const applications_secondary = new Applications(app, "ApplicationsSecondary", {
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: SECONDARY_REGION as string
 }});
+
 
 
 const fis_serverless = new FisServerless(app, "FisServerless", {

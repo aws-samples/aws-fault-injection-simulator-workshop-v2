@@ -1,6 +1,5 @@
 import { StackProps } from "aws-cdk-lib";
-import * as rds from 'aws-cdk-lib/aws-rds';
-import * as cdk from "aws-cdk-lib";
+
 
 
 
@@ -11,6 +10,12 @@ export interface ServiceStackProps extends StackProps {
   }
 
 export interface ServiceSecondaryStackProps extends StackProps {
+    MainRegion: REGION,
+    SecondaryRegion: REGION,
+    DeploymentType: DEPLOYMENT_TYPE,
+  }
+
+export interface RegionNetworkConnectProps extends StackProps {
     MainRegion: REGION,
     SecondaryRegion: REGION,
     DeploymentType: DEPLOYMENT_TYPE,

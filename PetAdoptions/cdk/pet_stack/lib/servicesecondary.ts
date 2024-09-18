@@ -5,11 +5,8 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as sns from 'aws-cdk-lib/aws-sns'
 import * as sqs from 'aws-cdk-lib/aws-sqs'
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
-import * as ddb from 'aws-cdk-lib/aws-dynamodb'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3seeder from 'aws-cdk-lib/aws-s3-deployment'
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -19,14 +16,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 ////import * as cloud9 from 'aws-cdk-lib/aws-cloud9';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as ecrassets from 'aws-cdk-lib/aws-ecr-assets';
-import * as cdk from "aws-cdk-lib";
-
 import { Construct } from 'constructs'
-import { PayForAdoptionService } from './services/pay-for-adoption-service'
-import { ListAdoptionsService } from './services/list-adoptions-service'
-import { SearchService } from './services/search-service'
 import { SearchEc2Service } from './services/search-service-ec2'
 import { TrafficGeneratorService } from './services/traffic-generator-service'
 import { StatusUpdaterService } from './services/status-updater-service'
@@ -116,16 +106,6 @@ export class ServicesSecondary extends Stack {
             peerTransitGatewayId: mainTGWId,
             transitGatewayId: `${VPCwitTGW.transitGateway?.attrId}`,
         });
-
-        // const TransitGatewayRoute = new ec2.CfnTransitGatewayRoute(this, 'MyCfnTransitGatewayRoute', {
-        //     destinationCidrBlock: mainVPCCIDR,
-        //     transitGatewayRouteTableId: `${transitGatewayRouteTable?.ref}`,
-        //     // the properties below are optional
-        //     blackhole: false,
-        //     transitGatewayAttachmentId: TransitGatewayPeeringAttachment.attrTransitGatewayAttachmentId,
-        // });
-        // TransitGatewayRoute.addDependency(TransitGatewayPeeringAttachment);
-
 
         // Creates an S3 bucket to store pet images
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
@@ -867,6 +847,12 @@ export class ServicesSecondary extends Stack {
             '/petstore/rdssecretarn': `${rdsSecret.secretArn}`,
             '/petstore/rdsendpoint': rdsEndpoint,
             '/petstore/stackname': stackName,
+            '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
+            '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref}`,
+            // '/petstore/tgwassociationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.associationDefaultRouteTableId}`,
+            // '/petstore/tgwpropagationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.propagationDefaultRouteTableId}`,
+            '/petstore/vpcid': `${VPCwitTGW.vpc.vpcId}`,
+            '/petstore/vpccidr': `${VPCwitTGW.vpc.vpcCidrBlock}`,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
