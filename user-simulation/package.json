@@ -20,7 +20,7 @@
     "typescript": "~5.3.3"
   },
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.574.0",
+    "@aws-sdk/client-ssm": "^3.654.0",
     "aws-cdk-lib": "2.126.0",
     "constructs": "^10.0.0",
     "puppeteer": "^22.7.0",
