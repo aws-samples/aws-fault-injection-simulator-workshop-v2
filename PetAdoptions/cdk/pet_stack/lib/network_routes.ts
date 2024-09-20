@@ -27,38 +27,43 @@ export class RegionNetworkConnect extends Stack {
             parameterName: "/petstore/tgwroutetableid",
             region: props.MainRegion
         });
-        const transitGatewayRouteTableID = ssmtransitGatewayRouteTableMain.getParameterValue();
+        const transitGatewayRouteTableIDMain = ssmtransitGatewayRouteTableMain.getParameterValue();
 
         const ssmVPCCIDRSecond = new SSMParameterReader(this, 'ssmVPCCIDRSecond', {
             parameterName: "/petstore/vpccidr",
-            region: props.MainRegion
+            region: props.SecondaryRegion
         });
-        const mainVPCCIDRSecondMain = ssmVPCCIDRSecond.getParameterValue();
+        const mainVPCCIDRSecond = ssmVPCCIDRSecond.getParameterValue();
 
-        const ssmtransitGatewayRouteTableSecond = new SSMParameterReader(this, 'ssmtransitGatewayRouteTablSecond', {
+        const ssmtransitGatewayRouteTableSecond = new SSMParameterReader(this, 'ssmtransitGatewayRouteTableSecond', {
             parameterName: "/petstore/tgwroutetableid",
-            region: props.MainRegion
+            region: props.SecondaryRegion
         });
         const transitGatewayRouteTableIDSecond = ssmtransitGatewayRouteTableSecond.getParameterValue();
 
-
-
-        const TransitGatewayAttachmentId = new TransitGatewayPeeringIdentifier(this, 'TransitGatewayPeeringIdentifier', {
-            region: props.MainRegion as string
+        if (props.DeploymentType == "primary") {
+        const TransitGatewayRouteMain = new ec2.CfnTransitGatewayRoute(this, 'TransitGatewayRouteMain', {
+            destinationCidrBlock: mainVPCCIDRSecond,
+            transitGatewayRouteTableId: transitGatewayRouteTableIDMain,
+            // the properties below are optional
+            blackhole: false,
+            transitGatewayAttachmentId: TransitGatewayAttachmentId.getAttachmentId(),
         });
+        } else {
+            
+        }
 
-        const TransitGatewayPeeringAttachmentAccepted = new TransitGatewayPeeringAcceptor(this, 'MyCfnTransitGatewayPeeringAttachmentAcceptor', {
-            region: props.MainRegion as string,
-            TransitGatewayAttachmentId: TransitGatewayAttachmentId.getAttachmentId()
-        });
 
-        // const TransitGatewayRoute = new ec2.CfnTransitGatewayRoute(this, 'MyCfnTransitGatewayRoute', {
-        //     destinationCidrBlock: mainVPCCIDR,
-        //     transitGatewayRouteTableId: transitGatewayRouteTableID,
+
+        // const TransitGatewayRouteSecond = new ec2.CfnTransitGatewayRoute(this, 'TransitGatewayRouteSecond', {
+        //     destinationCidrBlock: mainVPCCIDRSecond,
+        //     transitGatewayRouteTableId: transitGatewayRouteTableIDMain,
         //     // the properties below are optional
         //     blackhole: false,
-        //     transitGatewayAttachmentId: TransitGatewayPeeringAttachment.attrTransitGatewayAttachmentId,
+        //     transitGatewayAttachmentId: TransitGatewayAttachmentId.getAttachmentId(),
         // });
+
+        // TransitGatewayRouteSecond.node.addDependency(TransitGatewayPeeringAttachmentAccepted)
 
     }
 };

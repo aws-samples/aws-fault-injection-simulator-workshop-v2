@@ -11,8 +11,6 @@ import { SSMParameterReader } from './ssm-parameter-reader';
 import { ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb'
 
-
-
 //Create ListAdoptionsService
 export interface CreateListAdoptionsServiceProps {
     scope: Construct;
@@ -150,7 +148,6 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
 }
 
 // Create Or Get RDSCluster
-
 export interface CreateOrGetRDSClusterProps {
     scope: Construct;
     isPrimaryRegionDeployment: boolean;
@@ -170,10 +167,7 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
         const rdssecuritygroup = new ec2.SecurityGroup(props.scope, 'petadoptionsrdsSG', {
             vpc: props.vpc
         });
-
-
         const rdsUsername = props.rdsUsername || "petadmin";
-
         const auroraCluster = new rds.DatabaseCluster(props.scope, 'Database', {
             credentials: {
                 username: rdsUsername,
@@ -193,19 +187,15 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
             securityGroups: [rdssecuritygroup],
             defaultDatabaseName: 'adoptions'
         });
-
         if (auroraCluster.secret === undefined) {
             throw new Error("RDS Doesn't have a secret");
         }
-
         return { secret: auroraCluster.secret, endpoint: auroraCluster.clusterEndpoint.hostname };
     } else {
         if (!props.mainRegion) {
             throw new Error("MainRegion must be provided for secondary region deployment");
         }
-
         console.log("Secondary Region Deployment. Getting RDS information from SSM");
-
         const ssmrdsSecretName = new SSMParameterReader(props.scope, 'rdsSecretName', {
             parameterName: "/petstore/rdssecretname",
             region: props.mainRegion
@@ -218,7 +208,6 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
             region: props.mainRegion
         });
         const rdsEndpoint = ssmrdsEndpointName.getParameterValue();
-
         return { secret: rdsSecret, endpoint: rdsEndpoint };
     }
 }
