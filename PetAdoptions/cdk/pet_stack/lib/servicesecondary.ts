@@ -40,10 +40,6 @@ export class ServicesSecondary extends Stack {
         const region = stack.region;
 
 
-        const stack = Stack.of(this);
-        const region = stack.region;
-
-
         let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
             console.log("DeploymentType provided as [", props.DeploymentType, "]")

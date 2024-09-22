@@ -38,7 +38,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { REGION,ServiceStackProps } from './common/services-shared-properties';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway } from './common/services-shared';
 
 export class Services extends Stack {
 public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
@@ -90,13 +90,6 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
 
         // Creates the DynamoDB table for Petadoption data
         // Define the DynamoDB table properties 
-        const dynamoDBTableName = createOrGetDynamoDBTable({
-            scope: this,
-            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
-            secondaryRegion: props.SecondaryRegion,
-            mainRegion: props.MainRegion
-          });
-     
         const dynamoDBTableName = createOrGetDynamoDBTable({
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
