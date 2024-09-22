@@ -105,10 +105,10 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
         };
 
         if (props.secondaryRegion) {
-            console.log(`SecondaryRegion provided as [${props.secondaryRegion}]. Creating Global DynamoDB Table`);
+            // SecondaryRegion provided. Creating Global DynamoDB Table
             tableProps.replicas = [{ region: props.secondaryRegion }];
         } else {
-            console.log("SecondaryRegion is not provided. Creating single region DynamoDB Table");
+            // SecondaryRegion is not provided. Creating single region DynamoDB Table
         }
 
         const dynamodb_petadoption = new ddb.TableV2(props.scope, 'ddb_petadoption', tableProps);
@@ -133,7 +133,7 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
 
         dynamoDBTableName = dynamodb_petadoption.tableName;
     } else {
-        console.log("Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM");
+        // Secondary Region Deployment. Not deploying DynamoDB. Getting DynamoDB information from SSM
         if (!props.mainRegion) {
             throw new Error("MainRegion must be provided for secondary region deployment");
         }
@@ -195,7 +195,7 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
         if (!props.mainRegion) {
             throw new Error("MainRegion must be provided for secondary region deployment");
         }
-        console.log("Secondary Region Deployment. Getting RDS information from SSM");
+        // Secondary Region Deployment. Getting RDS information from SSM
         const ssmrdsSecretName = new SSMParameterReader(props.scope, 'rdsSecretName', {
             parameterName: "/petstore/rdssecretname",
             region: props.mainRegion
@@ -224,7 +224,7 @@ export interface CreateVPCWithTransitGatewayProps {
     createTransitGateway?: boolean;
 }
 
-interface VPCTransitGatewayResult {
+export interface VPCTransitGatewayResult {
     vpc: ec2.Vpc;
     transitGateway?: ec2.CfnTransitGateway;
     transitGatewayAttachment?: ec2.CfnTransitGatewayAttachment;
@@ -325,9 +325,65 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         });
         publicRoute.addDependency(transitGatewayAttachment)
     });
-
-
-
-
     return { vpc, transitGateway, transitGatewayAttachment, transitGatewayRouteTable };
+}
+
+export interface CreateTGWRoutesProps {
+    scope: Construct;
+    secondaryRegion: string;
+    mainRegion: string;
+    isPrimaryRegionDeployment: boolean;
+}
+
+export function createTGWRoutes(props: CreateTGWRoutesProps): void {
+
+    const ssmTGWId = new SSMParameterReader(props.scope, 'ssmTGWId', {
+        parameterName: "/petstore/tgwid",
+        region: props.mainRegion
+    });
+    const mainTGWId = ssmTGWId.getParameterValue();
+    const ssmTGWAttachmentId = new SSMParameterReader(props.scope, 'ssmTGWAttachmentId', {
+        parameterName: "/petstore/tgwattachmentid",
+        region: props.mainRegion
+    });
+    const tgwAttachmentId = ssmTGWAttachmentId.getParameterValue();
+    const ssmVPCCIDRMain = new SSMParameterReader(props.scope, 'ssmVPCCIDRMain', {
+        parameterName: "/petstore/vpccidr",
+        region: props.mainRegion
+    });
+    const vpcCIDRMain = ssmVPCCIDRMain.getParameterValue();
+
+    const ssmtransitGatewayRouteTableMain = new SSMParameterReader(props.scope, 'ssmtransitGatewayRouteTableMain', {
+        parameterName: "/petstore/tgwroutetableid",
+        region: props.mainRegion
+    });
+    const transitGatewayRouteTableIDMain = ssmtransitGatewayRouteTableMain.getParameterValue();
+
+    const ssmVPCCIDRSecond = new SSMParameterReader(props.scope, 'ssmVPCCIDRSecond', {
+        parameterName: "/petstore/vpccidr",
+        region: props.secondaryRegion
+    });
+    const vpcCIDRSecond = ssmVPCCIDRSecond.getParameterValue();
+
+    const ssmtransitGatewayRouteTableSecond = new SSMParameterReader(props.scope, 'ssmtransitGatewayRouteTableSecond', {
+        parameterName: "/petstore/tgwroutetableid",
+        region: props.secondaryRegion
+    });
+    const transitGatewayRouteTableIDSecond = ssmtransitGatewayRouteTableSecond.getParameterValue();
+
+    if (props.isPrimaryRegionDeployment) {
+        new ec2.CfnTransitGatewayRoute(props.scope, 'TransitGatewayRouteMain', {
+            destinationCidrBlock: vpcCIDRSecond,
+            transitGatewayRouteTableId: transitGatewayRouteTableIDMain,
+            blackhole: false,
+            transitGatewayAttachmentId: tgwAttachmentId,
+        });
+    } else {
+        new ec2.CfnTransitGatewayRoute(props.scope, 'TransitGatewayRouteMain', {
+            destinationCidrBlock: vpcCIDRMain,
+            transitGatewayRouteTableId: transitGatewayRouteTableIDSecond,
+            blackhole: false,
+            transitGatewayAttachmentId: tgwAttachmentId,
+        });
+    }
 }

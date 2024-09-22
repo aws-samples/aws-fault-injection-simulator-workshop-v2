@@ -12,6 +12,7 @@ import { REGION } from '../lib/common/services-shared-properties';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ServicesSecondary } from '../lib/servicesecondary';
 import { RegionNetworkConnect } from '../lib/network_connect';
+import { RegionNetworkRoutes } from '../lib/network_routes';
 
 
 
@@ -48,13 +49,31 @@ SecondaryRegion: SECONDARY_REGION,
 DeploymentType: 'secondary',
 });
 
-const network_connector = new RegionNetworkConnect(app, "NetworkPeeringMainRegion", {
+const stack_network = new RegionNetworkConnect(app, "NetworkRegionPeering", {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: MAIN_REGION as string},
     MainRegion: MAIN_REGION,
     SecondaryRegion: SECONDARY_REGION,
     DeploymentType: 'primary',
+});
+
+const stack_tgw_routes = new RegionNetworkRoutes(app, "NetworkRoutesMain", {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: MAIN_REGION as string},
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'primary',
+});
+
+const stack_tgw_routes_secondary = new RegionNetworkRoutes(app, "NetworkRoutesSecondary", {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: SECONDARY_REGION as string},
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'secondary',
 });
 
 const applications = new Applications(app, "Applications", {
