@@ -11,7 +11,8 @@ phases:
       - git clone --single-branch --branch CrossRegionConnectivity https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/cloud9   
       - npm install
-      - if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
+      - ../../scripts/cdkbootstrap.sh
+      #- if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
       - npm run build
       - cdk deploy Cloud9Stack --context is_event_engine="true" --require-approval never
       - cd ../../PetAdoptions/cdk/pet_stack/
