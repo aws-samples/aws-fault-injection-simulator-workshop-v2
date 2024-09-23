@@ -7,6 +7,7 @@ import * as sqs from 'aws-cdk-lib/aws-sqs'
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3seeder from 'aws-cdk-lib/aws-s3-deployment'
+import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -25,20 +26,28 @@ import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import 'ts-replace-all'
-import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch';
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { ServiceSecondaryStackProps } from './common/services-shared-properties';
-import { SSMParameterReader } from './common/ssm-parameter-reader';
+import { REGION, ServiceStackProps } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway } from './common/services-shared';
+import { SSMParameterReader } from './common/ssm-parameter-reader';
+
+
+
+
+
+
+
+
 
 export class ServicesSecondary extends Stack {
     constructor(scope: Construct, id: string, props: ServiceSecondaryStackProps) {
         super(scope, id, props);
+
         const stack = Stack.of(this);
         const region = stack.region;
-
+        const stackName = id;
 
         let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
@@ -54,8 +63,6 @@ export class ServicesSecondary extends Stack {
         if (this.node.tryGetContext('is_event_engine') != undefined) {
             isEventEngine = this.node.tryGetContext('is_event_engine');
         }
-        const stackName = id;
-
         // Create SQS resource to send Pet adoption messages to
         const sqsQueue = new sqs.Queue(this, 'sqs_petadoption', {
             visibilityTimeout: Duration.seconds(300)
@@ -70,7 +77,6 @@ export class ServicesSecondary extends Stack {
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
 
         // Create VPC
-
         const VPCwitTGW = createVPCWithTransitGateway({
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
@@ -86,32 +92,33 @@ export class ServicesSecondary extends Stack {
         const theVPC = VPCwitTGW.vpc
         const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
 
+        if (isPrimaryRegionDeployment) { } else {
+            const ssmTGWId = new SSMParameterReader(this, 'ssmTGWId', {
+                parameterName: "/petstore/tgwid",
+                region: props.MainRegion
+            });
+            const mainTGWId = ssmTGWId.getParameterValue();
 
-        const ssmTGWId = new SSMParameterReader(this, 'ssmTGWId', {
-            parameterName: "/petstore/tgwid",
-            region: props.MainRegion
-        });
-        const mainTGWId = ssmTGWId.getParameterValue();
-
-        const ssmVPCCIDR = new SSMParameterReader(this, 'ssmVPCCIDR', {
-            parameterName: "/petstore/vpccidr",
-            region: props.MainRegion
-        });
-        const mainVPCCIDR = ssmVPCCIDR.getParameterValue();
-
-        // Crete TGW Peering
-        const TransitGatewayPeeringAttachment = new ec2.CfnTransitGatewayPeeringAttachment(this, 'MyCfnTransitGatewayPeeringAttachment', {
-            peerAccountId: `${props.env?.account}`,
-            peerRegion: props.MainRegion as string,
-            peerTransitGatewayId: mainTGWId,
-            transitGatewayId: `${VPCwitTGW.transitGateway?.attrId}`,
-        });
+            // Create TGW Peering
+            const TransitGatewayPeeringAttachment = new ec2.CfnTransitGatewayPeeringAttachment(this, 'MyCfnTransitGatewayPeeringAttachment', {
+                peerAccountId: `${props.env?.account}`,
+                peerRegion: props.MainRegion as string,
+                peerTransitGatewayId: mainTGWId,
+                transitGatewayId: `${VPCwitTGW.transitGateway?.attrId}`,
+            });
+        }
 
         // Creates an S3 bucket to store pet images
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
             publicReadAccess: false,
             autoDeleteObjects: true,
             removalPolicy: RemovalPolicy.DESTROY,
+        });
+
+        // Seeds the S3 bucket with pet images
+        new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
+            destinationBucket: s3_observabilitypetadoptions,
+            sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
 
         // Creates the DynamoDB table for Petadoption data
@@ -122,8 +129,8 @@ export class ServicesSecondary extends Stack {
             secondaryRegion: props.SecondaryRegion,
             mainRegion: props.MainRegion
         });
-
-        // RDS secret
+        
+        // RDS
         const rdsResult = createOrGetRDSCluster({
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
@@ -136,14 +143,6 @@ export class ServicesSecondary extends Stack {
         const rdsSecret = rdsResult.secret;
         const rdsEndpoint = rdsResult.endpoint;
 
-
-
-        // Seeds the S3 bucket with pet images
-        new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
-            destinationBucket: s3_observabilitypetadoptions,
-            sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
-        });
-
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: [
@@ -154,7 +153,6 @@ export class ServicesSecondary extends Stack {
             ],
             resources: ['*']
         });
-
 
         const ddbSeedPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -168,8 +166,6 @@ export class ServicesSecondary extends Stack {
         });
 
         const repositoryURI = "public.ecr.aws/one-observability-workshop";
-
-
 
         const ecsServicesSecurityGroup = new ec2.SecurityGroup(this, 'ECSServicesSG', {
             vpc: theVPC
@@ -265,8 +261,6 @@ export class ServicesSecondary extends Stack {
         });
 
         ecsEc2PetSearchRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
-
-
 
         const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
             machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
@@ -402,13 +396,13 @@ export class ServicesSecondary extends Stack {
             defaultCapacity: 0,
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
-            version: KubernetesVersion.of('1.29'),
+            version: KubernetesVersion.of('1.30'),
             kubectlLayer: new KubectlLayer(this, 'kubectl')
         });
 
         const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
             cpuArch: eks.CpuArch.X86_64,
-            kubernetesVersion: '1.29',
+            kubernetesVersion: '1.30',
             nodeType: eks.NodeType.STANDARD,
         });
 
@@ -424,7 +418,6 @@ export class ServicesSecondary extends Stack {
 
         // Adding ClusterNodeGroupRole
         // Add SSM Permissions to the node role and EKS Node required permissions
-
         let eksPNodeGroupRoleName
         if (isPrimaryRegionDeployment) {
             eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole'
@@ -444,7 +437,6 @@ export class ServicesSecondary extends Stack {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
-
         // Loading evidently policy
         const policyName = 'evidently'; // Adjust the policy name as needed
         const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
@@ -599,11 +591,10 @@ export class ServicesSecondary extends Stack {
             const teamRole = iam.Role.fromRoleArn(this, 'TeamRole', "arn:aws:iam::" + stack.account + ":role/WSParticipantRole");
             cluster.awsAuth.addRoleMapping(teamRole, { groups: ["dashboard-view"] });
 
-
             const ssmC9role = new SSMParameterReader(this, 'ssmC9role', {
                 parameterName: "/cloud9/c9iamrolearn",
                 region: props.MainRegion
-            });     
+            });
             const c9role = ssmC9role.getParameterValue();
 
             if (c9role != undefined) {
@@ -823,8 +814,6 @@ export class ServicesSecondary extends Stack {
         })));
 
 
-
-
         const petAdoptionsStepFn = new PetAdoptionsStepFn(this, 'StepFn', {
             env: {
                 account: props.env?.account,
@@ -850,6 +839,7 @@ export class ServicesSecondary extends Stack {
             '/petstore/cleanupadoptionsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/cleanupadoptions`,
             '/petstore/petsearch-collector-manual-config': readFileSync("./resources/collector/ecs-xray-manual.yaml", "utf8"),
             '/petstore/rdssecretarn': `${rdsSecret.secretArn}`,
+            '/petstore/rdssecretname': `${rdsSecret.secretName}`,
             '/petstore/rdsendpoint': rdsEndpoint,
             '/petstore/stackname': stackName,
             '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
@@ -869,7 +859,7 @@ export class ServicesSecondary extends Stack {
             'QueueURL': sqsQueue.queueUrl,
             'UpdateAdoptionStatusurl': statusUpdaterService.api.url,
             'SNSTopicARN': topic_petadoption.topicArn,
-            // 'RDSServerName': auroraClusterPrimary.clusterEndpoint.hostname
+            'RDSServerName': rdsEndpoint
         })));
     }
 

@@ -17,14 +17,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 ////import * as cloud9 from 'aws-cdk-lib/aws-cloud9';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as ecrassets from 'aws-cdk-lib/aws-ecr-assets';
-import * as cdk from "aws-cdk-lib";
-
 import { Construct } from 'constructs'
-import { PayForAdoptionService } from './services/pay-for-adoption-service'
-import { ListAdoptionsService } from './services/list-adoptions-service'
-import { SearchService } from './services/search-service'
 import { SearchEc2Service } from './services/search-service-ec2'
 import { TrafficGeneratorService } from './services/traffic-generator-service'
 import { StatusUpdaterService } from './services/status-updater-service'
@@ -33,23 +26,20 @@ import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import 'ts-replace-all'
-import { TreatMissingData, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch';
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { REGION,ServiceStackProps } from './common/services-shared-properties';
+import { REGION, ServiceStackProps } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 
 export class Services extends Stack {
-public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
     constructor(scope: Construct, id: string, props: ServiceStackProps) {
         super(scope, id, props);
 
         const stack = Stack.of(this);
         const region = stack.region;
-
-
+        const stackName = id;
 
         let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
@@ -61,14 +51,10 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             isPrimaryRegionDeployment = false
             console.log("isPrimaryRegionDeployment set as [", isPrimaryRegionDeployment, "]")
         }
-
         var isEventEngine = 'false';
         if (this.node.tryGetContext('is_event_engine') != undefined) {
             isEventEngine = this.node.tryGetContext('is_event_engine');
         }
-
-        const stackName = id;
-
         // Create SQS resource to send Pet adoption messages to
         const sqsQueue = new sqs.Queue(this, 'sqs_petadoption', {
             visibilityTimeout: Duration.seconds(300)
@@ -82,11 +68,49 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         }
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
 
+        // Create VPC
+        const VPCwitTGW = createVPCWithTransitGateway({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            contextId: 'Microservices',
+            // Optionally, you can override the default CIDR ranges:
+            // defaultPrimaryCIDR: "10.0.0.0/16",
+            // defaultSecondaryCIDR: "10.3.0.0/16",
+            // And optionally override natGateways and maxAzs:
+            // natGateways: 2,
+            // maxAzs: 3,
+        });
+
+        const theVPC = VPCwitTGW.vpc
+        const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
+
+        if (isPrimaryRegionDeployment) { } else {
+            const ssmTGWId = new SSMParameterReader(this, 'ssmTGWId', {
+                parameterName: "/petstore/tgwid",
+                region: props.MainRegion
+            });
+            const mainTGWId = ssmTGWId.getParameterValue();
+
+            // Create TGW Peering
+            const TransitGatewayPeeringAttachment = new ec2.CfnTransitGatewayPeeringAttachment(this, 'MyCfnTransitGatewayPeeringAttachment', {
+                peerAccountId: `${props.env?.account}`,
+                peerRegion: props.MainRegion as string,
+                peerTransitGatewayId: mainTGWId,
+                transitGatewayId: `${VPCwitTGW.transitGateway?.attrId}`,
+            });
+        }
+
         // Creates an S3 bucket to store pet images
         const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
             publicReadAccess: false,
             autoDeleteObjects: true,
             removalPolicy: RemovalPolicy.DESTROY,
+        });
+
+        // Seeds the S3 bucket with pet images
+        new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
+            destinationBucket: s3_observabilitypetadoptions,
+            sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
 
         // Creates the DynamoDB table for Petadoption data
@@ -96,63 +120,20 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             secondaryRegion: props.SecondaryRegion,
             mainRegion: props.MainRegion
-          });
-     
-        // Seeds the S3 bucket with pet images
-        new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
-            destinationBucket: s3_observabilitypetadoptions,
-            sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
-        
-        // Create VPC
-        const VPCwitTGW = createVPCWithTransitGateway({
-          scope: this,
-          isPrimaryRegionDeployment: isPrimaryRegionDeployment,
-          contextId: 'Microservices',
-          // Optionally, you can override the default CIDR ranges:
-          // defaultPrimaryCIDR: "10.0.0.0/16",
-          // defaultSecondaryCIDR: "10.3.0.0/16",
-          // And optionally override natGateways and maxAzs:
-          // natGateways: 2,
-          // maxAzs: 3,
-        });
-        
-        const theVPC = VPCwitTGW.vpc
-        const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
 
-        // if (isPrimaryRegionDeployment) {
-        // var cidrRange = this.node.tryGetContext('vpc_cidr_primary');
-        // if (cidrRange == undefined) {
-        //     cidrRange = "10.1.0.0/16";
-        // }
-        // }else {cidrRange = this.node.tryGetContext('vpc_cidr_secondary');
-        // if (cidrRange == undefined) {
-        //     cidrRange = "10.2.0.0/16";
-        // }
-        
-
-        // // The VPC where all the microservices will be deployed into
-        // const theVPC = new ec2.Vpc(this, 'Microservices', {
-        //     ipAddresses: ec2.IpAddresses.cidr(cidrRange),
-        //     // cidr: cidrRange,
-        //     natGateways: 1,
-        //     maxAzs: 2,
-
-        // });
-
+        // RDS
         const rdsResult = createOrGetRDSCluster({
-          scope: this,
-          isPrimaryRegionDeployment: isPrimaryRegionDeployment,
-          vpc: theVPC,
-          secondaryRegion: props.SecondaryRegion,
-          mainRegion: props.MainRegion,
-          rdsUsername: this.node.tryGetContext('rdsusername')
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            vpc: theVPC,
+            secondaryRegion: props.SecondaryRegion,
+            mainRegion: props.MainRegion,
+            rdsUsername: this.node.tryGetContext('rdsusername')
         });
-        
+
         const rdsSecret = rdsResult.secret;
-        const rdsEndpoint = rdsResult.endpoint; 
-
-
+        const rdsEndpoint = rdsResult.endpoint;
 
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -164,7 +145,6 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             ],
             resources: ['*']
         });
-
 
         const ddbSeedPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -206,19 +186,18 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             securityGroup: ecsServicesSecurityGroup,
             // Uncomment the following line if you want to include repositoryURI
             // repositoryURI: repositoryURI,
-          });
-        
+        });
+
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
         payForAdoptionService.taskDefinition.taskRole?.addToPrincipalPolicy(ddbSeedPolicy);
 
-        
 
         const ecsPetListAdoptionCluster = new ecs.Cluster(this, "PetListAdoptions", {
             vpc: theVPC,
             containerInsights: true
         });
         // PetListAdoptions service definitions-----------------------------------------------------------------------
-        const listAdoptionsService =  createListAdoptionsService( {
+        const listAdoptionsService = createListAdoptionsService({
             scope: this,
             id: 'list-adoptions-service',
             cluster: ecsPetListAdoptionCluster,
@@ -233,7 +212,6 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             region: region,
             securityGroup: ecsServicesSecurityGroup
         });
-
 
         listAdoptionsService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
@@ -275,8 +253,6 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         });
 
         ecsEc2PetSearchRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
-
-
 
         const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
             machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
@@ -335,8 +311,6 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             region: region,
             tableName: dynamoDBTableName
         });
-
-
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,
             securityGroupName: 'ALBSecurityGroup',
@@ -436,8 +410,17 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
 
         // Adding ClusterNodeGroupRole
         // Add SSM Permissions to the node role and EKS Node required permissions
-        const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, 'eksPetsiteASGClusterNodeGroupRole', {
-            roleName: 'eksPetsiteASGClusterNodeGroupRole',
+        let eksPNodeGroupRoleName
+        if (isPrimaryRegionDeployment) {
+            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole'
+        } else {
+            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole' + props.DeploymentType
+        }
+
+
+
+        const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, eksPNodeGroupRoleName, {
+            roleName: eksPNodeGroupRoleName,
             assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
             managedPolicies: [
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -446,17 +429,16 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
-
         // Loading evidently policy
         const policyName = 'evidently'; // Adjust the policy name as needed
         const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
-    
+
         // Attach inline IAM policy to the role
         eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {
             policyName: policyName,
             document: policyDocument
         }));
-        
+
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
@@ -604,7 +586,7 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             const ssmC9role = new SSMParameterReader(this, 'ssmC9role', {
                 parameterName: "/cloud9/c9iamrolearn",
                 region: props.MainRegion
-            });     
+            });
             const c9role = ssmC9role.getParameterValue();
 
             if (c9role != undefined) {
@@ -728,9 +710,18 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json", "utf-8");
         dashboardBody = dashboardBody.replaceAll("{{YOUR_CLUSTER_NAME}}", "PetSite");
         dashboardBody = dashboardBody.replaceAll("{{YOUR_AWS_REGION}}", region);
+        
+        
+        let fluentBitDashboardName
 
-        const fluentBitDashboard = new cloudwatch.CfnDashboard(this, "FluentBitDashboard", {
-            dashboardName: "EKS_FluentBit_Dashboard",
+        if (isPrimaryRegionDeployment) {
+            fluentBitDashboardName = 'EKS_FluentBit_Dashboard'
+        } else {
+            fluentBitDashboardName = 'EKS_FluentBit_Dashboard' + props.DeploymentType
+        }
+
+        const fluentBitDashboard = new cloudwatch.CfnDashboard(this, fluentBitDashboardName, {
+            dashboardName: fluentBitDashboardName,
             dashboardBody: dashboardBody
         });
 
@@ -791,8 +782,16 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         var costControlDashboardBody = readFileSync("./resources/cw_dashboard_cost_control.json", "utf-8");
         costControlDashboardBody = costControlDashboardBody.replaceAll("{{YOUR_LAMBDA_ARN}}", customWidgetFunction.functionArn);
 
-        const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, "PetSiteCostControlDashboard", {
-            dashboardName: "PetSite_Cost_Control_Dashboard",
+        let petSiteCostControlDashboardName
+
+        if (isPrimaryRegionDeployment) {
+            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard'
+        } else {
+            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard' + props.DeploymentType
+        }
+
+        const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, petSiteCostControlDashboardName, {
+            dashboardName: petSiteCostControlDashboardName,
             dashboardBody: costControlDashboardBody
         });
 
@@ -831,8 +830,8 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
             '/petstore/payforadoptionmetricsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/metrics`,
             '/petstore/cleanupadoptionsurl': `http://${payForAdoptionService.service.loadBalancer.loadBalancerDnsName}/api/home/cleanupadoptions`,
             '/petstore/petsearch-collector-manual-config': readFileSync("./resources/collector/ecs-xray-manual.yaml", "utf8"),
-            '/petstore/rdssecretarn': rdsSecret.secretArn,
-            '/petstore/rdssecretname': rdsSecret.secretName,
+            '/petstore/rdssecretarn': `${rdsSecret.secretArn}`,
+            '/petstore/rdssecretname': `${rdsSecret.secretName}`,
             '/petstore/rdsendpoint': rdsEndpoint,
             '/petstore/stackname': stackName,
             '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
@@ -869,6 +868,3 @@ public readonly rdsSecret: cdk.aws_secretsmanager.ISecret;
         });
     }
 }
-
-
-

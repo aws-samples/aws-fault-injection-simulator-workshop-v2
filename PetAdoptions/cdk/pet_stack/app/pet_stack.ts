@@ -10,7 +10,6 @@ import { Observability } from '../lib/observability'
 import { LoadTesting } from '../lib/load_testing';
 import { REGION } from '../lib/common/services-shared-properties';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { ServicesSecondary } from '../lib/servicesecondary';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
 
@@ -38,7 +37,7 @@ SecondaryRegion: SECONDARY_REGION,
 DeploymentType: 'primary'
 });
 
-const stack_secondary = new ServicesSecondary(app, "ServicesSecondary", { 
+const stack_secondary = new Services(app, "ServicesSecondary", { 
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: SECONDARY_REGION as string
