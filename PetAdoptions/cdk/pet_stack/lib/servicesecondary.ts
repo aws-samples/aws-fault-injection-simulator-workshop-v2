@@ -599,7 +599,12 @@ export class ServicesSecondary extends Stack {
             const teamRole = iam.Role.fromRoleArn(this, 'TeamRole', "arn:aws:iam::" + stack.account + ":role/WSParticipantRole");
             cluster.awsAuth.addRoleMapping(teamRole, { groups: ["dashboard-view"] });
 
-            const c9role = ssm.StringParameter.valueForStringParameter(this, '/cloud9/c9iamrolearn');
+
+            const ssmC9role = new SSMParameterReader(this, 'ssmC9role', {
+                parameterName: "/cloud9/c9iamrolearn",
+                region: props.MainRegion
+            });     
+            const c9role = ssmC9role.getParameterValue();
 
             if (c9role != undefined) {
                 cluster.awsAuth.addMastersRole(iam.Role.fromRoleArn(this, 'c9role', c9role, { mutable: false }));
