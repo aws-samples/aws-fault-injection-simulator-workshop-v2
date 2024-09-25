@@ -152,6 +152,8 @@ export interface CreateOrGetRDSClusterProps {
     scope: Construct;
     isPrimaryRegionDeployment: boolean;
     vpc: ec2.IVpc;
+    defaultPrimaryCIDR: string;
+    defaultSecondaryCIDR: string;
     secondaryRegion?: string;
     mainRegion?: string;
     rdsUsername?: string;
@@ -167,6 +169,10 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
         const rdssecuritygroup = new ec2.SecurityGroup(props.scope, 'petadoptionsrdsSG', {
             vpc: props.vpc
         });
+        
+        rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultPrimaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
+        rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultSecondaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
+        
         const rdsUsername = props.rdsUsername || "petadmin";
         const auroraCluster = new rds.DatabaseCluster(props.scope, 'Database', {
             credentials: {
@@ -217,8 +223,8 @@ export interface CreateVPCWithTransitGatewayProps {
     scope: Construct;
     isPrimaryRegionDeployment: boolean;
     contextId: string;
-    defaultPrimaryCIDR?: string;
-    defaultSecondaryCIDR?: string;
+    defaultPrimaryCIDR: string;
+    defaultSecondaryCIDR: string;
     natGateways?: number;
     maxAzs?: number;
     createTransitGateway?: boolean;
@@ -236,8 +242,8 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         scope,
         isPrimaryRegionDeployment,
         contextId,
-        defaultPrimaryCIDR = "10.1.0.0/16",
-        defaultSecondaryCIDR = "10.2.0.0/16",
+        defaultPrimaryCIDR,
+        defaultSecondaryCIDR,
         natGateways = 1,
         maxAzs = 2,
         createTransitGateway = true
@@ -247,10 +253,10 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
     let asnTGW: number;
 
     if (isPrimaryRegionDeployment) {
-        cidrRange = scope.node.tryGetContext('vpc_cidr_primary') || defaultPrimaryCIDR;
+        cidrRange = defaultPrimaryCIDR;
         asnTGW = 64512;
     } else {
-        cidrRange = scope.node.tryGetContext('vpc_cidr_secondary') || defaultSecondaryCIDR;
+        cidrRange = defaultSecondaryCIDR;
         asnTGW = 64612;
     }
 

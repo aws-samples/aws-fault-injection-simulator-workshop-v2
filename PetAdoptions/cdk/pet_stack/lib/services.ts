@@ -40,16 +40,17 @@ export class Services extends Stack {
         const stack = Stack.of(this);
         const region = stack.region;
         const stackName = id;
+        const defaultPrimaryCIDR = this.node.tryGetContext('vpc_cidr_primary') || "10.1.0.0/16";
+        const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
+
 
         let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
-            console.log("DeploymentType provided as [", props.DeploymentType, "]")
+            // DeploymentType is Primary Region Deployment
             isPrimaryRegionDeployment = true
-            console.log("isPrimaryRegionDeployment set as [", isPrimaryRegionDeployment, "]")
         } else {
-            console.log("DeploymentType provided as [", props.DeploymentType, "]")
+            // DeploymentType is Secondary Region Deployment
             isPrimaryRegionDeployment = false
-            console.log("isPrimaryRegionDeployment set as [", isPrimaryRegionDeployment, "]")
         }
         var isEventEngine = 'false';
         if (this.node.tryGetContext('is_event_engine') != undefined) {
@@ -73,9 +74,8 @@ export class Services extends Stack {
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             contextId: 'Microservices',
-            // Optionally, you can override the default CIDR ranges:
-            // defaultPrimaryCIDR: "10.0.0.0/16",
-            // defaultSecondaryCIDR: "10.3.0.0/16",
+            defaultPrimaryCIDR: defaultPrimaryCIDR,
+            defaultSecondaryCIDR: defaultSecondaryCIDR,
             // And optionally override natGateways and maxAzs:
             // natGateways: 2,
             // maxAzs: 3,
