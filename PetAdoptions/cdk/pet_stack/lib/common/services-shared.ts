@@ -169,10 +169,10 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
         const rdssecuritygroup = new ec2.SecurityGroup(props.scope, 'petadoptionsrdsSG', {
             vpc: props.vpc
         });
-        
+
         rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultPrimaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
         rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultSecondaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
-        
+
         const rdsUsername = props.rdsUsername || "petadmin";
         const auroraCluster = new rds.DatabaseCluster(props.scope, 'Database', {
             credentials: {
@@ -384,12 +384,22 @@ export function createTGWRoutes(props: CreateTGWRoutesProps): void {
             blackhole: false,
             transitGatewayAttachmentId: tgwAttachmentId,
         });
+        // Associate Transit Gateway Route Table with the Attachment
+        const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(scope, `${contextId}TransitGatewayRouteTableAssociationVPC`, {
+            transitGatewayAttachmentId: tgwAttachmentId,
+            transitGatewayRouteTableId: transitGatewayRouteTableIDMain,
+        });
     } else {
         new ec2.CfnTransitGatewayRoute(props.scope, 'TransitGatewayRouteMain', {
             destinationCidrBlock: vpcCIDRMain,
             transitGatewayRouteTableId: transitGatewayRouteTableIDSecond,
             blackhole: false,
             transitGatewayAttachmentId: tgwAttachmentId,
+        });
+        // Associate Transit Gateway Route Table with the Attachment
+        const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(scope, `${contextId}TransitGatewayRouteTableAssociationVPC`, {
+            transitGatewayAttachmentId: tgwAttachmentId,
+            transitGatewayRouteTableId: transitGatewayRouteTableIDSecond,
         });
     }
 }
