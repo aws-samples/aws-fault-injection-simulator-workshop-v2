@@ -385,7 +385,7 @@ export function createTGWRoutes(props: CreateTGWRoutesProps): void {
             transitGatewayAttachmentId: tgwAttachmentId,
         });
         // Associate Transit Gateway Route Table with the Attachment
-        const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(props.scope, "TransitGatewayRouteTableAssociationPeering", {
+        const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(props.scope, "TransitGatewayRouteTableAttachmentAssociationPeering", {
             transitGatewayAttachmentId: tgwAttachmentId,
             transitGatewayRouteTableId: transitGatewayRouteTableIDMain,
         });
@@ -397,7 +397,7 @@ export function createTGWRoutes(props: CreateTGWRoutesProps): void {
             transitGatewayAttachmentId: tgwAttachmentId,
         });
         // Associate Transit Gateway Route Table with the Attachment
-        const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(props.scope, "TransitGatewayRouteTableAssociationPeering", {
+        const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(props.scope, "TransitGatewayRouteTableAttachmentAssociationPeering", {
             transitGatewayAttachmentId: tgwAttachmentId,
             transitGatewayRouteTableId: transitGatewayRouteTableIDSecond,
         });
