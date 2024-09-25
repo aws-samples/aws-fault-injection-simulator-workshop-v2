@@ -129,6 +129,8 @@ export class Services extends Stack {
             vpc: theVPC,
             secondaryRegion: props.SecondaryRegion,
             mainRegion: props.MainRegion,
+            defaultPrimaryCIDR: defaultPrimaryCIDR,
+            defaultSecondaryCIDR: defaultSecondaryCIDR,
             rdsUsername: this.node.tryGetContext('rdsusername')
         });
 
