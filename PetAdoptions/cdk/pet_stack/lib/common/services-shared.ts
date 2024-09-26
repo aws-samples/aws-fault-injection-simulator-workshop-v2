@@ -105,12 +105,15 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
             },
             removalPolicy: cdk.RemovalPolicy.DESTROY,
             billing: ddb.Billing.onDemand(),
-            tags: [{ key: 'DisruptDynamoDb', value: 'Allowed'}]
+            tags: [{ key: 'DisruptDynamoDb', value: 'Allowed' }]
         };
 
         if (props.secondaryRegion) {
             // SecondaryRegion provided. Creating Global DynamoDB Table
-            tableProps.replicas = [{ region: props.secondaryRegion }];
+            tableProps.replicas = [{
+                region: props.secondaryRegion,
+                tags: [{ key: 'DisruptDynamoDb', value: 'Allowed' }]
+            }];
         } else {
             // SecondaryRegion is not provided. Creating single region DynamoDB Table
         }
