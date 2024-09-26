@@ -3,9 +3,8 @@ import { Construct } from 'constructs'
 import { RegionNetworkConnectProps } from './common/services-shared-properties';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 import { Stack } from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { createTGWRoutes } from './common/services-shared';
+
 
 export class RegionNetworkConnect extends Stack {
     constructor(scope: Construct, id: string, props: RegionNetworkConnectProps) {

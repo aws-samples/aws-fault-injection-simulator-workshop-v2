@@ -105,6 +105,7 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
             },
             removalPolicy: cdk.RemovalPolicy.DESTROY,
             billing: ddb.Billing.onDemand(),
+            tags: [{ key: 'DisruptDynamoDb', value: 'Allowed'}]
         };
 
         if (props.secondaryRegion) {
@@ -115,8 +116,8 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
         }
 
         const dynamodb_petadoption = new ddb.TableV2(props.scope, 'ddb_petadoption', tableProps);
-
-        Tags.of(dynamodb_petadoption).add("DisruptDynamoDb", "Allowed");
+        // Add the tag to the DynamoDB table
+        // Tags.of(dynamodb_petadoption).add("DisruptDynamoDb", "Allowed");
 
         // Create Write Throttle Events Alarm
         dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(props.scope, 'WriteThrottleEvents-BasicAlarm', {
@@ -169,8 +170,10 @@ export function createOrGetAIMRoleS3Grant(props: createS3BucketProps): s3BucketA
         publicReadAccess: false,
         autoDeleteObjects: true,
         removalPolicy: RemovalPolicy.DESTROY,
-        versioned: true, // Enable versioning
+        versioned: true, // Enable versioning,
     });
+    Tags.of(s3_observabilitypetadoptions).add("DisruptS3", "Allowed");
+
     let replicationRole: iam.IRole;
     if (props.isPrimaryRegionDeployment) {
         // IAM role for replication
@@ -319,9 +322,9 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
     //     cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
     // });
 
-    // vpc.privateSubnets.forEach(subnet => {
-    //     cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
-    // });
+    vpc.privateSubnets.forEach(subnet => {
+        cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
+    });
 
     if (!createTransitGateway) {
         return { vpc };
