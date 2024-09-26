@@ -10,6 +10,7 @@ import { PayForAdoptionService } from '../services/pay-for-adoption-service'
 import { SSMParameterReader } from './ssm-parameter-reader';
 import { ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb'
+import { Tags } from 'aws-cdk-lib';
 
 //Create ListAdoptionsService
 export interface CreateListAdoptionsServiceProps {
@@ -112,6 +113,8 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
         }
 
         const dynamodb_petadoption = new ddb.TableV2(props.scope, 'ddb_petadoption', tableProps);
+ 
+        Tags.of(dynamodb_petadoption).add("DisruptDynamoDb", "Allowed");
 
         // Create Write Throttle Events Alarm
         dynamodb_petadoption.metric('WriteThrottleEvents', { statistic: "avg" }).createAlarm(props.scope, 'WriteThrottleEvents-BasicAlarm', {
@@ -264,7 +267,8 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         ipAddresses: ec2.IpAddresses.cidr(cidrRange),
         natGateways: natGateways,
         maxAzs: maxAzs,
-    });
+    }); 
+    Tags.of(vpc).add("DisruptSubnet", "Allowed");
 
     if (!createTransitGateway) {
         return { vpc };
@@ -286,9 +290,6 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         transitGatewayId: transitGateway.ref,
     });
     transitGatewayRouteTable.addDependency(transitGateway);
-    // transitGateway.addPropertyOverride('associationDefaultRouteTableId', TransitGatewayRouteTable.ref)
-    // transitGateway.addPropertyOverride('propagationDefaultRouteTableId', TransitGatewayRouteTable.ref)
-
 
     // Attach VPC to Transit Gateway
     const transitGatewayAttachment = new ec2.CfnTransitGatewayAttachment(scope, `${contextId}TransitGatewayAttachment`, {
@@ -297,7 +298,7 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
         tags: [{ key: 'Name', value: `${contextId}TransitGatewayAttachment` }]
     });
-    transitGatewayAttachment.addDependency(transitGateway);
+    transitGatewayAttachment.addDependency(transitGateway);  
 
     // Associate Transit Gateway Route Table with the Attachment
     const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(scope, `${contextId}TransitGatewayRouteTableAssociationVPC`, {
@@ -331,6 +332,13 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         });
         publicRoute.addDependency(transitGatewayAttachment)
     });
+
+// Tagging Resources for the FIS
+    
+    Tags.of(transitGateway).add("DisruptTransitGateway", "Allowed");
+    Tags.of(transitGatewayRouteTable).add("DisruptTransitGateway", "Allowed");
+    Tags.of(transitGatewayAttachment).add("DisruptTransitGateway", "Allowed");
+
     return { vpc, transitGateway, transitGatewayAttachment, transitGatewayRouteTable };
 }
 
