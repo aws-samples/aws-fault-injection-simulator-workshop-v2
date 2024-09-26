@@ -30,7 +30,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { REGION, ServiceStackProps } from './common/services-shared-properties';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAIMRoleS3Grant } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 
 export class Services extends Stack {
@@ -101,15 +101,16 @@ export class Services extends Stack {
         }
 
         // Creates an S3 bucket to store pet images
-        const s3_observabilitypetadoptions = new s3.Bucket(this, 's3bucket_petadoption', {
-            publicReadAccess: false,
-            autoDeleteObjects: true,
-            removalPolicy: RemovalPolicy.DESTROY,
+        const s3_observabilitypetadoptions = createOrGetAIMRoleS3Grant({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            mainRegion: props.MainRegion,
+            secondaryRegion: props.SecondaryRegion,
         });
 
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
-            destinationBucket: s3_observabilitypetadoptions,
+            destinationBucket: s3_observabilitypetadoptions.s3Bucket,
             sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
 
@@ -127,8 +128,8 @@ export class Services extends Stack {
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             vpc: theVPC,
-            secondaryRegion: props.SecondaryRegion,
             mainRegion: props.MainRegion,
+            secondaryRegion: props.SecondaryRegion,
             defaultPrimaryCIDR: defaultPrimaryCIDR,
             defaultSecondaryCIDR: defaultSecondaryCIDR,
             rdsUsername: this.node.tryGetContext('rdsusername')
@@ -823,7 +824,8 @@ export class Services extends Stack {
             '/petstore/queueurl': sqsQueue.queueUrl,
             '/petstore/snsarn': topic_petadoption.topicArn,
             '/petstore/dynamodbtablename': dynamoDBTableName,
-            '/petstore/s3bucketname': s3_observabilitypetadoptions.bucketName,
+            '/petstore/s3bucketname': s3_observabilitypetadoptions.s3Bucket.bucketName,
+            '/petstore/s3iamroleresplication': s3_observabilitypetadoptions.s3IAMReplicationRole.roleArn,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,
             '/petstore/petlistadoptionsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/api/adoptionlist/`,

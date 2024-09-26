@@ -10,7 +10,9 @@ import { PayForAdoptionService } from '../services/pay-for-adoption-service'
 import { SSMParameterReader } from './ssm-parameter-reader';
 import { ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import * as ddb from 'aws-cdk-lib/aws-dynamodb'
-import { Tags } from 'aws-cdk-lib';
+import { RemovalPolicy, Tags } from 'aws-cdk-lib';
+import * as s3 from 'aws-cdk-lib/aws-s3'
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 //Create ListAdoptionsService
 export interface CreateListAdoptionsServiceProps {
@@ -113,7 +115,7 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
         }
 
         const dynamodb_petadoption = new ddb.TableV2(props.scope, 'ddb_petadoption', tableProps);
- 
+
         Tags.of(dynamodb_petadoption).add("DisruptDynamoDb", "Allowed");
 
         // Create Write Throttle Events Alarm
@@ -149,6 +151,49 @@ export function createOrGetDynamoDBTable(props: CreateOrGetDynamoDBTableProps): 
 
     return dynamoDBTableName;
 }
+// Create or get the IAM role
+export interface createS3BucketProps {
+    scope: Construct;
+    isPrimaryRegionDeployment: boolean;
+    mainRegion: string;
+    secondaryRegion: string;
+}
+export interface s3BucketAdoptionProps {
+    s3Bucket: s3.Bucket;
+    s3IAMReplicationRole: iam.IRole;
+
+}
+
+export function createOrGetAIMRoleS3Grant(props: createS3BucketProps): s3BucketAdoptionProps {
+    const s3_observabilitypetadoptions = new s3.Bucket(props.scope, 's3bucket_petadoption', {
+        publicReadAccess: false,
+        autoDeleteObjects: true,
+        removalPolicy: RemovalPolicy.DESTROY,
+        versioned: true, // Enable versioning
+    });
+    let replicationRole: iam.IRole;
+    if (props.isPrimaryRegionDeployment) {
+        // IAM role for replication
+        replicationRole = new iam.Role(props.scope, 'ReplicationRole', {
+            assumedBy: new iam.ServicePrincipal('s3.amazonaws.com'),
+        });
+    } else {
+        // Secondary Region Deployment. Getting RDS information from SSM
+        const ssmExistingRoleArn = new SSMParameterReader(props.scope, 'existingRoleArn', {
+            parameterName: "/petstore/s3iamroleresplication",
+            region: props.mainRegion
+        });
+        const existingRoleArn = ssmExistingRoleArn.getParameterValue();
+        replicationRole = iam.Role.fromRoleArn(props.scope, 'ImportedReplicationRole', existingRoleArn);
+    }
+
+    // Grant permissions to the replication role
+    s3_observabilitypetadoptions.grantRead(replicationRole);
+
+    return { s3Bucket: s3_observabilitypetadoptions, s3IAMReplicationRole: replicationRole };
+
+}
+
 
 // Create Or Get RDSCluster
 export interface CreateOrGetRDSClusterProps {
@@ -267,8 +312,16 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         ipAddresses: ec2.IpAddresses.cidr(cidrRange),
         natGateways: natGateways,
         maxAzs: maxAzs,
-    }); 
-    Tags.of(vpc).add("DisruptSubnet", "Allowed");
+    });
+
+    // Add tags to all subnets
+    // vpc.publicSubnets.forEach(subnet => {
+    //     cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
+    // });
+
+    // vpc.privateSubnets.forEach(subnet => {
+    //     cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
+    // });
 
     if (!createTransitGateway) {
         return { vpc };
@@ -298,7 +351,7 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
         tags: [{ key: 'Name', value: `${contextId}TransitGatewayAttachment` }]
     });
-    transitGatewayAttachment.addDependency(transitGateway);  
+    transitGatewayAttachment.addDependency(transitGateway);
 
     // Associate Transit Gateway Route Table with the Attachment
     const TransitGatewayRouteTableAssociationVPC = new ec2.CfnTransitGatewayRouteTableAssociation(scope, `${contextId}TransitGatewayRouteTableAssociationVPC`, {
@@ -333,8 +386,8 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         publicRoute.addDependency(transitGatewayAttachment)
     });
 
-// Tagging Resources for the FIS
-    
+    // Tagging Resources for the FIS
+
     Tags.of(transitGateway).add("DisruptTransitGateway", "Allowed");
     Tags.of(transitGatewayRouteTable).add("DisruptTransitGateway", "Allowed");
     Tags.of(transitGatewayAttachment).add("DisruptTransitGateway", "Allowed");

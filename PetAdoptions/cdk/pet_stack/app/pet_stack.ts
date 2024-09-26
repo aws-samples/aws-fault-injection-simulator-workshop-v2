@@ -3,13 +3,11 @@ import 'source-map-support/register';
 import { Services } from '../lib/services';
 import { Applications } from '../lib/applications';
 //import { EKSPetsite } from '../lib/ekspetsite'
-import { App, Tags, Aspects } from 'aws-cdk-lib';
-import { AwsSolutionsChecks } from 'cdk-nag';
+import { App, Tags } from 'aws-cdk-lib';
 import { FisServerless } from '../lib/fis_serverless';
 import { Observability } from '../lib/observability'
 import { LoadTesting } from '../lib/load_testing';
 import { REGION } from '../lib/common/services-shared-properties';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
 
