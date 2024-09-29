@@ -183,6 +183,9 @@ export function createOrGetAIMRoleS3Grant(props: createS3BucketProps): s3BucketA
         replicationRole = new iam.Role(props.scope, 'ReplicationRole', {
             assumedBy: new iam.ServicePrincipal('s3.amazonaws.com'),
         });
+        // Grant permissions to the replication role
+        s3_observabilitypetadoptions.grantRead(replicationRole);
+        s3_observabilitypetadoptions.grantWrite(replicationRole);
     } else {
         // Secondary Region Deployment. Getting RDS information from SSM
         const ssmExistingRoleArn = new SSMParameterReader(props.scope, 'existingRoleArn', {
@@ -191,10 +194,12 @@ export function createOrGetAIMRoleS3Grant(props: createS3BucketProps): s3BucketA
         });
         const existingRoleArn = ssmExistingRoleArn.getParameterValue();
         replicationRole = iam.Role.fromRoleArn(props.scope, 'ImportedReplicationRole', existingRoleArn);
+        // Grant permissions to the replication role
+        s3_observabilitypetadoptions.grantRead(replicationRole);
+        s3_observabilitypetadoptions.grantWrite(replicationRole);
     }
 
-    // Grant permissions to the replication role
-    s3_observabilitypetadoptions.grantRead(replicationRole);
+    
 
     return { s3Bucket: s3_observabilitypetadoptions, s3IAMReplicationRole: replicationRole };
 

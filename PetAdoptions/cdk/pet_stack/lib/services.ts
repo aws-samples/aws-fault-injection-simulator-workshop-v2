@@ -825,6 +825,7 @@ export class Services extends Stack {
             '/petstore/snsarn': topic_petadoption.topicArn,
             '/petstore/dynamodbtablename': dynamoDBTableName,
             '/petstore/s3bucketname': s3_observabilitypetadoptions.s3Bucket.bucketName,
+            '/petstore/s3bucketarn': s3_observabilitypetadoptions.s3Bucket.bucketArn,
             '/petstore/s3iamroleresplication': s3_observabilitypetadoptions.s3IAMReplicationRole.roleArn,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,

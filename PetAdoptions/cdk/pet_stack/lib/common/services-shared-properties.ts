@@ -6,19 +6,25 @@ export type REGION = 'us-east-1' | 'us-east-2' | 'us-west-1' | 'us-west-2' | 'eu
 export type DEPLOYMENT_TYPE = 'primary' | 'secondary'
 
 export interface ServiceStackProps extends StackProps {
-    MainRegion: REGION,
-    SecondaryRegion: REGION,
-    DeploymentType: DEPLOYMENT_TYPE,
-  }
+  MainRegion: REGION,
+  SecondaryRegion: REGION,
+  DeploymentType: DEPLOYMENT_TYPE,
+}
 
 export interface ServiceSecondaryStackProps extends StackProps {
-    MainRegion: REGION,
-    SecondaryRegion: REGION,
-    DeploymentType: DEPLOYMENT_TYPE,
-  }
+  MainRegion: REGION,
+  SecondaryRegion: REGION,
+  DeploymentType: DEPLOYMENT_TYPE,
+}
 
 export interface RegionNetworkConnectProps extends StackProps {
-    MainRegion: REGION,
-    SecondaryRegion: REGION,
-    DeploymentType: DEPLOYMENT_TYPE,
-  }
+  MainRegion: REGION,
+  SecondaryRegion: REGION,
+  DeploymentType: DEPLOYMENT_TYPE,
+}
+
+export interface S3ReplicaProps extends StackProps {
+  MainRegion: REGION,
+  SecondaryRegion: REGION,
+  DeploymentType: DEPLOYMENT_TYPE,
+}
