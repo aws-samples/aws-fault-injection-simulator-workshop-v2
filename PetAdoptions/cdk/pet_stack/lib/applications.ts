@@ -13,6 +13,9 @@ export class Applications extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
         super(scope, id, props);
 
+        const stack = Stack.of(this);
+        const region = stack.region;
+        const account = stack.account;
         const stackName = id;
 
         const roleArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamClusterAdmin', { parameterName: "/eks/petsite/EKSMasterRoleArn" }).stringValue;
@@ -38,10 +41,6 @@ export class Applications extends Stack {
         // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
         // Those might be an issue
         const clusterId = Fn.select(4, Fn.split('/', oidcProviderUrl)) // Remove https:// from the URL as workaround to get ClusterID
-
-        const stack = Stack.of(this);
-        const region = stack.region;
-        const account = stack.account;
 
         const app_federatedPrincipal = new iam.FederatedPrincipal(
             oidcProviderArn,
