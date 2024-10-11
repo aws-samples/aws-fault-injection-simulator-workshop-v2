@@ -325,14 +325,11 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         maxAzs: maxAzs,
     });
 
-    // Add tags to all subnets
-    // vpc.publicSubnets.forEach(subnet => {
+    // Add tags to all subnet
+    // Disabling this tags, as no peerign is in use.
+    // vpc.privateSubnets.forEach(subnet => {
     //     cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
     // });
-
-    vpc.privateSubnets.forEach(subnet => {
-        cdk.Tags.of(subnet).add('DisruptSubnet', 'Allowed', { applyToLaunchedInstances: true });
-    });
 
     if (!createTransitGateway) {
         return { vpc };
