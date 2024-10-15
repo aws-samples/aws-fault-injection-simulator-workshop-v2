@@ -118,6 +118,13 @@ const observability = new Observability(app, "Observability", {
   }
 });
 
+const observability = new Observability(app, "ObservabilitySecondary", {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: SECONDARY_REGION as string
+  }
+});
+
 //const load_testing = new LoadTesting(app, "LoadTesting", {
 //  env: {
 //    account: process.env.CDK_DEFAULT_ACCOUNT,
