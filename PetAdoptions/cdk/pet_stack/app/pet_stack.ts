@@ -118,13 +118,6 @@ const observability = new Observability(app, "Observability", {
   }
 });
 
-const observabilitysecondary = new Observability(app, "ObservabilitySecondary", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  }
-});
-
 //const load_testing = new LoadTesting(app, "LoadTesting", {
 //  env: {
 //    account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -132,18 +125,11 @@ const observabilitysecondary = new Observability(app, "ObservabilitySecondary", 
 //  }
 // });
 
-const usersimulationstack = new UserSimulationStack(app, 'UserSimulationStack', {
+new UserSimulationStack(app, 'UserSimulationStack', {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
 }});
-
-const usersimulationstacksecondary =  new UserSimulationStack(app, 'UserSimulationStackSecondary', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  }
-});
 
 Tags.of(app).add("Workshop", "true")
 Tags.of(app).add("AzImpairmentPower", "Ready")
