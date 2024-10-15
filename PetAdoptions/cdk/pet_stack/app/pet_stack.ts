@@ -131,6 +131,13 @@ new UserSimulationStack(app, 'UserSimulationStack', {
     region: process.env.CDK_DEFAULT_REGION 
 }});
 
+new UserSimulationStack(app, 'UserSimulationStackSecondary', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: SECONDARY_REGION as string
+  }
+});
+
 Tags.of(app).add("Workshop", "true")
 Tags.of(app).add("AzImpairmentPower", "Ready")
 //Aspects.of(stack).add(new AwsSolutionsChecks({verbose: true}));
