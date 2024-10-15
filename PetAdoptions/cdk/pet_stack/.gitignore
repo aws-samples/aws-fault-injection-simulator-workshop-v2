@@ -1,12 +1,10 @@
 !jest.config.js
-!lib/catadopt/app/main.js
-!lib/dogadopt/app/main.js
-!lib/getallpets/app/main.js
-!lib/searchlist/app/main.js
 
 *.d.ts
 node_modules
 *.js
+!main.js
+
 
 # CDK asset staging directory
 .cdk.staging
