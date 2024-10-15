@@ -11,6 +11,7 @@ import { LoadTesting } from '../lib/load_testing';
 import { REGION } from '../lib/common/services-shared-properties';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
+import { UserSimulationStack } from '../lib/user_simulation-stack';
 
 
 
@@ -117,12 +118,18 @@ const observability = new Observability(app, "Observability", {
   }
 });
 
-const load_testing = new LoadTesting(app, "LoadTesting", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
-});
+//const load_testing = new LoadTesting(app, "LoadTesting", {
+//  env: {
+//    account: process.env.CDK_DEFAULT_ACCOUNT,
+//    region: process.env.CDK_DEFAULT_REGION
+//  }
+// });
+
+new UserSimulationStack(app, 'UserSimulationStack', {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: process.env.CDK_DEFAULT_REGION 
+}});
 
 Tags.of(app).add("Workshop", "true")
 Tags.of(app).add("AzImpairmentPower", "Ready")
