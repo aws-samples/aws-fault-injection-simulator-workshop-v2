@@ -118,7 +118,7 @@ const observability = new Observability(app, "Observability", {
   }
 });
 
-const observability = new Observability(app, "ObservabilitySecondary", {
+const ObservabilitySecondary = new Observability(app, "ObservabilitySecondary", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: SECONDARY_REGION as string
@@ -132,13 +132,13 @@ const observability = new Observability(app, "ObservabilitySecondary", {
 //  }
 // });
 
-new UserSimulationStack(app, 'UserSimulationStack', {
+const UserSimulationStack = new UserSimulationStack(app, 'UserSimulationStack', {
   env: { 
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION 
 }});
 
-new UserSimulationStack(app, 'UserSimulationStackSecondary', {
+const UserSimulationStackSecondary =  new UserSimulationStack(app, 'UserSimulationStackSecondary', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: SECONDARY_REGION as string
