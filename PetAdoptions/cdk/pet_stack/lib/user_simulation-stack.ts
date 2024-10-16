@@ -23,7 +23,8 @@ export class UserSimulationStack extends cdk.Stack {
     });
 
 
-    if (region === 'us-west-1') {
+    if (region === 'us-west-2') {
+    console.log('The region is us-west-2');
      // catAdopt
     // Define the ECS task definition
     const catAdoptTaskDefinition = new ecs.FargateTaskDefinition(this, 'catAdoptTaskDefinition');
@@ -61,6 +62,7 @@ export class UserSimulationStack extends cdk.Stack {
     
 
   if (region === 'us-east-1') {
+    console.log('The region is us-east-1');
     // DogAdopt
     // Define the ECS task definition
     const dogAdoptTaskDefinition = new ecs.FargateTaskDefinition(this, 'dogAdoptTaskDefinition');
