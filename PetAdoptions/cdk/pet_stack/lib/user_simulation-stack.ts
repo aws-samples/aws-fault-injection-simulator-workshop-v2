@@ -10,6 +10,9 @@ export class UserSimulationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    const stack = Stack.of(this);
+    const region = stack.region;
+
     // Create a VPC
     const vpc = new ec2.Vpc(this, 'Vpc', { maxAzs: 2 }); 
 
@@ -20,7 +23,8 @@ export class UserSimulationStack extends cdk.Stack {
     });
 
 
-    // catAdopt
+    if (region === 'us-west-1') {
+     // catAdopt
     // Define the ECS task definition
     const catAdoptTaskDefinition = new ecs.FargateTaskDefinition(this, 'catAdoptTaskDefinition');
 
@@ -46,7 +50,17 @@ export class UserSimulationStack extends cdk.Stack {
     // Configure container settings, environment variables, etc.
     catAdoptContainer.addPortMappings({ containerPort: 80 });
 
+    // Create catAdoptService
+    new ecs.FargateService(this, 'catAdoptService', {
+      cluster,
+      taskDefinition: catAdoptTaskDefinition,
+      desiredCount: 1, 
+    });
+  }
 
+    
+
+  if (region === 'us-east-1') {
     // DogAdopt
     // Define the ECS task definition
     const dogAdoptTaskDefinition = new ecs.FargateTaskDefinition(this, 'dogAdoptTaskDefinition');
@@ -73,6 +87,14 @@ export class UserSimulationStack extends cdk.Stack {
     // Configure container settings, environment variables, etc.
     dogAdoptContainer.addPortMappings({ containerPort: 80 });
 
+    // Create dogAdoptService
+    new ecs.FargateService(this, 'dogAdoptService', {
+      cluster,
+      taskDefinition: dogAdoptTaskDefinition,
+      desiredCount: 1, 
+    });
+  }
+
     // GetAllPets
     // Define the ECS task definition
     const getAllPetsTaskDefinition = new ecs.FargateTaskDefinition(this, 'getAllPetsTaskDefinition');
@@ -97,6 +119,13 @@ export class UserSimulationStack extends cdk.Stack {
     
     // Configure container settings, environment variables, etc.
     getAllPetsContainer.addPortMappings({ containerPort: 80 });
+
+    // Create getAllPetsService
+    new ecs.FargateService(this, 'getAllPetsService', {
+      cluster,
+      taskDefinition: getAllPetsTaskDefinition,
+      desiredCount: 1, 
+    });
 
     // Search List
     // Define the ECS task definition
@@ -123,27 +152,6 @@ export class UserSimulationStack extends cdk.Stack {
     
     // Configure container settings, environment variables, etc.
     searchListContainer.addPortMappings({ containerPort: 80 });
-
-    // Create catAdoptService
-    new ecs.FargateService(this, 'catAdoptService', {
-      cluster,
-      taskDefinition: catAdoptTaskDefinition,
-      desiredCount: 1, 
-    });
-
-    // Create dogAdoptService
-    new ecs.FargateService(this, 'dogAdoptService', {
-      cluster,
-      taskDefinition: dogAdoptTaskDefinition,
-      desiredCount: 1, 
-    });
-
-    // Create getAllPetsService
-    new ecs.FargateService(this, 'getAllPetsService', {
-      cluster,
-      taskDefinition: getAllPetsTaskDefinition,
-      desiredCount: 1, 
-    });
 
     // Create searchListService
     new ecs.FargateService(this, 'searchListService', {
