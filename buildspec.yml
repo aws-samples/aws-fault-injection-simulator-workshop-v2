@@ -10,7 +10,7 @@ phases:
     commands:
       # - aws service-quotas request-service-quota-increase --service-code vpc --quota-code L-93826ACB --region us-east-1 --desired-value 250 
       # - aws service-quotas request-service-quota-increase --service-code vpc --quota-code L-93826ACB --region us-west-2 --desired-value 250 
-      - git clone --single-branch --branch CrossRegionConnectivity https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      - git clone --single-branch --branch MultiRegionTagFixes https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/cloud9   
       - npm install
       - ../../scripts/cdkbootstrap.sh
