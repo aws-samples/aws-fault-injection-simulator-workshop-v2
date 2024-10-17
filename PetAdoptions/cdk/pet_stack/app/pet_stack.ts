@@ -11,6 +11,7 @@ import { LoadTesting } from '../lib/load_testing';
 import { REGION } from '../lib/common/services-shared-properties';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
+import { UserSimulationStack } from '../lib/user_simulation-stack';
 
 
 
@@ -117,10 +118,30 @@ const observability = new Observability(app, "Observability", {
   }
 });
 
-const load_testing = new LoadTesting(app, "LoadTesting", {
+const observabilitysecondary = new Observability(app, "ObservabilitySecondary", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
+    region: SECONDARY_REGION as string
+  }
+});
+
+//const load_testing = new LoadTesting(app, "LoadTesting", {
+//  env: {
+//    account: process.env.CDK_DEFAULT_ACCOUNT,
+//    region: process.env.CDK_DEFAULT_REGION
+//  }
+// });
+
+const usersimulationstack = new UserSimulationStack(app, 'UserSimulationStack', {
+  env: { 
+    account: process.env.CDK_DEFAULT_ACCOUNT, 
+    region: process.env.CDK_DEFAULT_REGION 
+}});
+
+const usersimulationstacksecondary =  new UserSimulationStack(app, 'UserSimulationStackSecondary', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: SECONDARY_REGION as string
   }
 });
 
