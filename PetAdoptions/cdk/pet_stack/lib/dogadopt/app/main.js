@@ -253,7 +253,7 @@ const main = async () => {
 
 };
 
-const restartInterval = 7000; // 7 seconds (adjust as needed)
+const restartInterval = 11000; // 11 seconds (adjust as needed)
 
 const runForever = async () => {
   // Fetch the URL once before entering the loop
