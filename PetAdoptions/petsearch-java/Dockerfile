@@ -6,7 +6,7 @@ COPY ./src ./src
 COPY ./settings.gradle ./settings.gradle
 
 ENV GRADLE_OPTS "-Dorg.gradle.daemon=false"
-RUN gradle build -DexcludeTags='integration' 
+RUN gradle build -DexcludeTags='integration'
 
 FROM --platform=linux/amd64 amazoncorretto:17-alpine
 WORKDIR /app
