@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 gradle:7.3-jdk17 as build
+FROM --platform=linux/amd64 gradle:8.10-jdk17 as build
 
 WORKDIR /app
 COPY ./build.gradle ./build.gradle
