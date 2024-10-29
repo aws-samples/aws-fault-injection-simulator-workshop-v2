@@ -11,10 +11,10 @@ export interface ServiceStackProps extends StackProps {
   DeploymentType: DEPLOYMENT_TYPE,
 }
 
-export interface ServiceSecondaryStackProps extends StackProps {
-  MainRegion: REGION,
-  SecondaryRegion: REGION,
-  DeploymentType: DEPLOYMENT_TYPE,
+export interface ApplicationsStackProps extends StackProps {
+  mainRegion: REGION,
+  secondaryRegion: REGION,
+  deploymentType: DEPLOYMENT_TYPE,
 }
 
 export interface RegionNetworkConnectProps extends StackProps {

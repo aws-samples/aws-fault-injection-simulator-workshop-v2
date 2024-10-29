@@ -92,14 +92,20 @@ const applications = new Applications(app, "Applications", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
-  }
+  },
+  mainRegion: MAIN_REGION,
+  secondaryRegion: SECONDARY_REGION,
+  deploymentType: 'primary',
 });
 
 const applications_secondary = new Applications(app, "ApplicationsSecondary", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: SECONDARY_REGION as string
-  }
+  },
+  mainRegion: MAIN_REGION,
+  secondaryRegion: SECONDARY_REGION,
+  deploymentType: 'secondary',
 });
 
 

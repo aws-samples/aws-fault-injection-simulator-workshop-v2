@@ -6,11 +6,14 @@ import * as yaml from 'js-yaml';
 import { Stack, StackProps, CfnJson, Fn, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import { Construct } from 'constructs'
-import { ContainerImageBuilderProps, ContainerImageBuilder } from './common/container-image-builder'
+import { ContainerImageBuilder } from './common/container-image-builder'
 import { PetAdoptionsHistory } from './applications/pet-adoptions-history-application'
+import { ApplicationsStackProps } from './common/services-shared-properties';
+import { SSMParameterReader } from './common/ssm-parameter-reader';
+
 
 export class Applications extends Stack {
-    constructor(scope: Construct, id: string, props?: StackProps) {
+    constructor(scope: Construct, id: string, props: ApplicationsStackProps) {
         super(scope, id, props);
 
         const stack = Stack.of(this);
@@ -18,12 +21,31 @@ export class Applications extends Stack {
         const account = stack.account;
         const stackName = id;
 
+        let isPrimaryRegionDeployment
+        if (props.deploymentType as string == 'primary') {
+            // DeploymentType is Primary Region Deployment
+            isPrimaryRegionDeployment = true
+        } else {
+            // DeploymentType is Secondary Region Deployment
+            isPrimaryRegionDeployment = false
+        }
+
         const roleArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamClusterAdmin', { parameterName: "/eks/petsite/EKSMasterRoleArn" }).stringValue;
         const targetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamTargetGroupArn', { parameterName: "/eks/petsite/TargetGroupArn" }).stringValue;
         const oidcProviderUrl = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderUrl', { parameterName: "/eks/petsite/OIDCProviderUrl" }).stringValue;
         const oidcProviderArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderArn', { parameterName: "/eks/petsite/OIDCProviderArn" }).stringValue;
-        const rdsSecretArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getRdsSecretArn', { parameterName: "/petstore/rdssecretarn" }).stringValue;
         const petHistoryTargetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getPetHistoryParamTargetGroupArn', { parameterName: "/eks/pethistory/TargetGroupArn" }).stringValue;
+
+        let rdsSecretArn
+        if (isPrimaryRegionDeployment) {
+            rdsSecretArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getRdsSecretArn', { parameterName: "/petstore/rdssecretarn" }).stringValue;
+        } else {
+            const ssmrdsSecretARN = new SSMParameterReader(this, 'rdsSecretARN', {
+                parameterName: "/petstore/rdssecretarn",
+                region: props.mainRegion
+            });
+            rdsSecretArn = ssmrdsSecretARN.getParameterValue();
+        }
 
         const cluster = eks.Cluster.fromClusterAttributes(this, 'MyCluster', {
             clusterName: 'PetSite',

@@ -5,9 +5,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as sns from 'aws-cdk-lib/aws-sns'
 import * as sqs from 'aws-cdk-lib/aws-sqs'
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions'
-import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as s3seeder from 'aws-cdk-lib/aws-s3-deployment'
-import * as rds from 'aws-cdk-lib/aws-rds';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as eks from 'aws-cdk-lib/aws-eks';
@@ -29,7 +27,7 @@ import 'ts-replace-all'
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { REGION, ServiceStackProps } from './common/services-shared-properties';
+import { ServiceStackProps } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAIMRoleS3Grant } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 
