@@ -1,4 +1,4 @@
-FROM alpine
+FROM --platform=linux/amd64 alpine:latest
  
 # Installs latest Chromium (100) package.
 RUN apk add --no-cache \
@@ -9,7 +9,7 @@ RUN apk add --no-cache \
       ca-certificates \
       ttf-freefont \
       nodejs \
-      npm
+      npm 
  
 # Tell Puppeteer to skip installing Chrome. We'll be using the installed package.
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
