@@ -27,7 +27,7 @@ import 'ts-replace-all'
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
-import { ServiceStackProps } from './common/services-shared-properties';
+import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAIMRoleS3Grant } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 
@@ -40,6 +40,12 @@ export class Services extends Stack {
         const stackName = id;
         const defaultPrimaryCIDR = this.node.tryGetContext('vpc_cidr_primary') || "10.1.0.0/16";
         const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
+        const fisLambdaTagName = this.node.tryGetContext('fisLambdaTagName') || 'FISExperimentReady';
+        const fisLambdaTagValue = this.node.tryGetContext('fisLambdaTagValue') || 'Yes';
+        const fisResourceTag: TargetTag = {
+            TagName: fisLambdaTagName,
+            TagValue: fisLambdaTagValue
+        }
 
 
         let isPrimaryRegionDeployment
@@ -310,7 +316,8 @@ export class Services extends Stack {
         //PetStatusUpdater Lambda Function and APIGW--------------------------------------
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
             region: region,
-            tableName: dynamoDBTableName
+            tableName: dynamoDBTableName,
+            fisResourceTag: fisResourceTag
         });
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,

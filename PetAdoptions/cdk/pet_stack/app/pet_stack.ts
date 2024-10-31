@@ -20,7 +20,7 @@ if (!process.env.CDK_DEFAULT_REGION) {
 }
 
 const MAIN_REGION: REGION = process.env.CDK_DEFAULT_REGION as REGION;
-// I need to get this updated before the release to capture the actual enabled region in the WS.
+// This needs to be updated if the second region is different from the US-WEST-2
 const SECONDARY_REGION: REGION = 'us-west-2' as REGION;
 
 const stackName = "Services";
