@@ -5,6 +5,8 @@
     "vpc_cidr_secondary": "10.2.0.0/16",
     "snstopic_email": "someone@example.com",
     "rdsusername":"petadmin",
-    "petsite_on_eks":"true"
+    "petsite_on_eks":"true",
+    "fisLambdaTagName": "FISExperimentReady",
+    "fisLambdaTagValue": "Yes"
   }
 }
