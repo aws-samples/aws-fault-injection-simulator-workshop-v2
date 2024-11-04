@@ -12,6 +12,7 @@ import { REGION } from '../lib/common/services-shared-properties';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
 import { UserSimulationStack } from '../lib/user_simulation-stack';
+import { MultiRegionConnectivityDashboard } from '../lib/multi_region_connectivity_dashboard';
 
 
 
@@ -144,6 +145,17 @@ const usersimulationstacksecondary =  new UserSimulationStack(app, 'UserSimulati
     region: SECONDARY_REGION as string
   }
 });
+
+const connectivity_dashboard = new MultiRegionConnectivityDashboard(app, "MultiRegionConnectivityDashboard", {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: MAIN_REGION as string
+  },
+  MainRegion: MAIN_REGION,
+  SecondaryRegion: SECONDARY_REGION,
+  DeploymentType: 'primary',
+});
+
 
 Tags.of(app).add("Workshop", "true")
 Tags.of(app).add("AzImpairmentPower", "Ready")
