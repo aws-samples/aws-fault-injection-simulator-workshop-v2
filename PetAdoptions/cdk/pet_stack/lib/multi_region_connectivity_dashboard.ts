@@ -49,8 +49,11 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 this,
                 '/petstore/tgwattachmentid'
             ),
-            // TODO: change this - find TGW attachmentId in the secondary region
-            secondaryTgwAttachmentId: 'tgw-attach-091471164434fc0c3',
+            // TODO: add SSM Parameter '/petstore/tgwattachmentid' in NetworkSecondary Stack
+            secondaryTgwAttachmentId: new SSMParameterReader(this, 'ssmTgwIdSecondReader', {
+                parameterName: '/petstore/tgwattachmentid',
+                region: props.SecondaryRegion
+            })?.getParameterValue(),
             sourceBucket: ssm.StringParameter.valueForStringParameter(
                 this,
                 '/petstore/s3bucketname'
@@ -63,13 +66,12 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 this,
                 '/petstore/dynamodbtablename'
             ),
-            dbClusterIdentifier: ssm.StringParameter.valueForStringParameter(
+            dbClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(this,'/petstore/rdsendpoint'))),
+            // TODO: Add SSM Parameter '/petstore/dbInstanceidentifier' to Services Stack
+            dbInstanceIdentifier: ssm.StringParameter.valueForStringParameter(
                 this,
-                '/petstore/rdsendpoint'
-            )?.split('.')[0],
-
-            //TODO: change this - find DB Instance Identifier
-            dbInstanceIdentifier: 'services-databasewriter2462cc03-mocmiwm4pn1g'
+                '/petstore/dbInstanceidentifier'
+            ),
         };
     }
 
@@ -269,7 +271,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TransitGateway: parameters.secondaryTgwId,
                         },
                         region: props.SecondaryRegion,
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/TransitGateway',
@@ -279,7 +281,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TransitGateway: parameters.secondaryTgwId,
                         },
                         region: props.SecondaryRegion,
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                     }),
                 ],
             }),
@@ -297,7 +299,8 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.MainRegion,
                         statistic: 'Sum',
-                        period: cdk.Duration.seconds(300),
+                        color: '#9467bd',
+                        period: cdk.Duration.seconds(60),
                     }),
                 ],
             })
@@ -328,7 +331,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         statistic: 'Average',
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                     }),
                 ],
             }),
@@ -348,7 +351,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         statistic: 'Average',
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                     }),
                 ],
             }),
@@ -368,7 +371,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         statistic: 'Average',
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                     }),
                 ],
             })
@@ -425,7 +428,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             Operation: 'Scan'
                         },
                         region: props.SecondaryRegion,
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                         statistic: 'Average'
                     }),
                     new cloudwatch.Metric({
@@ -436,7 +439,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             Operation: 'Query'
                         },
                         region: props.SecondaryRegion,
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                         statistic: 'Average'
                     }),
                     new cloudwatch.Metric({
@@ -447,7 +450,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             Operation: 'UpdateItem'
                         },
                         region: props.SecondaryRegion,
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                         statistic: 'Average'
                     }),
                     new cloudwatch.Metric({
@@ -458,7 +461,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             Operation: 'PutItem'
                         },
                         region: props.SecondaryRegion,
-                        period: cdk.Duration.seconds(300),
+                        period: cdk.Duration.seconds(60),
                         statistic: 'Average'
                     }),
                 ],
