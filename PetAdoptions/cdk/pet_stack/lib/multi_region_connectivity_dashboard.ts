@@ -49,11 +49,16 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 this,
                 '/petstore/tgwattachmentid'
             ),
+            // Same value for the peering attachmentID  in both regions.
+            secondaryTgwAttachmentId: ssm.StringParameter.valueForStringParameter(
+                this,
+                '/petstore/tgwattachmentid'
+            ),
             // TODO: add SSM Parameter '/petstore/tgwattachmentid' in NetworkSecondary Stack
-            secondaryTgwAttachmentId: new SSMParameterReader(this, 'ssmTgwIdSecondReader', {
-                parameterName: '/petstore/tgwattachmentid',
-                region: props.SecondaryRegion
-            })?.getParameterValue(),
+            // secondaryTgwAttachmentId: new SSMParameterReader(this, 'ssmTgwIdSecondReader', {
+            //     parameterName: '/petstore/tgwattachmentid',
+            //     region: props.SecondaryRegion
+            // })?.getParameterValue(),
             sourceBucket: ssm.StringParameter.valueForStringParameter(
                 this,
                 '/petstore/s3bucketname'
@@ -67,10 +72,15 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 '/petstore/dynamodbtablename'
             ),
             dbClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(this,'/petstore/rdsendpoint'))),
-            // TODO: Add SSM Parameter '/petstore/dbInstanceidentifier' to Services Stack
-            dbInstanceIdentifier: ssm.StringParameter.valueForStringParameter(
+            
+            dbInstanceIdentifierWriter: ssm.StringParameter.valueForStringParameter(
                 this,
-                '/petstore/dbInstanceidentifier'
+                '/petstore/rdsinstanceIdentifierWriter'
+            ),
+
+            dbInstanceIdentifierReader: ssm.StringParameter.valueForStringParameter(
+                this,
+                '/petstore/rdsinstanceIdentifierReader'
             ),
         };
     }
@@ -405,7 +415,16 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         namespace: 'AWS/RDS',
                         metricName: 'DatabaseConnections',
                         dimensionsMap: {
-                            DBInstanceIdentifier: parameters.dbInstanceIdentifier,
+                            dbInstanceIdentifierWriter: parameters.dbInstanceIdentifierWriter,
+                        },
+                        region: props.MainRegion,
+                        statistic: 'tm99',
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/RDS',
+                        metricName: 'DatabaseConnections',
+                        dimensionsMap: {
+                            dbInstanceIdentifierReader: parameters.dbInstanceIdentifierReader,
                         },
                         region: props.MainRegion,
                         statistic: 'tm99',
@@ -414,7 +433,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 leftYAxis: { min: 0 },
             }),
             new cloudwatch.GraphWidget({
-                title: 'SuccessfulRequestLatency',
+                title: 'DynamoDB-SuccessfulRequestLatency',
                 width: 8,
                 height: 6,
                 view: cloudwatch.GraphWidgetView.TIME_SERIES,
@@ -467,7 +486,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 ],
             }),
             new cloudwatch.GraphWidget({
-                title: 'ReplicationLatency',
+                title: 'DynamoDB-ReplicationLatency',
                 width: 8,
                 height: 6,
                 view: cloudwatch.GraphWidgetView.TIME_SERIES,
