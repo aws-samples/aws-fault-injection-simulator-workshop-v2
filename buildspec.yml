@@ -30,8 +30,10 @@ phases:
       - cdk deploy Applications --require-approval=never --verbose -O ./out/out.json
       - cdk deploy ApplicationsSecondary --require-approval=never --verbose -O ./out/out.json
       - cdk deploy FisServerless --require-approval never --verbose -O ./out/out.json
+      #- cdk deploy Observability ObservabilitySecondary --concurrency 2 --asset-parallelism --require-approval=never --verbose -O ./out/out.json
       - cdk deploy Observability --require-approval never --verbose -O ./out/out.json
       - cdk deploy ObservabilitySecondary --require-approval never --verbose -O ./out/out.json
+      #- cdk deploy UserSimulationStack UserSimulationStackSecondary --concurrency 2 --asset-parallelism --require-approval=never --verbose -O ./out/out.json
       - cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json
       - cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json
       #- cdk deploy MultiRegionConnectivityDashboard --require-approval never --verbose -O ./out/out.json
