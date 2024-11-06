@@ -21,7 +21,7 @@ if (!process.env.CDK_DEFAULT_REGION) {
 }
 
 const MAIN_REGION: REGION = process.env.CDK_DEFAULT_REGION as REGION;
-// I need to get this updated before the release to capture the actual enabled region in the WS.
+// This needs to be updated if the second region is different from the US-WEST-2
 const SECONDARY_REGION: REGION = 'us-west-2' as REGION;
 
 const stackName = "Services";
@@ -93,14 +93,20 @@ const applications = new Applications(app, "Applications", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
-  }
+  },
+  mainRegion: MAIN_REGION,
+  secondaryRegion: SECONDARY_REGION,
+  deploymentType: 'primary',
 });
 
 const applications_secondary = new Applications(app, "ApplicationsSecondary", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: SECONDARY_REGION as string
-  }
+  },
+  mainRegion: MAIN_REGION,
+  secondaryRegion: SECONDARY_REGION,
+  deploymentType: 'secondary',
 });
 
 

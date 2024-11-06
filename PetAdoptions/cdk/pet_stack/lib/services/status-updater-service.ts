@@ -3,10 +3,13 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejslambda from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs'
+import { TargetTag } from '../common/services-shared-properties';
+import { Tags } from 'aws-cdk-lib';
 
 export interface StatusUpdaterServiceProps {
   region: string,
-  tableName: string
+  tableName: string,
+  fisResourceTag: TargetTag
 }
 
 export class StatusUpdaterService extends Construct {
@@ -30,7 +33,7 @@ export class StatusUpdaterService extends Construct {
     var layer = lambda.LayerVersion.fromLayerVersionArn(this, `LayerFromArn`, layerArn);
 
     const lambdaFunction = new nodejslambda.NodejsFunction(this, 'lambdafn', {
-        runtime: lambda.Runtime.NODEJS_16_X,    // execution environment
+        runtime: lambda.Runtime.NODEJS_20_X,    // execution environment
         entry: '../../petstatusupdater/index.js',
         depsLockFilePath: '../../petstatusupdater/package-lock.json',
         handler: 'handler',
@@ -44,13 +47,19 @@ export class StatusUpdaterService extends Construct {
         },
         bundling: {
           externalModules: [
-            'aws-sdk'
+            '@aws-sdk/client-dynamodb',
+            '@aws-sdk/lib-dynamodb',
+            'aws-xray-sdk-core'
           ],
           nodeModules: [
-             'aws-xray-sdk'
+             '@aws-sdk/client-dynamodb',
+            '@aws-sdk/lib-dynamodb',
+            'aws-xray-sdk-core'
           ]
-        }
+        }        
     });
+
+    Tags.of(lambdaFunction).add(props.fisResourceTag.TagName,props.fisResourceTag.TagValue )
 
     //defines an API Gateway REST API resource backed by our "petstatusupdater" function.
     this.api = new apigw.LambdaRestApi(this, 'PetAdoptionStatusUpdater', {

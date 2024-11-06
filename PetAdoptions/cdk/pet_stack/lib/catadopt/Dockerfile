@@ -1,4 +1,4 @@
-FROM alpine
+FROM --platform=linux/amd64 alpine:latest
  
 # Installs latest Chromium (100) package.
 RUN apk add --no-cache \

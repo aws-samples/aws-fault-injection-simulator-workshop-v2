@@ -421,7 +421,16 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         namespace: 'AWS/RDS',
                         metricName: 'DatabaseConnections',
                         dimensionsMap: {
-                            DBInstanceIdentifier: parameters.dbInstanceIdentifierWriter,
+                            dbInstanceIdentifierWriter: parameters.dbInstanceIdentifierWriter,
+                        },
+                        region: props.MainRegion,
+                        statistic: 'tm99',
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/RDS',
+                        metricName: 'DatabaseConnections',
+                        dimensionsMap: {
+                            dbInstanceIdentifierReader: parameters.dbInstanceIdentifierReader,
                         },
                         region: props.MainRegion,
                         period: cdk.Duration.seconds(60),
