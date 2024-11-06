@@ -33,7 +33,7 @@ export class StatusUpdaterService extends Construct {
     var layer = lambda.LayerVersion.fromLayerVersionArn(this, `LayerFromArn`, layerArn);
 
     const lambdaFunction = new nodejslambda.NodejsFunction(this, 'lambdafn', {
-        runtime: lambda.Runtime.NODEJS_18_X,    // execution environment
+        runtime: lambda.Runtime.NODEJS_20_X,    // execution environment
         entry: '../../petstatusupdater/index.js',
         depsLockFilePath: '../../petstatusupdater/package-lock.json',
         handler: 'handler',
@@ -47,10 +47,14 @@ export class StatusUpdaterService extends Construct {
         },
         bundling: {
           externalModules: [
-            'aws-sdk'
+            '@aws-sdk/client-dynamodb',
+            '@aws-sdk/lib-dynamodb',
+            'aws-xray-sdk-core'
           ],
           nodeModules: [
-             'aws-xray-sdk'
+             '@aws-sdk/client-dynamodb',
+            '@aws-sdk/lib-dynamodb',
+            'aws-xray-sdk-core'
           ]
         }        
     });
