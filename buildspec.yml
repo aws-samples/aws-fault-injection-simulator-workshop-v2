@@ -19,12 +19,14 @@ phases:
       - cd ../../PetAdoptions/cdk/pet_stack/
       - npm install
       - npm run build
+      # - cdk deploy Services ServicesSecondary --concurrency 2 --asset-parallelism --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
       - cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
       - cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
       - cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json
       - cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json
       - cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json
       - cdk deploy S3Replica --require-approval=never --verbose -O ./out/out.json
+      #- cdk deploy Applications ApplicationsSecondary --concurrency 2 --asset-parallelism --require-approval=never --verbose -O ./out/out.json
       - cdk deploy Applications --require-approval=never --verbose -O ./out/out.json
       - cdk deploy ApplicationsSecondary --require-approval=never --verbose -O ./out/out.json
       - cdk deploy FisServerless --require-approval never --verbose -O ./out/out.json
