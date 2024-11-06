@@ -1,3 +1,4 @@
+import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejslambda from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -5,11 +6,16 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs'
 import { TargetTag } from '../common/services-shared-properties';
 import { Tags } from 'aws-cdk-lib';
+import { Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 
 export interface StatusUpdaterServiceProps {
   region: string,
   tableName: string,
   fisResourceTag: TargetTag
+  fisLambdaExecWrapper: string,
+  fisExtensionMetrics:string,
+  fisLambdaExtensionArn: string
 }
 
 export class StatusUpdaterService extends Construct {
@@ -18,6 +24,20 @@ export class StatusUpdaterService extends Construct {
 
   constructor(scope: Construct, id: string, props: StatusUpdaterServiceProps) {
     super(scope, id);
+
+    // create the S3 Bucket for the Lambda testing
+    const fisBucket = new Bucket(this, 'FisS3Bucket', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // Optional: Specify the removal policy
+      encryption: BucketEncryption.S3_MANAGED, // Optional: Specify the encryption method
+      versioned: true, // Optional: Enable versioning
+      enforceSSL: true, // Optional: Enable SSL/TLS encryption
+      blockPublicAccess: {
+          blockPublicAcls: true,
+          blockPublicPolicy: true,
+          ignorePublicAcls: true,
+          restrictPublicBuckets: true,
+      }, // Optional: Block public access
+    });
 
     var lambdaRole = new iam.Role(this, 'lambdaexecutionrole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -43,7 +63,10 @@ export class StatusUpdaterService extends Construct {
         layers: [layer],
         description: 'Update Pet availability status',
         environment: {
-            "TABLE_NAME": props.tableName
+            "TABLE_NAME": props.tableName,
+            "AWS_FIS_CONFIGURATION_LOCATION": fisBucket.bucketArn,
+            "AWS_LAMBDA_EXEC_WRAPPER": props.fisLambdaExecWrapper,
+            "AWS_FIS_EXTENSION_METRICS": 'all'
         },
         bundling: {
           externalModules: [
@@ -60,7 +83,9 @@ export class StatusUpdaterService extends Construct {
     });
 
     Tags.of(lambdaFunction).add(props.fisResourceTag.TagName,props.fisResourceTag.TagValue )
-
+     // Add FIS LambdaLayer
+    lambdaFunction.addLayers(LayerVersion.fromLayerVersionArn(this, 'FISLambdaExtension', props.fisLambdaExtensionArn));
+  
     //defines an API Gateway REST API resource backed by our "petstatusupdater" function.
     this.api = new apigw.LambdaRestApi(this, 'PetAdoptionStatusUpdater', {
         handler: lambdaFunction,

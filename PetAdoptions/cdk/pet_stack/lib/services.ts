@@ -42,6 +42,10 @@ export class Services extends Stack {
         const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
         const fisLambdaTagName = this.node.tryGetContext('fisLambdaTagName') || 'FISExperimentReady';
         const fisLambdaTagValue = this.node.tryGetContext('fisLambdaTagValue') || 'Yes';
+        const fisLambdaExtensionArn = this.node.tryGetContext('fisLambdaExtensionArn')||'arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9';
+        const fisLambdaExecWrapper = this.node.tryGetContext('fisLambdaExecWrapper')||'/opt/aws-fis/bootstrap';
+        const fisExtensionMetrics = this.node.tryGetContext('fisExtensionMetrics')||'all';
+
         const fisResourceTag: TargetTag = {
             TagName: fisLambdaTagName,
             TagValue: fisLambdaTagValue
@@ -317,8 +321,12 @@ export class Services extends Stack {
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
             region: region,
             tableName: dynamoDBTableName,
-            fisResourceTag: fisResourceTag
+            fisResourceTag: fisResourceTag,
+            fisLambdaExecWrapper:fisLambdaExecWrapper,
+            fisExtensionMetrics:fisExtensionMetrics,
+            fisLambdaExtensionArn:fisLambdaExtensionArn
         });
+
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,
             securityGroupName: 'ALBSecurityGroup',
