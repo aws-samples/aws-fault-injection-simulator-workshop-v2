@@ -46,7 +46,7 @@ us_west_2_url=$(get_ssm_parameter "us-west-2" "/petstore/petsiteurl")
 print_green_cell "PetSite application website URLs:"
 echo -e "${GREEN}║${NC}  Region us-east-1: ${BLUE}$us_east_1_url${NC}"
 echo -e "${GREEN}║${NC}  Region us-west-2: ${BLUE}$us_west_2_url${NC}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════════════════════╝${NC}"
 
 # 3. Read SSM parameter values for RDS in us-east-1
 rds_writer_id=$(get_ssm_parameter "us-east-1" "/petstore/rdsinstanceIdentifierWriter")
