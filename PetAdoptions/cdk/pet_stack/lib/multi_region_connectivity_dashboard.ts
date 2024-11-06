@@ -521,7 +521,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'Scan'
                         },
-                        region: props.SecondaryRegion,
+                        region: props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 Scan'
@@ -533,7 +533,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'Query'
                         },
-                        region: props.SecondaryRegion,
+                        region: props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 Query'
@@ -545,7 +545,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'UpdateItem'
                         },
-                        region: props.SecondaryRegion,
+                        region: props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 UpdateItem'
@@ -557,7 +557,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'PutItem'
                         },
-                        region: props.SecondaryRegion,
+                        region: props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 PutItem'
