@@ -21,9 +21,6 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
 
         // Add all widgets to dashboard
         dashboard.addWidgets(
-            new cloudwatch.Column(...this.createCustomerExpDashboardWidgets(props, parameters)),
-            new cloudwatch.Column(...this.createNetworkDashboardWidgets(props, parameters), ...this.createS3DashboardWidgets(props, parameters)),
-            new cloudwatch.Column(...this.createDatabaseDashboardWidgets(props, parameters)),
             new cloudwatch.Row(
                 new cloudwatch.TextWidget({
                     markdown: `## Multi-Region Connectivity Dashboard
@@ -31,7 +28,10 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             * Secondary Region: ${props.SecondaryRegion}`,
                     width: 24,
                     height: 3,
-                }))
+                })),
+            new cloudwatch.Column(...this.createCustomerExpDashboardWidgets(props, parameters)),
+            new cloudwatch.Column(...this.createNetworkDashboardWidgets(props, parameters), ...this.createS3DashboardWidgets(props, parameters)),
+            new cloudwatch.Column(...this.createDatabaseDashboardWidgets(props, parameters))
         );
     }
 
@@ -49,11 +49,11 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 this,
                 '/petstore/tgwattachmentid'
             ),
-            // TODO: add SSM Parameter '/petstore/tgwattachmentid' in NetworkSecondary Stack
-            secondaryTgwAttachmentId: new SSMParameterReader(this, 'ssmTgwIdSecondReader', {
-                parameterName: '/petstore/tgwattachmentid',
-                region: props.SecondaryRegion
-            })?.getParameterValue(),
+            // Same value for the peering attachmentID  in both regions.
+            secondaryTgwAttachmentId: ssm.StringParameter.valueForStringParameter(
+                this,
+                '/petstore/tgwattachmentid'
+            ),
             sourceBucket: ssm.StringParameter.valueForStringParameter(
                 this,
                 '/petstore/s3bucketname'
@@ -67,10 +67,15 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 '/petstore/dynamodbtablename'
             ),
             dbClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(this,'/petstore/rdsendpoint'))),
-            // TODO: Add SSM Parameter '/petstore/dbInstanceidentifier' to Services Stack
-            dbInstanceIdentifier: ssm.StringParameter.valueForStringParameter(
+            
+            dbInstanceIdentifierWriter: ssm.StringParameter.valueForStringParameter(
                 this,
-                '/petstore/dbInstanceidentifier'
+                '/petstore/rdsinstanceIdentifierWriter'
+            ),
+
+            dbInstanceIdentifierReader: ssm.StringParameter.valueForStringParameter(
+                this,
+                '/petstore/rdsinstanceIdentifierReader'
             ),
         };
     }
@@ -79,9 +84,10 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
 
         return [
             new cloudwatch.TextWidget({
-                markdown: '### Customer experience',
+                markdown: '### **Customer experience**',
                 height: 1,
-                width: 8
+                width: 8,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
 
             new cloudwatch.GraphWidget({
@@ -252,14 +258,15 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
 
         return [
             new cloudwatch.TextWidget({
-                markdown: '### Network',
+                markdown: '### **Network metrics**',
                 width: 8,
                 height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
 
             // TGW - 2nd region
             new cloudwatch.GraphWidget({
-                title: 'TGW - 2nd region',
+                title: 'Transit Gateway - Packet Flow',
                 width: 8,
                 height: 5,
                 left: [
@@ -272,6 +279,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
+                        label: 'us-west-2 PacketsOut'
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/TransitGateway',
@@ -282,12 +290,13 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
+                        label: 'us-west-2 PacketsIn'
                     }),
                 ],
             }),
             // TGW - 1st Region PacketDropCount
             new cloudwatch.GraphWidget({
-                title: 'TGW - 1st Region - PacketDropCount',
+                title: 'Transit Gateway - Packet Drop',
                 width: 8,
                 height: 5,
                 left: [
@@ -299,8 +308,9 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.MainRegion,
                         statistic: 'Sum',
-                        color: '#9467bd',
+                        color: '#2ca02c',
                         period: cdk.Duration.seconds(60),
+                        label: 'us-east-1 PacketDropCount'
                     }),
                 ],
             })
@@ -311,9 +321,10 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
         return [
             // S3 Replication Header
             new cloudwatch.TextWidget({
-                markdown: '### S3 Replication',
+                markdown: '### **S3 Replication**',
                 width: 8,
                 height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
             // S3 BytesPendingReplication
             new cloudwatch.GraphWidget({
@@ -337,7 +348,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             }),
             // S3 OperationsPendingReplication
             new cloudwatch.GraphWidget({
-                title: 'Operations Pending Replication',
+                title: 'S3 Operations Pending Replication',
                 width: 8,
                 height: 4,
                 left: [
@@ -352,6 +363,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         region: props.SecondaryRegion,
                         statistic: 'Average',
                         period: cdk.Duration.seconds(60),
+                        color: "#e377c2" 
                     }),
                 ],
             }),
@@ -372,6 +384,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         region: props.SecondaryRegion,
                         statistic: 'Average',
                         period: cdk.Duration.seconds(60),
+                        color: '#2ca02c'
                     }),
                 ],
             })
@@ -382,9 +395,10 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
         return [
             // Database Section
             new cloudwatch.TextWidget({
-                markdown: '### Database',
+                markdown: '### **RDS Aurora metrics**',
                 width: 8,
                 height: 1,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
             // RDS DatabaseConnections
             new cloudwatch.GraphWidget({
@@ -400,25 +414,47 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.MainRegion,
                         statistic: 'tm99',
+                        period: cdk.Duration.seconds(60),
+                        label: 'us-east-1 DatabaseCluserConnections'
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/RDS',
                         metricName: 'DatabaseConnections',
                         dimensionsMap: {
-                            DBInstanceIdentifier: parameters.dbInstanceIdentifier,
+                            DBInstanceIdentifier: parameters.dbInstanceIdentifierWriter,
                         },
                         region: props.MainRegion,
+                        period: cdk.Duration.seconds(60),
                         statistic: 'tm99',
+                        label: 'us-east-1 DatabaseWriterConnections'
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/RDS',
+                        metricName: 'DatabaseConnections',
+                        dimensionsMap: {
+                            DBInstanceIdentifier: parameters.dbInstanceIdentifierReader,
+                        },
+                        region: props.MainRegion,
+                        period: cdk.Duration.seconds(60),
+                        statistic: 'tm99',
+                        label: 'us-east-1 DatabaseReaderConnections'
                     }),
                 ],
                 leftYAxis: { min: 0 },
             }),
+            new cloudwatch.TextWidget({
+                markdown: '### **DynamoDB metrics**',
+                height: 1,
+                width: 8,
+                background: cloudwatch.TextWidgetBackground.TRANSPARENT
+            }),
             new cloudwatch.GraphWidget({
-                title: 'SuccessfulRequestLatency',
+                title: 'DynamoDB - Successful Request Latency',
                 width: 8,
                 height: 6,
                 view: cloudwatch.GraphWidgetView.TIME_SERIES,
                 stacked: false,
+                region: 'us-west-2',
                 left: [
                     new cloudwatch.Metric({
                         namespace: 'AWS/DynamoDB',
@@ -429,7 +465,8 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
-                        statistic: 'Average'
+                        statistic: 'Average',
+                        label: 'us-west-2 Scan'
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/DynamoDB',
@@ -440,7 +477,8 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
-                        statistic: 'Average'
+                        statistic: 'Average',
+                        label: 'us-west-2 Query'
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/DynamoDB',
@@ -451,7 +489,8 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
-                        statistic: 'Average'
+                        statistic: 'Average',
+                        label: 'us-west-2 UpdateItem'
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/DynamoDB',
@@ -462,12 +501,71 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         },
                         region: props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
-                        statistic: 'Average'
+                        statistic: 'Average',
+                        label: 'us-west-2 PutItem'
                     }),
                 ],
             }),
             new cloudwatch.GraphWidget({
-                title: 'ReplicationLatency',
+                title: 'DynamoDB - Successful Request Latency',
+                width: 8,
+                height: 6,
+                view: cloudwatch.GraphWidgetView.TIME_SERIES,
+                stacked: false,
+                region: 'us-east-1',
+                left: [
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/DynamoDB',
+                        metricName: 'SuccessfulRequestLatency',
+                        dimensionsMap: {
+                            TableName: parameters.dbTableName,
+                            Operation: 'Scan'
+                        },
+                        region: props.SecondaryRegion,
+                        period: cdk.Duration.seconds(60),
+                        statistic: 'Average',
+                        label: 'us-east-1 Scan'
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/DynamoDB',
+                        metricName: 'SuccessfulRequestLatency',
+                        dimensionsMap: {
+                            TableName: parameters.dbTableName,
+                            Operation: 'Query'
+                        },
+                        region: props.SecondaryRegion,
+                        period: cdk.Duration.seconds(60),
+                        statistic: 'Average',
+                        label: 'us-east-1 Query'
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/DynamoDB',
+                        metricName: 'SuccessfulRequestLatency',
+                        dimensionsMap: {
+                            TableName: parameters.dbTableName,
+                            Operation: 'UpdateItem'
+                        },
+                        region: props.SecondaryRegion,
+                        period: cdk.Duration.seconds(60),
+                        statistic: 'Average',
+                        label: 'us-east-1 UpdateItem'
+                    }),
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/DynamoDB',
+                        metricName: 'SuccessfulRequestLatency',
+                        dimensionsMap: {
+                            TableName: parameters.dbTableName,
+                            Operation: 'PutItem'
+                        },
+                        region: props.SecondaryRegion,
+                        period: cdk.Duration.seconds(60),
+                        statistic: 'Average',
+                        label: 'us-east-1 PutItem'
+                    }),
+                ],
+            }),
+            new cloudwatch.GraphWidget({
+                title: 'DynamoDB - Replication Latency',
                 width: 8,
                 height: 6,
                 view: cloudwatch.GraphWidgetView.TIME_SERIES,
@@ -480,16 +578,20 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             ReceivingRegion: props.SecondaryRegion
                         },
-                        region: props.MainRegion
+                        region: props.MainRegion,
+                        period: cdk.Duration.seconds(60),
+                        label: 'us-east-1 -> us-west-2'
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/DynamoDB',
                         metricName: 'ReplicationLatency',
                         dimensionsMap: {
                             TableName: parameters.dbTableName,
-                            ReceivingRegion: props.SecondaryRegion
+                            ReceivingRegion: props.MainRegion
                         },
-                        region: props.SecondaryRegion
+                        region: props.SecondaryRegion,
+                        period: cdk.Duration.seconds(60),
+                        label: 'us-west-2 -> us-east-1'
                     })
                 ]
             })
