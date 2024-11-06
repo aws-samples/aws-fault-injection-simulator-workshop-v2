@@ -33,9 +33,9 @@ check_and_failover_rds() {
 # Function to print a green cell with blue text
 print_green_cell() {
     local text="$1"
-    echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║${BLUE}  $text${NC}"
-    echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════════════════════╝${NC}"
+    echo "${GREEN}╔═══════════════════════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo "${GREEN}║${BLUE}  $text${NC}"
+    echo "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════════════════════╝${NC}"
 }
 
 # 1. Read SSM parameter values for both regions
@@ -44,9 +44,9 @@ us_west_2_url=$(get_ssm_parameter "us-west-2" "/petstore/petsiteurl")
 
 # 2. Output the values in a green cell with color-coded URLs
 print_green_cell "PetSite application website URLs:"
-echo -e "${GREEN}║${NC}  Region us-east-1: ${BLUE}$us_east_1_url${NC}"
-echo -e "${GREEN}║${NC}  Region us-west-2: ${BLUE}$us_west_2_url${NC}"
-echo -e "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════════════════════╝${NC}"
+echo "${GREEN}║${NC}  Region us-east-1: ${BLUE}$us_east_1_url${NC}"
+echo "${GREEN}║${NC}  Region us-west-2: ${BLUE}$us_west_2_url${NC}"
+echo "${GREEN}╚═══════════════════════════════════════════════════════════════════════════════════════════════╝${NC}"
 
 # 3. Read SSM parameter values for RDS in us-east-1
 rds_writer_id=$(get_ssm_parameter "us-east-1" "/petstore/rdsinstanceIdentifierWriter")
