@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# ANSI color codes
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 # Function to get SSM parameter value
 get_ssm_parameter() {
     local region=$1
@@ -25,13 +30,23 @@ check_and_failover_rds() {
     fi
 }
 
+# Function to print a green cell with blue text
+print_green_cell() {
+    local text="$1"
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${BLUE}  $text${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════════════╝${NC}"
+}
+
 # 1. Read SSM parameter values for both regions
 us_east_1_url=$(get_ssm_parameter "us-east-1" "/petstore/petsiteurl")
 us_west_2_url=$(get_ssm_parameter "us-west-2" "/petstore/petsiteurl")
 
-# 2. Output the values
-echo "PetSite application website url for the region us-east-1 is: $us_east_1_url"
-echo "PetSite application website url for the region us-west-2 is: $us_west_2_url"
+# 2. Output the values in a green cell with color-coded URLs
+print_green_cell "PetSite application website URLs:"
+echo -e "${GREEN}║${NC}  Region us-east-1: ${BLUE}$us_east_1_url${NC}"
+echo -e "${GREEN}║${NC}  Region us-west-2: ${BLUE}$us_west_2_url${NC}"
+echo -e "${GREEN}╚════════════════════════════════════════════════════════════════════════════╝${NC}"
 
 # 3. Read SSM parameter values for RDS in us-east-1
 rds_writer_id=$(get_ssm_parameter "us-east-1" "/petstore/rdsinstanceIdentifierWriter")
@@ -44,7 +59,7 @@ check_and_failover_rds "$rds_cluster_id" "$rds_writer_id" "$rds_reader_id"
 # 5. Execute additional commands
 echo "Executing additional commands..."
 current_dir=$(pwd)
-cd ~/environment/workshopfiles/fis-workshop/ecs-experiment/
+cd ../../ecs-experiment/
 sh updatetaskdef.sh
 cd "$current_dir"
 
