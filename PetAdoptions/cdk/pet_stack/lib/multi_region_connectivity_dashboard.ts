@@ -402,7 +402,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             }),
             // RDS DatabaseConnections
             new cloudwatch.GraphWidget({
-                title: 'RDS-DatabaseConnections',
+                title: 'RDS - DatabaseConnections',
                 width: 8,
                 height: 6,
                 left: [
@@ -416,15 +416,6 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         statistic: 'tm99',
                         period: cdk.Duration.seconds(60),
                         label: 'us-east-1 DatabaseCluserConnections'
-                    }),
-                    new cloudwatch.Metric({
-                        namespace: 'AWS/RDS',
-                        metricName: 'DatabaseConnections',
-                        dimensionsMap: {
-                            dbInstanceIdentifierWriter: parameters.dbInstanceIdentifierWriter,
-                        },
-                        region: props.MainRegion,
-                        statistic: 'tm99',
                     }),
                     new cloudwatch.Metric({
                         namespace: 'AWS/RDS',
@@ -458,7 +449,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 background: cloudwatch.TextWidgetBackground.TRANSPARENT
             }),
             new cloudwatch.GraphWidget({
-                title: 'DynamoDB - Successful Request Latency',
+                title: 'DynamoDB - Successful Request Latency (us-west-2)',
                 width: 8,
                 height: 6,
                 view: cloudwatch.GraphWidgetView.TIME_SERIES,
@@ -516,7 +507,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                 ],
             }),
             new cloudwatch.GraphWidget({
-                title: 'DynamoDB - Successful Request Latency',
+                title: 'DynamoDB - Successful Request Latency (us-east-1)',
                 width: 8,
                 height: 6,
                 view: cloudwatch.GraphWidgetView.TIME_SERIES,
