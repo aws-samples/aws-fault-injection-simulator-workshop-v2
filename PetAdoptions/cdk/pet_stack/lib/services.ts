@@ -438,12 +438,6 @@ export class Services extends Stack {
             ],
         });
 
-        // Attach inline IAM policy to the role
-        eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {
-            policyName: policyName,
-            document: policyDocument
-        }));
-
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
