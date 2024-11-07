@@ -437,9 +437,6 @@ export class Services extends Stack {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
-        // Loading evidently policy
-        const policyName = 'evidently'; // Adjust the policy name as needed
-        const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
 
         // Attach inline IAM policy to the role
         eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {

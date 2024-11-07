@@ -36,9 +36,4 @@ namespace PetSite.ViewModels
         public Variety Varieties { get; set; }
     }
 
-    public class PetFood
-    {
-        public string EntityId { get; set; }
-    }
-    
 }
