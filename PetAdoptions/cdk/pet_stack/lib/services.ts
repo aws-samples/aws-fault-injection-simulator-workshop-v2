@@ -141,7 +141,7 @@ export class Services extends Stack {
 
         const rdsSecret = rdsResult.secret;
         const rdsEndpoint = rdsResult.endpoint;
-
+        
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: [
@@ -834,6 +834,9 @@ export class Services extends Stack {
             '/petstore/rdssecretarn': `${rdsSecret.secretArn}`,
             '/petstore/rdssecretname': `${rdsSecret.secretName}`,
             '/petstore/rdsendpoint': rdsEndpoint,
+            '/petstore/rdsclusterIdentifier' : `${rdsResult.clusterIdentifier}`,
+            '/petstore/rdsinstanceIdentifierWriter': `${rdsResult.instanceIdentifierWriter}`,
+            '/petstore/rdsinstanceIdentifierReader': `${rdsResult.instanceIdentifierReader}`,
             '/petstore/stackname': stackName,
             '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
             '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref}`,
