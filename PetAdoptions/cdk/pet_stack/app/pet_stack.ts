@@ -12,6 +12,7 @@ import { REGION } from '../lib/common/services-shared-properties';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
 import { UserSimulationStack } from '../lib/user_simulation-stack';
+import { FisLambdaActionsExperimentStack } from '../lib/fis-lambda-actions-experiment';
 
 
 
@@ -25,6 +26,17 @@ const SECONDARY_REGION: REGION = 'us-west-2' as REGION;
 
 const stackName = "Services";
 const app = new App();
+// create fis-lambda-actions-experiment stack
+const fisLambdaActionsExperimentStackPrimary= new FisLambdaActionsExperimentStack(app, 'fis-lambda-actions-experiment', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION
+  },
+  crossRegionReferences: true,
+  MainRegion: MAIN_REGION,
+  SecondaryRegion: SECONDARY_REGION,
+  DeploymentType: 'primary',
+ });
 
 const stack_primary = new Services(app, stackName, {
   env: {
@@ -37,6 +49,20 @@ const stack_primary = new Services(app, stackName, {
   DeploymentType: 'primary'
 });
 
+stack_primary.addDependency(fisLambdaActionsExperimentStackPrimary, "For FIS Lambda Extension Config Bucket");
+
+// create fis-lambda-actions-experiment stack
+const fisLambdaActionsExperimentStackSecondary= new FisLambdaActionsExperimentStack(app, 'fis-lambda-actions-experiment-secondary', {
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: SECONDARY_REGION as string
+  },
+  crossRegionReferences: true,
+  MainRegion: MAIN_REGION,
+  SecondaryRegion: SECONDARY_REGION,
+  DeploymentType: 'secondary',
+ });
+
 const stack_secondary = new Services(app, "ServicesSecondary", {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -47,6 +73,8 @@ const stack_secondary = new Services(app, "ServicesSecondary", {
   SecondaryRegion: SECONDARY_REGION,
   DeploymentType: 'secondary',
 });
+
+stack_secondary.addDependency(fisLambdaActionsExperimentStackSecondary, "For FIS Lambda Extension Config Bucket");
 
 const stack_network = new RegionNetworkConnect(app, "NetworkRegionPeering", {
   env: {

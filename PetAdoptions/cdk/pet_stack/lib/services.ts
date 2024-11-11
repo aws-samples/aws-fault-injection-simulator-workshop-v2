@@ -42,7 +42,9 @@ export class Services extends Stack {
         const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
         const fisLambdaTagName = this.node.tryGetContext('fisLambdaTagName') || 'FISExperimentReady';
         const fisLambdaTagValue = this.node.tryGetContext('fisLambdaTagValue') || 'Yes';
-        const fisLambdaExtensionArn = this.node.tryGetContext('fisLambdaExtensionArn')||'arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9';
+        const fisLambdaExtensionArnPrimary = this.node.tryGetContext('fisLambdaExtensionArn')||'arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9';
+        const fisLambdaExtensionArnSecondary = this.node.tryGetContext('fisLambdaExtensionArnUSWest2')||'arn:aws:lambda:us-west-2:975050054544:layer:aws-fis-extension-x86_64:9';
+
         const fisLambdaExecWrapper = this.node.tryGetContext('fisLambdaExecWrapper')||'/opt/aws-fis/bootstrap';
         const fisExtensionMetrics = this.node.tryGetContext('fisExtensionMetrics')||'all';
 
@@ -51,12 +53,15 @@ export class Services extends Stack {
             TagValue: fisLambdaTagValue
         }
 
+        let isPrimaryRegionDeployment;
+        let fisLambdaExtensionArn ;
 
-        let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
+             fisLambdaExtensionArn = fisLambdaExtensionArnPrimary;
             // DeploymentType is Primary Region Deployment
             isPrimaryRegionDeployment = true
         } else {
+            fisLambdaExtensionArn = fisLambdaExtensionArnSecondary;
             // DeploymentType is Secondary Region Deployment
             isPrimaryRegionDeployment = false
         }
