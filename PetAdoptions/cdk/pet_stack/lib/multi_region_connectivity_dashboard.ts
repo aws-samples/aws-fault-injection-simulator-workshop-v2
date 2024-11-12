@@ -328,7 +328,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             }),
             // S3 BytesPendingReplication
             new cloudwatch.GraphWidget({
-                title: 'S3 Bytes Pending Replication',
+                title: 'S3 - Bytes Pending Replication',
                 width: 8,
                 height: 4,
                 left: [
@@ -348,7 +348,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             }),
             // S3 OperationsPendingReplication
             new cloudwatch.GraphWidget({
-                title: 'S3 Operations Pending Replication',
+                title: 'S3 - Operations Pending Replication',
                 width: 8,
                 height: 4,
                 left: [
@@ -369,7 +369,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             }),
             // S3 ReplicationLatency
             new cloudwatch.GraphWidget({
-                title: 'S3 Replication Latency',
+                title: 'S3 - Replication Latency',
                 width: 8,
                 height: 4,
                 left: [
@@ -385,6 +385,27 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         statistic: 'Average',
                         period: cdk.Duration.seconds(60),
                         color: '#2ca02c'
+                    }),
+                ],
+            }),
+            // S3 ReplicationLatency
+            new cloudwatch.SingleValueWidget({
+                title: 'S3 - Failed Replications',
+                width: 8,
+                height: 4,
+                metrics: [
+                    new cloudwatch.Metric({
+                        namespace: 'AWS/S3',
+                        metricName: 'OperationsFailedReplication',
+                        dimensionsMap: {
+                            SourceBucket: parameters.sourceBucket,
+                            DestinationBucket: parameters.destinationBucket,
+                            RuleId: 'ReplicationRule',
+                        },
+                        region: props.MainRegion,
+                        statistic: 'Sum',
+                        period: cdk.Duration.seconds(60),
+                        color: '#d62728'
                     }),
                 ],
             })
