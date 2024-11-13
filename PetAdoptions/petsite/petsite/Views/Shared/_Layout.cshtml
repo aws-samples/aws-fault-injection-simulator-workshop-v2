@@ -6,10 +6,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    @(new HtmlString(new AmazonSimpleSystemsManagementClient().GetParameterAsync(new GetParameterRequest() { Name = "/petstore/rumscript" }).Result.Parameter.Value))
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>@ViewData["Title"] - Observability PetAdoptions</title>
+    <link rel="preload" 
+          as="image" 
+          href="~/images/main_banner_text.png"
+          fetchpriority="high">
+    <link rel="preload" 
+          as="image" 
+          href="~/images/brand.png"
+          fetchpriority="high">
+
+    
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="~/css/site.css"/>
     <link rel="stylesheet" href="~/css/petstyles.css"/>
@@ -23,7 +32,10 @@
 
                 <section class="col-lg-7 col-md-6 col-xs-12 align-self-center">
                     <a asp-controller="home" asp-action="index">
-                        <img src="~/images/brand.png" alt="Petadoption"/>
+                        <img src="~/images/brand.png" 
+                             alt="Petadoption"
+                             width="[actual-width]" 
+                             height="[actual-height]"/>
                     </a>
                 </section>
                 <section class="col-md-2 align-self-center">
@@ -45,9 +57,16 @@
 
 
 </div>
-<script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-<script src="~/js/site.js" asp-append-version="true"></script>
+
+@{
+    var rumScript = await new AmazonSimpleSystemsManagementClient()
+        .GetParameterAsync(new GetParameterRequest() { Name = "/petstore/rumscript" });
+}
+@(new HtmlString(rumScript.Parameter.Value))
+
+<script src="~/lib/jquery/dist/jquery.min.js" defer></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="~/js/site.js" asp-append-version="true" defer></script>
 @RenderSection("Scripts", required: false)
 </body>
 </html>
