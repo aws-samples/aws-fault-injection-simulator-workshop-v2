@@ -20,6 +20,7 @@ export interface StatusUpdaterServiceProps {
 
 export class StatusUpdaterService extends Construct {
   public api: apigw.RestApi;
+  public statusUpdaterLambdaFunctionName: string;
 
   constructor(scope: Construct, id: string, props: StatusUpdaterServiceProps) {
     super(scope, id);
@@ -115,6 +116,8 @@ export class StatusUpdaterService extends Construct {
     lambdaFunction.addToRolePolicy(lambdaFISConfigS3ListStatement);
     lambdaFunction.addToRolePolicy(lambdaFISConfigS3GetStatement);
     lambdaFunction.addToRolePolicy(lambdaFISConfigGetLayerVersionStatement);
+
+    this.statusUpdaterLambdaFunctionName = lambdaFunction.functionName;
 
     //defines an API Gateway REST API resource backed by our "petstatusupdater" function.
     this.api = new apigw.LambdaRestApi(this, "PetAdoptionStatusUpdater", {

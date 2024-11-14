@@ -30,6 +30,7 @@ import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAIMRoleS3Grant } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
+import { StatusUpdaterCloudwatchDashboard } from './services/status-updater-cloudwatch-dashboard';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props: ServiceStackProps) {
@@ -322,7 +323,7 @@ export class Services extends Stack {
         })
         trafficGeneratorService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
-        //PetStatusUpdater Lambda Function and APIGW--------------------------------------
+        //PetStatusUpdater Lambda Function and API Gateway 
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
             region: region,
             tableName: dynamoDBTableName,
@@ -331,6 +332,14 @@ export class Services extends Stack {
             fisExtensionMetrics:fisExtensionMetrics,
             fisLambdaExtensionArn:fisLambdaExtensionArn
         });
+
+        const statusUpdaterServiceObservabilityDashboard = new StatusUpdaterCloudwatchDashboard(this, 'StatusUpdaterObservabilityDashboard', {
+            lambdaFunctionNames: [statusUpdaterService.statusUpdaterLambdaFunctionName],
+            apiGatewayAPIName: statusUpdaterService.api.restApiName,
+            dashboardNameSuffix: props.DeploymentType
+            
+        });
+        statusUpdaterServiceObservabilityDashboard.node.addDependency(statusUpdaterService);
 
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,
