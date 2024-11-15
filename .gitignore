@@ -4,3 +4,6 @@ PetAdoptions/payforadoption-go/petadoptions
 **/.idea
 cdk.out/*
 PetAdoptions/cdk/pet_stack/out/out.json
+observability/cdk.out/*
+observability/node_modules
+observability/node_modules/*
