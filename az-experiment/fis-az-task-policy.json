@@ -18,7 +18,7 @@
             "Action": [
                 "cloudwatch:getDashboard"
             ],
-            "Resource": "arn:aws:cloudwatch:::dashboard/MultiRegionConnectivity",
+            "Resource": "arn:aws:cloudwatch:::dashboard/AZImpairmentDashboard",
             "Effect": "Allow"
         },
         {
