@@ -56,14 +56,27 @@ func main() {
 			for _, instance := range asg.Instances {
 				if isHealthyAndInService(instance) {
 					azCounts[*instance.AvailabilityZone]++
-				}
+				} 
 			}
 			// Print and send metrics to CloudWatch
 			fmt.Printf("\nAuto Scaling Group: %s\n", *asg.AutoScalingGroupName)
 			fmt.Printf("Healthy and InService instances per AZ:\n")
 
+			if len(azCounts) != len(asg.AvailabilityZones){
+				for _, az := range asg.AvailabilityZones {
+					count, counted := azCounts[az]
+					if counted {
+						fmt.Printf("\nAvailability Zone[%s] counted. It had [%s] instances. \n", az, count)
+					} else {
+						fmt.Printf("\nAvailability Zone[%s] not counted for Unhealthy counted \n", az)
+						azCounts[az]=0
+					}
+				}
+			}
+
+
 			if len(azCounts) == 0 {
-				fmt.Println("  No healthy and in-service instances found")
+				fmt.Println("No healthy and in-service instances found")
 			} else {
 				// Prepare metrics data
 				var metricData []cwtypes.MetricDatum
