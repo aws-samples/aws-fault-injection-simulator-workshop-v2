@@ -7,7 +7,6 @@ import { App, Tags } from 'aws-cdk-lib';
 import { FisServerless } from '../lib/fis_serverless';
 import { Observability } from '../lib/observability'
 import { S3Replica } from '../lib/s3replica'
-import { LoadTesting } from '../lib/load_testing';
 import { REGION } from '../lib/common/services-shared-properties';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
