@@ -2,6 +2,34 @@
     "Version": "2012-10-17",
     "Statement": [
         {
+            "Sid": "AllowFISExperimentS3ReportAccess",
+            "Action": [
+                "s3:putObject",
+                "s3:getObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::services-fisreportbucket*",
+                "arn:aws:s3:::servicessecondary-fisreportbucket*"
+            ],
+            "Effect": "Allow"
+        },
+        {
+            "Sid": "AllowFISExperimentCloudwatchDashboardAccess",
+            "Action": [
+                "cloudwatch:GetDashboard"
+            ],
+            "Resource": "arn:aws:cloudwatch:::dashboard/MultiRegionConnectivity",
+            "Effect": "Allow"
+        },
+        {
+            "Sid": "AllowFISExperimentCloudwatchWidgetAccess",
+            "Action": [
+                "cloudwatch:GetMetricWidgetImage"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
             "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
             "Effect": "Allow",
             "Action": [
