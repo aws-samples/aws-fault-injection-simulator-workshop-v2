@@ -18,7 +18,7 @@
             "Action": [
                 "cloudwatch:GetDashboard"
             ],
-            "Resource": "arn:aws:cloudwatch:::dashboard/AZImpairmentDashboard",
+            "Resource": "*",
             "Effect": "Allow"
         },
         {
