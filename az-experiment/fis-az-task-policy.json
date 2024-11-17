@@ -16,7 +16,7 @@
         {
             "Sid": "AllowFISExperimentCloudwatchDashboardAccess",
             "Action": [
-                "cloudwatch:getDashboard"
+                "cloudwatch:GetDashboard"
             ],
             "Resource": "arn:aws:cloudwatch:::dashboard/AZImpairmentDashboard",
             "Effect": "Allow"
@@ -24,7 +24,7 @@
         {
             "Sid": "AllowFISExperimentCloudwatchWidgetAccess",
             "Action": [
-                "cloudwatch:getMetricWidgetImage"
+                "cloudwatch:GetMetricWidgetImage"
             ],
             "Resource": "*",
             "Effect": "Allow"
