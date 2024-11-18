@@ -31,6 +31,7 @@ import { ServiceStackProps, TargetTag } from './common/services-shared-propertie
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAIMRoleS3Grant } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 import { StatusUpdaterCloudwatchDashboard } from './services/status-updater-cloudwatch-dashboard';
+import { FisLambdaActionsExperiment } from './services/fis-lambda-actions-experiment';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props: ServiceStackProps) {
@@ -323,6 +324,9 @@ export class Services extends Stack {
         })
         trafficGeneratorService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
+        //status update service Lambda fault action experiment execution role & S3 bucket
+        const fisLambdaActionsExperiment= new FisLambdaActionsExperiment(this, 'fis-lambda-actions-experiment');
+
         //PetStatusUpdater Lambda Function and API Gateway 
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
             region: region,
@@ -330,7 +334,8 @@ export class Services extends Stack {
             fisResourceTag: fisResourceTag,
             fisLambdaExecWrapper:fisLambdaExecWrapper,
             fisExtensionMetrics:fisExtensionMetrics,
-            fisLambdaExtensionArn:fisLambdaExtensionArn
+            fisLambdaExtensionArn:fisLambdaExtensionArn,
+            fisLambdaExtensionConfigBucketARN: fisLambdaActionsExperiment.fisLambdaExtensionConfigBucketARN
         });
 
         const statusUpdaterServiceObservabilityDashboard = new StatusUpdaterCloudwatchDashboard(this, 'StatusUpdaterObservabilityDashboard', {

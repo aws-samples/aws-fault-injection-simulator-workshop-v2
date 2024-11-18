@@ -3,11 +3,22 @@ import { Construct } from 'constructs';
 import { Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import { ServiceStackProps } from './common/services-shared-properties';
+// import { ServiceStackProps, TargetTag } from '../common/services-shared-properties';
 
-export class FisLambdaActionsExperimentStack extends Stack {
-    constructor(scope: Construct, id: string, props?: ServiceStackProps) {
-        super(scope, id, props);
+// export interface FisLambdaActionsExperimentProps {
+//     region: string;
+//     fisResourceTag: TargetTag;
+//     fisLambdaExecWrapper: string;
+//     fisExtensionMetrics: string;
+//     fisLambdaExtensionArn: string;
+//   }
+
+export class FisLambdaActionsExperiment extends Construct {
+
+    public fisLambdaExtensionConfigBucketARN:string;
+
+    constructor(scope: Construct, id: string ) {
+        super(scope, id);
 
         // create CloudWatch Log Group for the FIS Experiments
         const fisCWLogGroup = new logs.LogGroup(this, 'FISExperimentsLambda', {
@@ -28,6 +39,8 @@ export class FisLambdaActionsExperimentStack extends Stack {
                 restrictPublicBuckets: true,
             }, // Optional: Block public access
         });
+
+        this.fisLambdaExtensionConfigBucketARN = fisLambdaExtensionConfigBucket.bucketArn
 
         // IAM policy for CloudWatch Logging
         const fisRoleCloudWatchPolicy = new PolicyStatement({
@@ -79,10 +92,10 @@ export class FisLambdaActionsExperimentStack extends Stack {
         fisRoleForLambdaExperiments.addToPolicy(fisResourceTaggingPolicy);
         fisRoleForLambdaExperiments.addToPolicy(fisLambdaPolicy);
 
-        // Output for Lambda functions for FIS Lambda faults
-        new CfnOutput(this, "fisLambdaExtensionConfigBucketARN", {
-            value: fisLambdaExtensionConfigBucket.bucketArn,
-            exportName: "fisLambdaExtensionConfigBucketARN"
-        });
+        // // Output for Lambda functions for FIS Lambda faults
+        // new CfnOutput(this, "fisLambdaExtensionConfigBucketARN", {
+        //     value: fisLambdaExtensionConfigBucket.bucketArn,
+        //     exportName: "fisLambdaExtensionConfigBucketARN"
+        // });
     }
 }

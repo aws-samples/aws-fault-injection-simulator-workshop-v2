@@ -16,6 +16,7 @@ export interface StatusUpdaterServiceProps {
   fisLambdaExecWrapper: string;
   fisExtensionMetrics: string;
   fisLambdaExtensionArn: string;
+  fisLambdaExtensionConfigBucketARN:string;
 }
 
 export class StatusUpdaterService extends Construct {
@@ -25,17 +26,17 @@ export class StatusUpdaterService extends Construct {
   constructor(scope: Construct, id: string, props: StatusUpdaterServiceProps) {
     super(scope, id);
 
-    // Importing resources, this is created by FisLambdaActionsExperimentStack
-    const fisLambdaExtensionConfigBucketARN = Fn.importValue(
-      "fisLambdaExtensionConfigBucketARN"
-    );
+    // // Importing resources, this is created by FisLambdaActionsExperimentStack
+    // const fisLambdaExtensionConfigBucketARN = Fn.importValue(
+    //   "fisLambdaExtensionConfigBucketARN"
+    // );
 
     //create IAM Policy Statements for Lambda functions S3 Access
     const lambdaFISConfigS3ListStatement = new iam.PolicyStatement({
       sid: "AllowLambdaToListS3Buckets",
       effect: iam.Effect.ALLOW,
       actions: ["s3:ListBucket"],
-      resources: [fisLambdaExtensionConfigBucketARN],
+      resources: [props.fisLambdaExtensionConfigBucketARN],
       conditions: {
         StringLike: {
           "s3:prefix": ["FisConfigs/*"],
@@ -46,7 +47,7 @@ export class StatusUpdaterService extends Construct {
       sid: "AllowReadingObjectFromConfigLocation",
       effect: iam.Effect.ALLOW,
       actions: ["s3:GetObject"],
-      resources: [`${fisLambdaExtensionConfigBucketARN}/FisConfigs/*`],
+      resources: [`${props.fisLambdaExtensionConfigBucketARN}/FisConfigs/*`],
     });
     // create a IAM policy for lambda:GetLayerVersion
     const lambdaFISConfigGetLayerVersionStatement = new iam.PolicyStatement({
@@ -82,7 +83,7 @@ export class StatusUpdaterService extends Construct {
       description: "Update Pet availability status",
       environment: {
         TABLE_NAME: props.tableName,
-        AWS_FIS_CONFIGURATION_LOCATION: `${fisLambdaExtensionConfigBucketARN}/FisConfigs/`,
+        AWS_FIS_CONFIGURATION_LOCATION: `${props.fisLambdaExtensionConfigBucketARN}/FisConfigs/`,
         AWS_LAMBDA_EXEC_WRAPPER: props.fisLambdaExecWrapper,
         AWS_FIS_EXTENSION_METRICS: props.fisExtensionMetrics,
       },
