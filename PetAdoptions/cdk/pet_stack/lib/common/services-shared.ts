@@ -164,30 +164,61 @@ export interface createS3BucketProps {
     mainRegion: string;
     secondaryRegion: string;
 }
-export interface s3BucketAdoptionProps {
+export interface s3BucketProps {
     s3Bucket: s3.Bucket;
-    s3IAMReplicationRole: iam.IRole;
+    s3IAMReplicationRole?: iam.IRole;
 
 }
 
-export function createOrGetAIMRoleS3Grant(props: createS3BucketProps): s3BucketAdoptionProps {
-    const s3_observabilitypetadoptions = new s3.Bucket(props.scope, 's3bucket_petadoption', {
+export function createOrGetFISReportBucket(props: createS3BucketProps): s3BucketProps {
+    let s3FISReportBucket: s3.Bucket;
+    s3FISReportBucket = new s3.Bucket(props.scope, 'fisreportbucket', {
         publicReadAccess: false,
         autoDeleteObjects: true,
         removalPolicy: RemovalPolicy.DESTROY,
         versioned: true, // Enable versioning,
     });
-    Tags.of(s3_observabilitypetadoptions).add("DisruptS3", "Allowed");
+    // if (props.isPrimaryRegionDeployment) {
+        
+    // } else {
+    //     // Secondary Region Deployment. Getting RDS information from SSM
+    //     const ssmFISReportBucketArn = new SSMParameterReader(props.scope, 'FISReportBucketArn', {
+    //         parameterName: "/petstore/s3fisreportbucketarn",
+    //         region: props.mainRegion
+    //     });
+    //     const existingRoleArn = ssmFISReportBucketArn.getParameterValue();
+    //     s3FISReportBucket = s3.Bucket.fromBucketArn(props.scope, 'fisreportbucket', existingRoleArn)
+    // }
+    return { s3Bucket: s3FISReportBucket };
+
+}
+
+
+export function createOrGetAdoptionsBucket(props: createS3BucketProps): s3BucketProps {
+    const s3PetAdoptions = new s3.Bucket(props.scope, 's3bucket_petadoption', {
+        publicReadAccess: false,
+        autoDeleteObjects: true,
+        removalPolicy: RemovalPolicy.DESTROY,
+        versioned: true, // Enable versioning,
+    });
+    Tags.of(s3PetAdoptions).add("DisruptS3", "Allowed");
 
     let replicationRole: iam.IRole;
     if (props.isPrimaryRegionDeployment) {
         // IAM role for replication
-        replicationRole = new iam.Role(props.scope, 'ReplicationRole', {
+        replicationRole = new iam.Role(props.scope, 'ReplicationRolePrimaryRegion', {
             assumedBy: new iam.ServicePrincipal('s3.amazonaws.com'),
         });
         // Grant permissions to the replication role
-        s3_observabilitypetadoptions.grantRead(replicationRole);
-        s3_observabilitypetadoptions.grantWrite(replicationRole);
+        s3PetAdoptions.grantRead(replicationRole);
+        s3PetAdoptions.grantWrite(replicationRole);
+
+        // Add s3:Replicate* permissions
+        replicationRole.addToPrincipalPolicy(new iam.PolicyStatement({
+            actions: ['s3:Replicate*'],
+            resources: [s3PetAdoptions.bucketArn, `${s3PetAdoptions.bucketArn}/*`],
+        }));
+
     } else {
         // Secondary Region Deployment. Getting RDS information from SSM
         const ssmExistingRoleArn = new SSMParameterReader(props.scope, 'existingRoleArn', {
@@ -195,15 +226,19 @@ export function createOrGetAIMRoleS3Grant(props: createS3BucketProps): s3BucketA
             region: props.mainRegion
         });
         const existingRoleArn = ssmExistingRoleArn.getParameterValue();
-        replicationRole = iam.Role.fromRoleArn(props.scope, 'ImportedReplicationRole', existingRoleArn);
+        replicationRole = iam.Role.fromRoleArn(props.scope, 'ReplicationRoleSecondaryRegion', existingRoleArn);
         // Grant permissions to the replication role
-        s3_observabilitypetadoptions.grantRead(replicationRole);
-        s3_observabilitypetadoptions.grantWrite(replicationRole);
+        s3PetAdoptions.grantRead(replicationRole);
+        s3PetAdoptions.grantWrite(replicationRole);
+        replicationRole.addToPrincipalPolicy(new iam.PolicyStatement({
+            actions: ['s3:Replicate*'],
+            resources: [s3PetAdoptions.bucketArn, `${s3PetAdoptions.bucketArn}/*`],
+        }));
     }
 
-    
 
-    return { s3Bucket: s3_observabilitypetadoptions, s3IAMReplicationRole: replicationRole };
+
+    return { s3Bucket: s3PetAdoptions, s3IAMReplicationRole: replicationRole };
 
 }
 
@@ -223,6 +258,9 @@ export interface CreateOrGetRDSClusterProps {
 export interface RDSClusterResult {
     secret: cdk.aws_secretsmanager.ISecret;
     endpoint: string;
+    clusterIdentifier: string;
+    instanceIdentifierWriter: string;
+    instanceIdentifierReader: string;
 }
 
 export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClusterResult {
@@ -254,10 +292,11 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
             securityGroups: [rdssecuritygroup],
             defaultDatabaseName: 'adoptions'
         });
+
         if (auroraCluster.secret === undefined) {
             throw new Error("RDS Doesn't have a secret");
         }
-        return { secret: auroraCluster.secret, endpoint: auroraCluster.clusterEndpoint.hostname };
+        return { secret: auroraCluster.secret, endpoint: auroraCluster.clusterEndpoint.hostname, clusterIdentifier: auroraCluster.clusterIdentifier, instanceIdentifierWriter: auroraCluster.instanceIdentifiers[0], instanceIdentifierReader: auroraCluster.instanceIdentifiers[1] };
     } else {
         if (!props.mainRegion) {
             throw new Error("MainRegion must be provided for secondary region deployment");
@@ -275,7 +314,27 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
             region: props.mainRegion
         });
         const rdsEndpoint = ssmrdsEndpointName.getParameterValue();
-        return { secret: rdsSecret, endpoint: rdsEndpoint };
+
+        const ssmrdsclusterIdentifier = new SSMParameterReader(props.scope, 'ssmrdsclusterIdentifier ', {
+            parameterName: "/petstore/rdsclusterIdentifier",
+            region: props.mainRegion
+        });
+        const clusterIdentifier = ssmrdsclusterIdentifier.getParameterValue();
+
+        const ssmrdsinstanceIdentifierWriter = new SSMParameterReader(props.scope, 'ssmrdsinstanceIdentifierWriter', {
+            parameterName: "/petstore/rdsinstanceIdentifierWriter",
+            region: props.mainRegion
+        });
+        const rdsinstanceIdentifierWriter = ssmrdsinstanceIdentifierWriter.getParameterValue()
+
+        const ssmrdsinstanceIdentifierReader = new SSMParameterReader(props.scope, 'ssmrdsinstanceIdentifierReader', {
+            parameterName: "/petstore/rdsinstanceIdentifierReader",
+            region: props.mainRegion
+        });
+        const rdsinstanceIdentifierReader = ssmrdsinstanceIdentifierReader.getParameterValue()
+
+
+        return { secret: rdsSecret, endpoint: rdsEndpoint, clusterIdentifier: clusterIdentifier, instanceIdentifierWriter: rdsinstanceIdentifierWriter, instanceIdentifierReader: rdsinstanceIdentifierReader };
     }
 }
 

@@ -146,47 +146,6 @@ export class Applications extends Stack {
             targetGroupArn: petHistoryTargetGroupArn
         });
 
-        // PetFood application definitions-----------------------------------------------------------------------
-        const petFoodContainerImage = new ContainerImageBuilder(this, 'pet-food-container-image', {
-            repositoryName: "petfood",
-            dockerImageAssetDirectory: "../../petfood",
-        });
-
-        var petFoodManifest = readFileSync("../../petfood/deployment.yaml", "utf8");
-        var petFoodDeploymentYaml = yaml.loadAll(petFoodManifest) as Record<string, any>[];
-        petFoodDeploymentYaml[0].spec.template.spec.containers[0].image = `${account}.dkr.ecr.${region}.amazonaws.com/petfood:latest`;
-
-        petFoodDeploymentYaml[0].spec.template.spec.containers[0].env.forEach((envVar: { name: string, value: string }) => {
-            if (envVar.name === "AWS_DEFAULT_REGION" && envVar.value === "DEPLOYMENTREGION") {
-                envVar.value = region;
-            }
-        });
-
-        const petFoodDeploymentManifest = new eks.KubernetesManifest(this, "petfooddeployment", {
-            cluster: cluster,
-            manifest: petFoodDeploymentYaml
-        });
-
-        // PetFoodMetric application definitions-----------------------------------------------------------------------
-        const petFoodMetricContainerImage = new ContainerImageBuilder(this, 'pet-food-metric-container-image', {
-            repositoryName: "petfood-metric",
-            dockerImageAssetDirectory: "../../petfood-metric",
-        });
-
-        var petFoodMetricManifest = readFileSync("../../petfood-metric/deployment.yaml", "utf8");
-        var petFoodMetricDeploymentYaml = yaml.loadAll(petFoodMetricManifest) as Record<string, any>[];
-        petFoodMetricDeploymentYaml[0].spec.template.spec.containers[0].image = `${account}.dkr.ecr.${region}.amazonaws.com/petfood-metric:latest`;
-
-        petFoodMetricDeploymentYaml[0].spec.template.spec.containers[0].env.forEach((envVar: { name: string, value: string }) => {
-            if (envVar.name === "AWS_DEFAULT_REGION" && envVar.value === "DEPLOYMENTREGION") {
-                envVar.value = region;
-            }
-        });
-
-        const petFoodMetricDeploymentManifest = new eks.KubernetesManifest(this, "petfoodmetricdeployment", {
-            cluster: cluster,
-            manifest: petFoodMetricDeploymentYaml
-        });
 
         // SSM parameters and outputs-----------------------------------------------------------------------
         this.createSsmParameters(new Map(Object.entries({

@@ -28,7 +28,7 @@ import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAIMRoleS3Grant } from './common/services-shared';
+import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAdoptionsBucket, createOrGetFISReportBucket } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 import { StatusUpdaterCloudwatchDashboard } from './services/status-updater-cloudwatch-dashboard';
 import { FisLambdaActionsExperiment } from './services/fis-lambda-actions-experiment';
@@ -116,16 +116,32 @@ export class Services extends Stack {
         }
 
         // Creates an S3 bucket to store pet images
-        const s3_observabilitypetadoptions = createOrGetAIMRoleS3Grant({
+        const s3ExperimentReport = createOrGetFISReportBucket({
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             mainRegion: props.MainRegion,
             secondaryRegion: props.SecondaryRegion,
         });
 
+
+        // Creates an S3 bucket to store pet images
+        const s3PetAdoptions = createOrGetAdoptionsBucket({
+            scope: this,
+            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
+            mainRegion: props.MainRegion,
+            secondaryRegion: props.SecondaryRegion,
+        });
+
+        let s3PetAdoptionsarn: string
+        if (s3PetAdoptions.s3IAMReplicationRole != undefined) {
+            s3PetAdoptionsarn = s3PetAdoptions.s3IAMReplicationRole.roleArn 
+        } else {
+            s3PetAdoptionsarn = "undefined"
+        }
+
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
-            destinationBucket: s3_observabilitypetadoptions.s3Bucket,
+            destinationBucket: s3PetAdoptions.s3Bucket,
             sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
 
@@ -152,7 +168,7 @@ export class Services extends Stack {
 
         const rdsSecret = rdsResult.secret;
         const rdsEndpoint = rdsResult.endpoint;
-
+        
         const readSSMParamsPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: [
@@ -464,15 +480,6 @@ export class Services extends Stack {
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEKS_CNI_Policy'),
             ],
         });
-        // Loading evidently policy
-        const policyName = 'evidently'; // Adjust the policy name as needed
-        const policyDocument = iam.PolicyDocument.fromJson(require('../../../petfood/policy.json'));
-
-        // Attach inline IAM policy to the role
-        eksPetsiteASGClusterNodeGroupRole.attachInlinePolicy(new iam.Policy(this, 'EksPetsiteASGInlinePolicy', {
-            policyName: policyName,
-            document: policyDocument
-        }));
 
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
@@ -856,9 +863,11 @@ export class Services extends Stack {
             '/petstore/queueurl': sqsQueue.queueUrl,
             '/petstore/snsarn': topic_petadoption.topicArn,
             '/petstore/dynamodbtablename': dynamoDBTableName,
-            '/petstore/s3bucketname': s3_observabilitypetadoptions.s3Bucket.bucketName,
-            '/petstore/s3bucketarn': s3_observabilitypetadoptions.s3Bucket.bucketArn,
-            '/petstore/s3iamroleresplication': s3_observabilitypetadoptions.s3IAMReplicationRole.roleArn,
+            '/petstore/s3bucketname': s3PetAdoptions.s3Bucket.bucketName,
+            '/petstore/s3bucketarn': s3PetAdoptions.s3Bucket.bucketArn,
+            '/petstore/s3fisreportbucketname': s3ExperimentReport.s3Bucket.bucketName,
+            '/petstore/s3fisreportbucketarn': s3ExperimentReport.s3Bucket.bucketArn,
+            '/petstore/s3iamroleresplication': s3PetAdoptionsarn,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,
             '/petstore/petlistadoptionsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/api/adoptionlist/`,
@@ -870,6 +879,9 @@ export class Services extends Stack {
             '/petstore/rdssecretarn': `${rdsSecret.secretArn}`,
             '/petstore/rdssecretname': `${rdsSecret.secretName}`,
             '/petstore/rdsendpoint': rdsEndpoint,
+            '/petstore/rdsclusterIdentifier' : `${rdsResult.clusterIdentifier}`,
+            '/petstore/rdsinstanceIdentifierWriter': `${rdsResult.instanceIdentifierWriter}`,
+            '/petstore/rdsinstanceIdentifierReader': `${rdsResult.instanceIdentifierReader}`,
             '/petstore/stackname': stackName,
             '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
             '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref}`,
