@@ -30,6 +30,8 @@ import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAdoptionsBucket, createOrGetFISReportBucket } from './common/services-shared';
 import { SSMParameterReader } from './common/ssm-parameter-reader';
+import { StatusUpdaterCloudwatchDashboard } from './services/status-updater-cloudwatch-dashboard';
+import { FisLambdaActionsExperiment } from './services/fis-lambda-actions-experiment';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props: ServiceStackProps) {
@@ -42,17 +44,26 @@ export class Services extends Stack {
         const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
         const fisLambdaTagName = this.node.tryGetContext('fisLambdaTagName') || 'FISExperimentReady';
         const fisLambdaTagValue = this.node.tryGetContext('fisLambdaTagValue') || 'Yes';
+        const fisLambdaExtensionArnPrimary = this.node.tryGetContext('fisLambdaExtensionArn')||'arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9';
+        const fisLambdaExtensionArnSecondary = this.node.tryGetContext('fisLambdaExtensionArnUSWest2')||'arn:aws:lambda:us-west-2:975050054544:layer:aws-fis-extension-x86_64:9';
+
+        const fisLambdaExecWrapper = this.node.tryGetContext('fisLambdaExecWrapper')||'/opt/aws-fis/bootstrap';
+        const fisExtensionMetrics = this.node.tryGetContext('fisExtensionMetrics')||'all';
+
         const fisResourceTag: TargetTag = {
             TagName: fisLambdaTagName,
             TagValue: fisLambdaTagValue
         }
 
+        let isPrimaryRegionDeployment;
+        let fisLambdaExtensionArn ;
 
-        let isPrimaryRegionDeployment
         if (props.DeploymentType as string == 'primary') {
+             fisLambdaExtensionArn = fisLambdaExtensionArnPrimary;
             // DeploymentType is Primary Region Deployment
             isPrimaryRegionDeployment = true
         } else {
+            fisLambdaExtensionArn = fisLambdaExtensionArnSecondary;
             // DeploymentType is Secondary Region Deployment
             isPrimaryRegionDeployment = false
         }
@@ -329,12 +340,28 @@ export class Services extends Stack {
         })
         trafficGeneratorService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
 
-        //PetStatusUpdater Lambda Function and APIGW--------------------------------------
+        //status update service Lambda fault action experiment execution role & S3 bucket
+        const fisLambdaActionsExperiment= new FisLambdaActionsExperiment(this, 'fis-lambda-actions-experiment');
+
+        //PetStatusUpdater Lambda Function and API Gateway 
         const statusUpdaterService = new StatusUpdaterService(this, 'status-updater-service', {
             region: region,
             tableName: dynamoDBTableName,
-            fisResourceTag: fisResourceTag
+            fisResourceTag: fisResourceTag,
+            fisLambdaExecWrapper:fisLambdaExecWrapper,
+            fisExtensionMetrics:fisExtensionMetrics,
+            fisLambdaExtensionArn:fisLambdaExtensionArn,
+            fisLambdaExtensionConfigBucketARN: fisLambdaActionsExperiment.fisLambdaExtensionConfigBucketARN
         });
+
+        const statusUpdaterServiceObservabilityDashboard = new StatusUpdaterCloudwatchDashboard(this, 'StatusUpdaterObservabilityDashboard', {
+            lambdaFunctionNames: [statusUpdaterService.statusUpdaterLambdaFunctionName],
+            apiGatewayAPIName: statusUpdaterService.api.restApiName,
+            dashboardNameSuffix: props.DeploymentType
+            
+        });
+        statusUpdaterServiceObservabilityDashboard.node.addDependency(statusUpdaterService);
+
         const albSG = new ec2.SecurityGroup(this, 'ALBSecurityGroup', {
             vpc: theVPC,
             securityGroupName: 'ALBSecurityGroup',
