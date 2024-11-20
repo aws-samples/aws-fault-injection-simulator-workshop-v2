@@ -1,26 +1,26 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import { Construct } from 'constructs';
-import { ServiceStackProps } from './common/services-shared-properties';
-import { SSMParameterReader } from './common/ssm-parameter-reader';
-import * as CustomResource from 'aws-cdk-lib/custom-resources';
-import { randomInt } from 'crypto';
+import { SSMParameterReader } from '../common/ssm-parameter-reader';
+import { ServiceStackProps } from '../common/services-shared-properties';
 
-export class MultiRegionConnectivityDashboard extends cdk.Stack {
+export class MultiRegionDashboard {
 
-    constructor(scope: Construct, id: string, props: ServiceStackProps) {
-        super(scope, id, props);
+    private readonly props: ServiceStackProps;
 
-        const dashboard = new cloudwatch.Dashboard(this, 'MultiRegionConnectivityDashboard', {
+    constructor(stack: cdk.Stack, props: ServiceStackProps) {
+
+        this.props = props;
+        
+        const multiRegionDashboard = new cloudwatch.Dashboard(stack, 'MultiRegionConnectivityDashboard', {
             dashboardName: 'MultiRegionConnectivity'
         });
 
         // Get SSM Parameters
-        const parameters = this.getSSMParameters(props);
+        const parameters = this.getSSMParameters(stack);
 
         // Add all widgets to dashboard
-        dashboard.addWidgets(
+        multiRegionDashboard.addWidgets(
             new cloudwatch.Row(
                 new cloudwatch.TextWidget({
                     markdown: `## Multi-Region Connectivity Dashboard
@@ -29,58 +29,58 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                     width: 24,
                     height: 3,
                 })),
-            new cloudwatch.Column(...this.createCustomerExpDashboardWidgets(props, parameters)),
-            new cloudwatch.Column(...this.createNetworkDashboardWidgets(props, parameters), ...this.createS3DashboardWidgets(props, parameters)),
-            new cloudwatch.Column(...this.createDatabaseDashboardWidgets(props, parameters))
+            new cloudwatch.Column(...this.createCustomerExpDashboardWidgets()),
+            new cloudwatch.Column(...this.createNetworkDashboardWidgets(parameters), ...this.createS3DashboardWidgets(parameters)),
+            new cloudwatch.Column(...this.createDatabaseDashboardWidgets(parameters))
         );
     }
-
-    private getSSMParameters(props: ServiceStackProps) {
+    
+    private getSSMParameters(stack: cdk.Stack) {
         return {
             mainTgwId: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/tgwid'
             ),
-            secondaryTgwId: new SSMParameterReader(this, 'ssmTgwIdReader', {
+            secondaryTgwId: new SSMParameterReader(stack, 'ssmTgwIdReader', {
                 parameterName: '/petstore/tgwid',
-                region: props.SecondaryRegion
+                region: this.props.SecondaryRegion
             })?.getParameterValue(),
             mainTgwAttachmentId: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/tgwattachmentid'
             ),
             // Same value for the peering attachmentID  in both regions.
             secondaryTgwAttachmentId: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/tgwattachmentid'
             ),
             sourceBucket: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/s3bucketname'
             ),
-            destinationBucket: new SSMParameterReader(this, 'ssmS3BucketNameReader', {
+            destinationBucket: new SSMParameterReader(stack, 'ssmS3BucketNameReader', {
                 parameterName: '/petstore/s3bucketname',
-                region: props.SecondaryRegion
+                region: this.props.SecondaryRegion
             })?.getParameterValue(),
             dbTableName: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/dynamodbtablename'
             ),
-            dbClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(this,'/petstore/rdsendpoint'))),
+            dbClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(stack,'/petstore/rdsendpoint'))),
             
             dbInstanceIdentifierWriter: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/rdsinstanceIdentifierWriter'
             ),
 
             dbInstanceIdentifierReader: ssm.StringParameter.valueForStringParameter(
-                this,
+                stack,
                 '/petstore/rdsinstanceIdentifierReader'
             ),
         };
     }
 
-    private createCustomerExpDashboardWidgets(props: ServiceStackProps, parameters: any): cloudwatch.IWidget[] {
+    private createCustomerExpDashboardWidgets(): cloudwatch.IWidget[] {
 
         return [
             new cloudwatch.TextWidget({
@@ -105,7 +105,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSite',
                             ServiceType: 'AWS::EC2::Instance'
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'p50',
                     }),
                     new cloudwatch.Metric({
@@ -117,7 +117,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSite',
                             ServiceType: 'AWS::EC2::Instance'
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'p90',
                     }),
                     new cloudwatch.Metric({
@@ -129,7 +129,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSite',
                             ServiceType: 'AWS::EC2::Instance',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'p50',
                     }),
                     new cloudwatch.Metric({
@@ -141,7 +141,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSite',
                             ServiceType: 'AWS::EC2::Instance',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'p90',
                     })
                 ],
@@ -159,7 +159,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSearch',
                             ServiceType: 'AWS::ECS::EC2',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'p50',
                     }),
                     new cloudwatch.Metric({
@@ -170,7 +170,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSearch',
                             ServiceType: 'AWS::ECS::EC2',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'p90',
                     }),
                     new cloudwatch.Metric({
@@ -181,7 +181,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSearch',
                             ServiceType: 'AWS::ECS::EC2',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'p50',
                     }),
                     new cloudwatch.Metric({
@@ -192,7 +192,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'PetSearch',
                             ServiceType: 'AWS::ECS::EC2',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'p90',
                     }),
                 ],
@@ -211,7 +211,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'petlistadoptions',
                             ServiceType: 'AWS::ECS::Fargate',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'p50',
                     }),
                     new cloudwatch.Metric({
@@ -222,7 +222,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'petlistadoptions',
                             ServiceType: 'AWS::ECS::Fargate',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'p90',
                     }),
                     new cloudwatch.Metric({
@@ -233,7 +233,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'petlistadoptions',
                             ServiceType: 'AWS::ECS::Fargate',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'p50',
                     }),
                     new cloudwatch.Metric({
@@ -244,7 +244,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             ServiceName: 'petlistadoptions',
                             ServiceType: 'AWS::ECS::Fargate',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'p90',
                     }),
                 ],
@@ -254,7 +254,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             })
         ];
     }
-    private createNetworkDashboardWidgets(props: ServiceStackProps, parameters: any): cloudwatch.IWidget[] {
+    private createNetworkDashboardWidgets(parameters: any): cloudwatch.IWidget[] {
 
         return [
             new cloudwatch.TextWidget({
@@ -277,7 +277,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TransitGatewayAttachment: parameters.secondaryTgwAttachmentId,
                             TransitGateway: parameters.secondaryTgwId,
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         label: 'us-west-2 PacketsOut'
                     }),
@@ -288,7 +288,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TransitGatewayAttachment: parameters.secondaryTgwAttachmentId,
                             TransitGateway: parameters.secondaryTgwId,
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         label: 'us-west-2 PacketsIn'
                     }),
@@ -306,7 +306,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         dimensionsMap: {
                             TransitGateway: parameters.mainTgwId
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'Sum',
                         color: '#2ca02c',
                         period: cdk.Duration.seconds(60),
@@ -316,7 +316,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             })
         ];
     }
-    private createS3DashboardWidgets(props: ServiceStackProps, parameters: any): cloudwatch.IWidget[] {
+    private createS3DashboardWidgets(parameters: any): cloudwatch.IWidget[] {
 
         return [
             // S3 Replication Header
@@ -340,7 +340,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             DestinationBucket: parameters.destinationBucket,
                             RuleId: 'ReplicationRule',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'Average',
                         period: cdk.Duration.seconds(60),
                     }),
@@ -360,7 +360,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             DestinationBucket: parameters.destinationBucket,
                             RuleId: 'ReplicationRule',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'Average',
                         period: cdk.Duration.seconds(60),
                         color: "#e377c2" 
@@ -381,7 +381,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             DestinationBucket: parameters.destinationBucket,
                             RuleId: 'ReplicationRule',
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         statistic: 'Average',
                         period: cdk.Duration.seconds(60),
                         color: '#2ca02c'
@@ -402,7 +402,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             DestinationBucket: parameters.destinationBucket,
                             RuleId: 'ReplicationRule',
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'Sum',
                         period: cdk.Duration.seconds(60),
                         color: '#d62728'
@@ -411,7 +411,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             })
         ];
     }
-    private createDatabaseDashboardWidgets(props: ServiceStackProps, parameters: any): cloudwatch.IWidget[] {
+    private createDatabaseDashboardWidgets(parameters: any): cloudwatch.IWidget[] {
 
         return [
             // Database Section
@@ -433,7 +433,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         dimensionsMap: {
                             DBClusterIdentifier: parameters.dbClusterIdentifier,
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         statistic: 'tm99',
                         period: cdk.Duration.seconds(60),
                         label: 'us-east-1 DatabaseCluserConnections'
@@ -444,7 +444,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         dimensionsMap: {
                             dbInstanceIdentifierReader: parameters.dbInstanceIdentifierReader,
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'tm99',
                         label: 'us-east-1 DatabaseWriterConnections'
@@ -455,7 +455,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         dimensionsMap: {
                             DBInstanceIdentifier: parameters.dbInstanceIdentifierReader,
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'tm99',
                         label: 'us-east-1 DatabaseReaderConnections'
@@ -484,7 +484,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'Scan'
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-west-2 Scan'
@@ -496,7 +496,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'Query'
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-west-2 Query'
@@ -508,7 +508,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'UpdateItem'
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-west-2 UpdateItem'
@@ -520,7 +520,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'PutItem'
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-west-2 PutItem'
@@ -542,7 +542,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'Scan'
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 Scan'
@@ -554,7 +554,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'Query'
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 Query'
@@ -566,7 +566,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'UpdateItem'
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 UpdateItem'
@@ -578,7 +578,7 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                             TableName: parameters.dbTableName,
                             Operation: 'PutItem'
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         statistic: 'Average',
                         label: 'us-east-1 PutItem'
@@ -597,9 +597,9 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         metricName: 'ReplicationLatency',
                         dimensionsMap: {
                             TableName: parameters.dbTableName,
-                            ReceivingRegion: props.SecondaryRegion
+                            ReceivingRegion: this.props.SecondaryRegion
                         },
-                        region: props.MainRegion,
+                        region: this.props.MainRegion,
                         period: cdk.Duration.seconds(60),
                         label: 'us-east-1 -> us-west-2'
                     }),
@@ -608,9 +608,9 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
                         metricName: 'ReplicationLatency',
                         dimensionsMap: {
                             TableName: parameters.dbTableName,
-                            ReceivingRegion: props.MainRegion
+                            ReceivingRegion: this.props.MainRegion
                         },
-                        region: props.SecondaryRegion,
+                        region: this.props.SecondaryRegion,
                         period: cdk.Duration.seconds(60),
                         label: 'us-west-2 -> us-east-1'
                     })
@@ -618,6 +618,4 @@ export class MultiRegionConnectivityDashboard extends cdk.Stack {
             })
         ];
     }
-
 }
-
