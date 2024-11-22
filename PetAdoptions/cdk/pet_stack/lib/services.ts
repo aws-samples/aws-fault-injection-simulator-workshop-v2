@@ -358,10 +358,6 @@ export class Services extends Stack {
 
         });
 
-        new ssm.StringParameter(this, "putParamTargetGroupArn", {
-            stringValue: targetGroup.targetGroupArn,
-            parameterName: '/eks/petsite/TargetGroupArn'
-        })
 
         const listener = alb.addListener('Listener', {
             port: 80,
@@ -388,20 +384,10 @@ export class Services extends Stack {
             targetGroups: [petadoptionshistory_targetGroup]
         });
 
-        new ssm.StringParameter(this, "putPetHistoryParamTargetGroupArn", {
-            stringValue: petadoptionshistory_targetGroup.targetGroupArn,
-            parameterName: '/eks/pethistory/TargetGroupArn'
-        });
-
         // PetSite - EKS Cluster
         const clusterAdmin = new iam.Role(this, 'AdminRole', {
             assumedBy: new iam.AccountRootPrincipal()
         });
-
-        new ssm.StringParameter(this, "putParam", {
-            stringValue: clusterAdmin.roleArn,
-            parameterName: '/eks/petsite/EKSMasterRoleArn'
-        })
 
         const secretsKey = new kms.Key(this, 'SecretsKey');
 
@@ -868,6 +854,36 @@ export class Services extends Stack {
             '/eks/petsite/OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
             '/petstore/errormode1': "false"
         })));
+
+        new ssm.StringParameter(this, "putParamECSAsgName", {
+            stringValue: ecsEc2PetSearchAutoScalingGroup.autoScalingGroupName,
+            parameterName: '/petstore/ecsasgname'
+        });
+
+        new ssm.StringParameter(this, "putParamEKSAsgNameArn", {
+            stringValue: eksPetsiteASGClusterNodeGroup.nodegroupArn,
+            parameterName: '/eks/petsite/AsgNameArn'
+        });
+        
+        new ssm.StringParameter(this, "putPetHistoryParamTargetGroupArn", {
+            stringValue: petadoptionshistory_targetGroup.targetGroupArn,
+            parameterName: '/eks/pethistory/TargetGroupArn'
+        });
+
+        new ssm.StringParameter(this, "putParam", {
+            stringValue: clusterAdmin.roleArn,
+            parameterName: '/eks/petsite/EKSMasterRoleArn'
+        });
+
+        new ssm.StringParameter(this, "putParamAlbArn", {
+            stringValue: alb.loadBalancerFullName,
+            parameterName: '/eks/petsite/AlbArn'
+        });
+
+        new ssm.StringParameter(this, "putParamTargetGroupArn", {
+            stringValue: targetGroup.targetGroupArn,
+            parameterName: '/eks/petsite/TargetGroupArn'
+        });
 
         this.createOuputs(new Map(Object.entries({
             'QueueURL': sqsQueue.queueUrl,

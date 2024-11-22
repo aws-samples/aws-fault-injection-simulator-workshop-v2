@@ -51,7 +51,7 @@ export class AZDashboard {
                 this.createASGHealthyInstancesTimelineWidget(),
                 this.createASGHealthyInstancesPieWidget(),
             ),
-            new cloudwatch.Row(    
+            new cloudwatch.Row(
                 this.createRDSWriterInstancesWidget(),
                 this.createRDSReaderInstancesWidget(),
                 this.createRDSWriterWidget(),
@@ -63,15 +63,21 @@ export class AZDashboard {
     private getSSMParameters(stack: cdk.Stack): AZDashboardParameters {
         const azs = cdk.Stack.of(stack).availabilityZones;
         return {
-            loadBalancerArn: ssm.StringParameter.valueForStringParameter(stack, '/petstore/albarn'),
+            loadBalancerArn: ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/AlbArn'),
             targetGroupArn: ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/TargetGroupArn'),
             ecsAutoScalingGroupName: ssm.StringParameter.valueForStringParameter(stack, '/petstore/ecsasgname'),
-            eksAutoScalingGroupName: ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/AsgName'),
+            eksAutoScalingGroupName: this.getEksNodeGroupNameFromArn(ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/AsgNameArn')),
             rdsReaderInstanceId: ssm.StringParameter.valueForStringParameter(stack, '/petstore/rdsinstanceIdentifierReader'),
             rdsWriterInstanceId: ssm.StringParameter.valueForStringParameter(stack, '/petstore/rdsinstanceIdentifierWriter'),
             rdsClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(stack, '/petstore/rdsendpoint'))),
             availabilityZones: azs.length > 2 ? azs.slice(0, 2) : azs
         }
+    }
+
+    private getEksNodeGroupNameFromArn(arn: string): string {
+        const parts = arn.split('/');
+        const lastTwoParts = parts.slice(-2);
+        return `eks-${lastTwoParts.join('-')}`;
     }
 
     private createALBConnectionsWidget(): cloudwatch.GraphWidget {
@@ -382,8 +388,6 @@ export class AZDashboard {
         });
     }
 
-
-
     private createRDSConnectionsWidget(): cloudwatch.GraphWidget {
         return new cloudwatch.GraphWidget({
             title: 'RDS Database Connections',
@@ -480,8 +484,6 @@ export class AZDashboard {
             stacked: false
         });
     }
-
-
 
 }
 
