@@ -62,26 +62,22 @@ export class AZDashboard {
     }
     private getSSMParameters(stack: cdk.Stack): AZDashboardParameters {
         const azs = cdk.Stack.of(stack).availabilityZones;
-        // Get the eks ASG name from the ARN of the ClusterNodeGroup, therefore we need to make small adjustments
-        const asgNameArn = ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/AsgNameArn');
-        const eksNodeGroupName = cdk.Fn.join('-', [
-            'eks',
-            cdk.Fn.join('-', [
-                cdk.Fn.select(2, cdk.Fn.split('/', asgNameArn)),
-                cdk.Fn.select(3, cdk.Fn.split('/', asgNameArn))
-            ])
-        ]);        
-
         return {
             loadBalancerArn: ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/AlbArn'),
             targetGroupArn: ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/TargetGroupArn'),
             ecsAutoScalingGroupName: ssm.StringParameter.valueForStringParameter(stack, '/petstore/ecsasgname'),
-            eksAutoScalingGroupName: eksNodeGroupName,
+            eksAutoScalingGroupName: this.getEksNodeGroupNameFromArn(ssm.StringParameter.valueForStringParameter(stack, '/eks/petsite/AsgNameArn')),
             rdsReaderInstanceId: ssm.StringParameter.valueForStringParameter(stack, '/petstore/rdsinstanceIdentifierReader'),
             rdsWriterInstanceId: ssm.StringParameter.valueForStringParameter(stack, '/petstore/rdsinstanceIdentifierWriter'),
             rdsClusterIdentifier: cdk.Fn.select(0, cdk.Fn.split('.', ssm.StringParameter.valueForStringParameter(stack, '/petstore/rdsendpoint'))),
             availabilityZones: azs.length > 2 ? azs.slice(0, 2) : azs
         }
+    }
+
+    private getEksNodeGroupNameFromArn(arn: string): string {
+        const parts = arn.split('/');
+        const lastTwoParts = parts.slice(-2);
+        return `eks-${lastTwoParts.join('-')}`;
     }
 
     private createALBConnectionsWidget(): cloudwatch.GraphWidget {

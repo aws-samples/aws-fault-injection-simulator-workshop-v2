@@ -852,14 +852,38 @@ export class Services extends Stack {
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
             '/eks/petsite/OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
-            '/petstore/errormode1': "false",
-            '/petstore/ecsasgname': ecsEc2PetSearchAutoScalingGroup.autoScalingGroupName,
-            '/eks/petsite/AsgNameArn': eksPetsiteASGClusterNodeGroup.nodegroupArn,
-            '/eks/pethistory/TargetGroupArn': petadoptionshistory_targetGroup.targetGroupArn,
-            '/eks/petsite/EKSMasterRoleArn': clusterAdmin.roleArn,
-            '/eks/petsite/AlbArn': alb.loadBalancerFullName,
-            '/eks/petsite/TargetGroupArn': targetGroup.targetGroupArn
+            '/petstore/errormode1': "false"
         })));
+
+        new ssm.StringParameter(this, "putParamECSAsgName", {
+            stringValue: ecsEc2PetSearchAutoScalingGroup.autoScalingGroupName,
+            parameterName: '/petstore/ecsasgname'
+        });
+
+        new ssm.StringParameter(this, "putParamEKSAsgNameArn", {
+            stringValue: eksPetsiteASGClusterNodeGroup.nodegroupArn,
+            parameterName: '/eks/petsite/AsgNameArn'
+        });
+        
+        new ssm.StringParameter(this, "putPetHistoryParamTargetGroupArn", {
+            stringValue: petadoptionshistory_targetGroup.targetGroupArn,
+            parameterName: '/eks/pethistory/TargetGroupArn'
+        });
+
+        new ssm.StringParameter(this, "putParam", {
+            stringValue: clusterAdmin.roleArn,
+            parameterName: '/eks/petsite/EKSMasterRoleArn'
+        });
+
+        new ssm.StringParameter(this, "putParamAlbArn", {
+            stringValue: alb.loadBalancerFullName,
+            parameterName: '/eks/petsite/AlbArn'
+        });
+
+        new ssm.StringParameter(this, "putParamTargetGroupArn", {
+            stringValue: targetGroup.targetGroupArn,
+            parameterName: '/eks/petsite/TargetGroupArn'
+        });
 
         this.createOuputs(new Map(Object.entries({
             'QueueURL': sqsQueue.queueUrl,

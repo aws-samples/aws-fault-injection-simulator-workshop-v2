@@ -1,8 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { ServiceStackProps } from './common/services-shared-properties';
-import { MultiRegionDashboard } from './dashboards/multi_region_dashboard';
-import { AZDashboard } from './dashboards/az_dashboard';
+import { ServiceStackProps } from '../common/services-shared-properties';
+import { MultiRegionDashboard } from './multi_region_dashboard';
+import { AZDashboard } from './az_dashboard';
 
 export class ObservabilityDashboard extends cdk.Stack {
 

@@ -11,7 +11,7 @@ import { REGION } from '../lib/common/services-shared-properties';
 import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
 import { UserSimulationStack } from '../lib/user_simulation-stack';
-import { ObservabilityDashboard } from '../lib/observability_dashboard';
+import { ObservabilityDashboard } from '../lib/dashboards/observability_dashboard';
 
 
 
