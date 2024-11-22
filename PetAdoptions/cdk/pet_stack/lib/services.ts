@@ -358,10 +358,6 @@ export class Services extends Stack {
 
         });
 
-        new ssm.StringParameter(this, "putParamTargetGroupArn", {
-            stringValue: targetGroup.targetGroupArn,
-            parameterName: '/eks/petsite/TargetGroupArn'
-        })
 
         const listener = alb.addListener('Listener', {
             port: 80,
@@ -388,20 +384,10 @@ export class Services extends Stack {
             targetGroups: [petadoptionshistory_targetGroup]
         });
 
-        new ssm.StringParameter(this, "putPetHistoryParamTargetGroupArn", {
-            stringValue: petadoptionshistory_targetGroup.targetGroupArn,
-            parameterName: '/eks/pethistory/TargetGroupArn'
-        });
-
         // PetSite - EKS Cluster
         const clusterAdmin = new iam.Role(this, 'AdminRole', {
             assumedBy: new iam.AccountRootPrincipal()
         });
-
-        new ssm.StringParameter(this, "putParam", {
-            stringValue: clusterAdmin.roleArn,
-            parameterName: '/eks/petsite/EKSMasterRoleArn'
-        })
 
         const secretsKey = new kms.Key(this, 'SecretsKey');
 
@@ -866,7 +852,13 @@ export class Services extends Stack {
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
             '/eks/petsite/OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
-            '/petstore/errormode1': "false"
+            '/petstore/errormode1': "false",
+            '/petstore/ecsasgname': ecsEc2PetSearchAutoScalingGroup.autoScalingGroupName,
+            '/eks/petsite/AsgNameArn': eksPetsiteASGClusterNodeGroup.nodegroupArn,
+            '/eks/pethistory/TargetGroupArn': petadoptionshistory_targetGroup.targetGroupArn,
+            '/eks/petsite/EKSMasterRoleArn': clusterAdmin.roleArn,
+            '/eks/petsite/AlbArn': alb.loadBalancerFullName,
+            '/eks/petsite/TargetGroupArn': targetGroup.targetGroupArn
         })));
 
         this.createOuputs(new Map(Object.entries({
