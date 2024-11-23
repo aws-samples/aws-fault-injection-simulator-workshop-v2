@@ -1,5 +1,0 @@
-selenium
-boto3
-beautifulsoup4
-webdriver_manager
-retry
