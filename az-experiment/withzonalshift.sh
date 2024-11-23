@@ -55,7 +55,7 @@ experiment=$(echo "$json_data" | jq -r '.experiments[] | select((.tags.Name // .
 echo $experiment
 
   if [ "$experiment" == "running" ]; then
-    echo "Impact Detected!!!!! Disabling cross zone load balancing"
+    echo "Impact Detected!!!!! Enabling zonal_shift.config.enabled true"
     echo "Enabling Zonal Shift"
 
    # Main script
