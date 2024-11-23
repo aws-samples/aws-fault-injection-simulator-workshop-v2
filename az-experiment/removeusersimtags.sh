@@ -24,3 +24,48 @@ else
     aws ec2 delete-tags --resources $SUBNET_ID --tags Key=AzImpairmentPower
   done
 fi
+
+# Get the cluster ARN using the cluster name
+CLUSTER_ARN=$(aws ecs list-clusters | jq -r '.clusterArns[]' | grep UserSimulationStack)
+
+if [ -z "$CLUSTER_ARN" ]; then
+    echo "Error: UserSimulationStack cluster not found"
+    exit 1
+fi
+
+# Update tag for the cluster itself
+echo "Updating tag for cluster: $CLUSTER_ARN"
+aws ecs tag-resource \
+    --resource-arn "$CLUSTER_ARN" \
+    --tags "key=AzImpairmentPower,value=false"
+
+if [ $? -eq 0 ]; then
+    echo "Successfully updated tag for cluster: $CLUSTER_ARN"
+else
+    echo "Failed to update tag for cluster: $CLUSTER_ARN"
+fi
+
+# List all services in the cluster
+SERVICES=$(aws ecs list-services --cluster "$CLUSTER_ARN" | jq -r '.serviceArns[]')
+
+if [ -z "$SERVICES" ]; then
+    echo "No services found in the cluster"
+    exit 0
+fi
+
+# Loop through each service and update the tag
+for SERVICE_ARN in $SERVICES; do
+    echo "Updating tag for service: $SERVICE_ARN"
+    
+    aws ecs tag-resource \
+        --resource-arn "$SERVICE_ARN" \
+        --tags "key=AzImpairmentPower,value=false"
+        
+    if [ $? -eq 0 ]; then
+        echo "Successfully updated tag for service: $SERVICE_ARN"
+    else
+        echo "Failed to update tag for service: $SERVICE_ARN"
+    fi
+done
+
+echo "Tag update completed for cluster and all services"
