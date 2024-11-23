@@ -27,7 +27,7 @@ function start_zonal_shift() {
 
     # Print the Availability Zone ID
     echo "Failing away from:  $AZ_ID"
-    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$load_balancer_arn" --comment "shift away from AZ us-east-1a"
+    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$load_balancer_arn" --comment "shift away from AZ $AZ"
 }
 
 # Function to monitor the progress of the Zonal Shift
@@ -47,35 +47,6 @@ function monitor_zonal_shift() {
     echo $zonal_shift_status
 }
 
-function disable_enable_cross_zone_lb() {
-    all_args=("$@")
-    attribute=${all_args[0]}
-    target_groups=$(aws elbv2 describe-target-groups --query "TargetGroups[].TargetGroupArn" --output text)
-    for tg in $target_groups; do
-        echo "Updating cross-zone load balancing for target group: $tg"
-        aws elbv2 modify-target-group-attributes \
-            --target-group-arn "$tg" \
-            --attributes Key=load_balancing.cross_zone.enabled,Value="$attribute" > /dev/null 2>&1
-        json_data=$(aws elbv2 describe-target-group-attributes --target-group-arn "$tg" )
-        cross_zone_enabled=$(echo $json_data | jq -r '.Attributes[] | select(.Key == "load_balancing.cross_zone.enabled") | .Value')
-        attribute_value=$cross_zone_enabled
-        echo "The value for $tg of 'load_balancing.cross_zone.enabled' is: $cross_zone_enabled"
-    done
-
-# Verify that the attribute was updated correctly
-    for tg in $target_groups; do
-        actual_value=$(aws elbv2 describe-target-group-attributes --target-group-arn "$tg" --query "Attributes[?Key=='load_balancing.cross_zone.enabled'].Value" --output text)
-        if [ "$actual_value" != "$attribute_value" ]; then
-            echo "Error: Cross-zone load balancing attribute for target group $tg was not updated correctly. Expected: $attribute_value, Actual: $actual_value"
-            exit 1
-        fi
-    done
-    echo "Cross-zone load balancing has been updated for all ALB target groups."
-}
-
-
-disable_enable_cross_zone_lb "false"
-
 while true; do
 json_data=$(aws fis list-experiments)
 
@@ -92,8 +63,14 @@ echo $experiment
    load_balancer_arns=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].LoadBalancerArn' --output text)
 
     for load_balancer_arn in $load_balancer_arns; do
+       aws elbv2 modify-load-balancer-attributes --load-balancer-arn $load_balancer_arn --attributes Key=zonal_shift.config.enabled,Value=true
        start_zonal_shift "$load_balancer_arn" "$AZ"
     done
+
+    echo "EKS cluster PetSite in zonalshift mode"
+    cluster_arn=$(aws eks describe-cluster --name PetSite --query 'cluster.arn' --output text)
+    echo "EKS Cluster ARN:" $cluster_arn
+    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$cluster_arn" --comment "shift away from AZ $AZ"
 
     sleep 10
 
@@ -109,8 +86,9 @@ echo $experiment
 
         if $all_processed; then
             echo "All load balancers have been processed."
-            echo "Re-enabling cross-zone load balancing"
-            disable_enable_cross_zone_lb "true"
+            for load_balancer_arn in $load_balancer_arns; do
+                aws elbv2 modify-load-balancer-attributes --load-balancer-arn $load_balancer_arn --attributes Key=zonal_shift.config.enabled,Value=false
+            done
             break
         fi
 

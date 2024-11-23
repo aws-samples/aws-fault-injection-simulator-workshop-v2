@@ -1,0 +1,12 @@
+# zonal-shift-cluster.yaml
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: PetSite
+  region: us-east-1
+
+
+zonalShiftConfig:
+  enabled: true
