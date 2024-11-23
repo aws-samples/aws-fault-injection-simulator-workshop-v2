@@ -27,8 +27,8 @@ export class AZDashboard {
 
         this.props = props;
 
-        const dashboard = new cloudwatch.Dashboard(stack, 'AZDashboard', {
-            dashboardName: 'AZ-Dashboard'
+        const dashboard = new cloudwatch.Dashboard(stack, 'AvailabilityZonePowerImpairment', {
+            dashboardName: 'AvailabilityZonePowerImpairment'
         });
 
         this.parameters = this.getSSMParameters(stack);
