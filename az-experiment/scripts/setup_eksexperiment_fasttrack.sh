@@ -24,7 +24,8 @@ eksctl get iamidentitymapping --cluster PetSite --region=$AWS_REGION
 
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-cd -
+cd ~/environment/workshopfiles/fis-workshop/az-experiment/templates/
 eksctl utils update-zonal-shift-config -f zonal-shift-cluster.yaml    
 kubectl patch deployment petsite-deployment -n default --type=json --patch-file topology-patch-petsite.json
 kubectl patch deployment petsite-deployment -n default --type=json --patch-file topology-patch-pethistory.json
+cd -
