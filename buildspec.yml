@@ -36,6 +36,7 @@ phases:
       - cdk deploy ObservabilitySecondary --require-approval never --verbose -O ./out/out.json
       #- cdk deploy UserSimulationStack UserSimulationStackSecondary --concurrency 2 --asset-parallelism --require-approval=never --verbose -O ./out/out.json
       - cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json
+      - sh ../../../az-experiment/scripts/removeusersimtags.sh
       - cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json
       - cdk deploy ObservabilityDashboard --require-approval never --verbose -O ./out/out.json
       - cd ../../../intro-experiment/cdk
