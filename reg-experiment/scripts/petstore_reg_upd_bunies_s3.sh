@@ -57,15 +57,9 @@ print_color $GREEN "Retrieved S3 bucket ARN: $s3_bucket_arn"
 source_path="../experiment/images/bunnies/"
 destination_prefix="bunnies/"
 
-# Perform copy operation 3 times
-for i in {1..3}; do
-    print_color $BLUE "Attempt $i of 3"
-    copy_images_to_s3 "$s3_bucket_arn" "$source_path" "$destination_prefix"
+# Perform copy operation
+print_color $BLUE "Attempting upload"
+copy_images_to_s3 "$s3_bucket_arn" "$source_path" "$destination_prefix"
     
-    if [ $i -lt 3 ]; then
-        print_color $YELLOW "Waiting for 60 seconds before the next attempt..."
-        sleep 60
-    fi
-done
 
 print_color $BLUE "Image copy process completed."
