@@ -1,9 +1,15 @@
 {
   "app": "npx ts-node app/pet_stack.ts",
   "context": {
-    "vpc_cidr": "11.0.0.0/16",
+    "vpc_cidr_primary": "10.1.0.0/16",
+    "vpc_cidr_secondary": "10.2.0.0/16",
     "snstopic_email": "someone@example.com",
     "rdsusername":"petadmin",
-    "petsite_on_eks":"true"
+    "petsite_on_eks":"true",
+    "fisLambdaTagName": "FISExperimentReady",
+    "fisLambdaTagValue": "Yes",
+    "fisExtensionMetrics": "all",
+    "fisLambdaExtensionArn" : "arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9",
+    "fisLambdaExtensionArnUSWest2" : "arn:aws:lambda:us-west-2:975050054544:layer:aws-fis-extension-x86_64:9"
   }
 }

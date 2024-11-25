@@ -627,15 +627,18 @@ Resources:
             runCommand:
             - apt update -y
             - apt install -y jq gettext bash-completion moreutils
-            - pip install --user --upgrade awscli
-            - sudo -i -u ubuntu bash -l -c "nvm install node --default"
-            - sudo -i -u ubuntu bash -l -c "nvm alias default node"
-            - sudo -i -u ubuntu bash -l -c "nvm exec node npm install -g aws-cdk --force"
+            - pip install --upgrade awscli
+            - sudo -i -u ubuntu bash -l -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
+            - sudo -i -u ubuntu bash -l -c 'export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"'
+            - sudo -i -u ubuntu bash -l -c '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
+            - sudo -i -u ubuntu bash -l -c 'nvm install node --default'
+            - sudo -i -u ubuntu bash -l -c 'nvm alias default node'
+            - sudo -i -u ubuntu bash -l -c 'nvm exec node npm install -g aws-cdk --force'
         - action: aws:runShellScript
           name: KubectlInstall
           inputs:
             runCommand:
-            - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.29.0/2024-01-04/bin/linux/amd64/kubectl
+            - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.0/2024-09-12/bin/linux/amd64/kubectl
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "source <(kubectl completion bash)" >> /home/ubuntu/.bashrc
         - action: aws:runShellScript

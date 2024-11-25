@@ -1,7 +1,6 @@
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as eks from 'aws-cdk-lib/aws-eks';
-import * as rds from 'aws-cdk-lib/aws-rds';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as cdk from "aws-cdk-lib";
 import * as yaml from 'js-yaml';
 import { CfnJson } from 'aws-cdk-lib';
 import { EksApplication, EksApplicationProps } from './eks-application'
@@ -9,7 +8,8 @@ import { readFileSync } from 'fs';
 import { Construct } from 'constructs'
 
 export interface PetAdoptionsHistoryProps extends EksApplicationProps {
-    rdsSecretArn:      string,
+    //rdsSecretArn:      string,
+    rdsSecret: cdk.aws_secretsmanager.ISecret,
     targetGroupArn:    string,
     otelConfigMapPath: string,
 }
@@ -53,14 +53,15 @@ export class PetAdoptionsHistory extends EksApplication {
     });
     petadoptionhistoryserviceaccount.addToPolicy(ddbSeedPolicy);
 
-    const rdsSecretPolicy = new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-            "secretsmanager:GetSecretValue"
-        ],
-        resources: [props.rdsSecretArn]
-    });
-    petadoptionhistoryserviceaccount.addToPolicy(rdsSecretPolicy);
+    props.rdsSecret.grantRead(petadoptionhistoryserviceaccount);
+    // const rdsSecretPolicy = new iam.PolicyStatement({
+    //     effect: iam.Effect.ALLOW,
+    //     actions: [
+    //         "secretsmanager:GetSecretValue"
+    //     ],
+    //     resources: [props.rdsSecretArn]
+    // });
+    //petadoptionhistoryserviceaccount.addToPolicy(rdsSecretPolicy);
 
     const awsOtelPolicy = new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,

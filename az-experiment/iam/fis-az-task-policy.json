@@ -1,0 +1,214 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowFISExperimentS3ReportAccess",
+            "Action": [
+                "s3:putObject",
+                "s3:getObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::services-fisreportbucket*",
+                "arn:aws:s3:::servicessecondary-fisreportbucket*"
+            ],
+            "Effect": "Allow"
+        },
+        {
+            "Sid": "AllowFISExperimentCloudwatchDashboardAccess",
+            "Action": [
+                "cloudwatch:GetDashboard"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
+            "Sid": "AllowFISExperimentCloudwatchWidgetAccess",
+            "Action": [
+                "cloudwatch:GetMetricWidgetImage"
+            ],
+            "Resource": "*",
+            "Effect": "Allow"
+        },
+        {
+            "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogDelivery",
+                "logs:PutResourcePolicy",
+                "logs:DescribeResourcePolicies",
+                "logs:DescribeLogGroups"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ec2:CreateTags",
+            "Resource": "arn:aws:ec2:*:*:network-acl/*",
+            "Condition": {
+                "StringEquals": {
+                    "ec2:CreateAction": "CreateNetworkAcl",
+                    "aws:RequestTag/managedByFIS": "true"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ec2:CreateNetworkAcl",
+            "Resource": "arn:aws:ec2:*:*:network-acl/*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestTag/managedByFIS": "true"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateNetworkAclEntry",
+                "ec2:DeleteNetworkAcl"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:*:network-acl/*",
+                "arn:aws:ec2:*:*:vpc/*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "ec2:ResourceTag/managedByFIS": "true"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ec2:CreateNetworkAcl",
+            "Resource": "arn:aws:ec2:*:*:vpc/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeVpcs",
+                "ec2:DescribeManagedPrefixLists",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeNetworkAcls"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "ec2:ReplaceNetworkAclAssociation",
+            "Resource": [
+                "arn:aws:ec2:*:*:subnet/*",
+                "arn:aws:ec2:*:*:network-acl/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds:FailoverDBCluster"
+            ],
+            "Resource": [
+                "arn:aws:rds:*:*:cluster:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "rds:RebootDBInstance"
+            ],
+            "Resource": [
+                "arn:aws:rds:*:*:db:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "elasticache:DescribeReplicationGroups",
+                "elasticache:InterruptClusterAzPower"
+            ],
+            "Resource": [
+                "arn:aws:elasticache:*:*:replicationgroup:*"
+            ]
+        },
+        {
+            "Sid": "TargetResolutionByTags",
+            "Effect": "Allow",
+            "Action": [
+                "tag:GetResources"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:StartInstances",
+                "ec2:StopInstances"
+            ],
+            "Resource": "arn:aws:ec2:*:*:instance/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeInstances"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:CreateGrant"
+            ],
+            "Resource": [
+                "arn:aws:kms:*:*:key/*"
+            ],
+            "Condition": {
+                "StringLike": {
+                    "kms:ViaService": "ec2.*.amazonaws.com"
+                },
+                "Bool": {
+                    "kms:GrantIsForAWSResource": "true"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeVolumes"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:PauseVolumeIO"
+            ],
+            "Resource": "arn:aws:ec2:*:*:volume/*"
+        },
+        {
+            "Sid": "AllowInjectAPI",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:InjectApiError"
+            ],
+            "Resource": [
+                "*"
+            ],
+            "Condition": {
+                "ForAnyValue:StringEquals": {
+                    "ec2:FisActionId": [
+                        "aws:ec2:api-insufficient-instance-capacity-error",
+                        "aws:ec2:asg-insufficient-instance-capacity-error"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "DescribeAsg",
+            "Effect": "Allow",
+            "Action": [
+                "autoscaling:DescribeAutoScalingGroups"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}

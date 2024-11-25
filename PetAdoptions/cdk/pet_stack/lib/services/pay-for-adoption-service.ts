@@ -1,11 +1,11 @@
 import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as rds from 'aws-cdk-lib/aws-rds';
+import * as cdk from "aws-cdk-lib";
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { EcsService, EcsServiceProps } from './ecs-service'
 import { Construct } from 'constructs'
 
 export interface PayForAdoptionServiceProps extends EcsServiceProps {
-  database: rds.DatabaseCluster
+  databaseSecret: cdk.aws_secretsmanager.ISecret
 }
 
 export class PayForAdoptionService extends EcsService {
@@ -13,7 +13,7 @@ export class PayForAdoptionService extends EcsService {
   constructor(scope: Construct, id: string, props: PayForAdoptionServiceProps) {
     super(scope, id, props);
 
-    props.database.secret?.grantRead(this.taskDefinition.taskRole);
+    props.databaseSecret.grantRead(this.taskDefinition.taskRole);
   }
 
   containerImageFromRepository(repositoryURI: string) : ecs.ContainerImage {
