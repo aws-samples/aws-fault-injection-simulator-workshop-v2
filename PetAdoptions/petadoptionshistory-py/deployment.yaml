@@ -31,7 +31,7 @@ spec:
   selector:
     matchLabels:
       app: pethistory
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
