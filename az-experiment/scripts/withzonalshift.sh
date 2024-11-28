@@ -56,7 +56,14 @@ echo $experiment
 
   if [ "$experiment" == "running" ]; then
     echo "Impact Detected!!!!!" 
-    sleep 5m
+   
+
+   countdown_time=5
+   while [ $countdown_time -gt 0 ]; do
+       printf "\rTime to zonal shift: %02d:%02d" $countdown_time 0
+       sleep 1m
+       ((countdown_time--))
+   done
 
     echo "Enabling zonal_shift.config.enabled true"
     
