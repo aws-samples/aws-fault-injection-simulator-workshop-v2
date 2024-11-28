@@ -55,13 +55,18 @@ experiment=$(echo "$json_data" | jq -r '.experiments[] | select((.tags.Name // .
 echo $experiment
 
   if [ "$experiment" == "running" ]; then
-    echo "Impact Detected!!!!! Enabling zonal_shift.config.enabled true"
+    echo "Impact Detected!!!!!" 
+    sleep 5m
+
+    echo "Enabling zonal_shift.config.enabled true"
+    
     echo "Enabling Zonal Shift"
 
    # Main script
 
    list_load_balancers
   
+   echo "Enabling zonal_shift.config.enabled true"
    eksasg=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'eks')].AutoScalingGroupName" --output text)
    eksasg=$(echo "$eksasg" | tr -d '[:space:]')
    eksasgarn=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $eksasg --query 'AutoScalingGroups[0].AutoScalingGroupARN' --output text)
