@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:1.20 as builder
+FROM --platform=linux/amd64 golang:1.23.3-alpine as builder
 WORKDIR /go/src/app
 COPY . .
 ENV GOPROXY=https://goproxy.io,direct
