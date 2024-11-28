@@ -55,11 +55,51 @@ experiment=$(echo "$json_data" | jq -r '.experiments[] | select((.tags.Name // .
 echo $experiment
 
   if [ "$experiment" == "running" ]; then
-    echo "Impact Detected!!!!! Enabling zonal_shift.config.enabled true"
+    echo "Impact Detected!!!!!" 
+   
+
+    countdown_time=5
+    while [ $countdown_time -gt 0 ]; do
+        printf "\rTime to zonal shift: %02d:%02d" $countdown_time 0
+        sleep 1m
+        ((countdown_time--))
+    done
+    
+    echo
+    echo "Enabling zonal_shift.config.enabled true"
+    
     echo "Enabling Zonal Shift"
 
    # Main script
+
    list_load_balancers
+  
+   echo "Enabling zonal_shift.config.enabled true"
+   eksasg=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'eks')].AutoScalingGroupName" --output text)
+   eksasg=$(echo "$eksasg" | tr -d '[:space:]')
+   eksasgarn=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $eksasg --query 'AutoScalingGroups[0].AutoScalingGroupARN' --output text)
+   aws autoscaling update-auto-scaling-group \
+        --auto-scaling-group-name "$eksasg" \
+        --availability-zone-impairment-policy '{"ZonalShiftEnabled": true, "ImpairedZoneHealthCheckBehavior": "IgnoreUnhealthy"}'
+   echo "Check $eksasg settings for zonalshift and unhealthy hosts"
+
+   aws autoscaling describe-auto-scaling-groups \
+             --auto-scaling-group-names "$eksasg" \
+             --query 'AutoScalingGroups[0].AvailabilityZoneImpairmentPolicy' 
+
+   ecssrv=$(aws autoscaling describe-auto-scaling-groups --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'Services')].AutoScalingGroupName" --output text)
+   ecssrv=$(echo "$ecssrv" | tr -d '[:space:]')
+   ecsasgarn=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $ecssrv --query 'AutoScalingGroups[0].AutoScalingGroupARN' --output text)
+   aws autoscaling update-auto-scaling-group \
+        --auto-scaling-group-name "$ecssrv" \
+        --availability-zone-impairment-policy '{"ZonalShiftEnabled": true, "ImpairedZoneHealthCheckBehavior": "IgnoreUnhealthy"}'
+   echo "Check $ecssrv settings for zonalshift and unhealthy hosts"
+
+   aws autoscaling describe-auto-scaling-groups \
+             --auto-scaling-group-names "$ecssrv" \
+             --query 'AutoScalingGroups[0].AvailabilityZoneImpairmentPolicy' 
+
+
    load_balancer_arns=$(aws elbv2 describe-load-balancers --query 'LoadBalancers[*].LoadBalancerArn' --output text)
 
     for load_balancer_arn in $load_balancer_arns; do
@@ -71,6 +111,12 @@ echo $experiment
     cluster_arn=$(aws eks describe-cluster --name PetSite --query 'cluster.arn' --output text)
     echo "EKS Cluster ARN:" $cluster_arn
     aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$cluster_arn" --comment "shift away from AZ $AZ"
+
+    echo "Shifting ASG:" $eksasg
+    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$eksasgarn" --comment "shift away from AZ $AZ"
+
+    echo "Shifting ASG:" $ecssrv
+    aws arc-zonal-shift start-zonal-shift --away-from "$AZ_ID" --expires-in $TIME --resource-identifier "$ecsasgarn" --comment "shift away from AZ $AZ"
 
     sleep 10
 
@@ -86,6 +132,14 @@ echo $experiment
 
         if $all_processed; then
             echo "All load balancers have been processed."
+            aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$eksasg" \
+                --availability-zone-impairment-policy '{
+                    "ZonalShiftEnabled": false, 
+                    "ImpairedZoneHealthCheckBehavior": "IgnoreUnhealthy"}'
+            aws autoscaling update-auto-scaling-group --auto-scaling-group-name "$ecssrv" \
+                --availability-zone-impairment-policy '{
+                    "ZonalShiftEnabled": false, 
+                    "ImpairedZoneHealthCheckBehavior": "IgnoreUnhealthy"}'
             for load_balancer_arn in $load_balancer_arns; do
                 aws elbv2 modify-load-balancer-attributes --load-balancer-arn $load_balancer_arn --attributes Key=zonal_shift.config.enabled,Value=false
             done
