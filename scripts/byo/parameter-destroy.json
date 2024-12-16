@@ -1,0 +1,38 @@
+[
+  {
+    "ParameterKey": "EnvironmentName",
+    "ParameterValue": "EEPipeline"
+  },
+  {
+    "ParameterKey": "ExistingVpcId",
+    "ParameterValue": "vpc-xxxxxxxx"
+  },
+  {
+    "ParameterKey": "ExistingPrivateSubnetId",
+    "ParameterValue": "subnet-xxxxxxxx"
+  },
+  {
+    "ParameterKey": "ExistingNoIngressSecurityGroupId",
+    "ParameterValue": "sg-xxxxxxxx"
+  },
+  {
+    "ParameterKey": "EETeamRoleArn",
+    "ParameterValue": "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"
+  },
+  {
+    "ParameterKey": "EEAssetsBucket",
+    "ParameterValue": "your-assets-bucket-name"
+  },
+  {
+    "ParameterKey": "EEAssetsBucketPrefix",
+    "ParameterValue": "your-prefix/"
+  },
+  {
+    "ParameterKey": "EESourceCodeKey",
+    "ParameterValue": "path/to/your/source/code"
+  },
+  {
+    "ParameterKey": "GitBranch",
+    "ParameterValue": "main"
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "ParameterKey": "EnvironmentName",
+    "ParameterValue": "ChaosWsBuildPipeline"
+  },
+  {
+    "ParameterKey": "VpcCIDR",
+    "ParameterValue": "10.192.0.0/16"
+  },
+  {
+    "ParameterKey": "PublicSubnet1CIDR",
+    "ParameterValue": "10.192.10.0/24"
+  },
+  {
+    "ParameterKey": "PrivateSubnet1CIDR",
+    "ParameterValue": "10.192.20.0/24"
+  },
+  {
+    "ParameterKey": "TeamRoleArn",
+    "ParameterValue": "your-team-role-arn"
+  },
+  {
+    "ParameterKey": "AssetsBucket",
+    "ParameterValue": "your-assets-bucket"
+  },
+  {
+    "ParameterKey": "AssetsBucketPrefix",
+    "ParameterValue": "your-bucket-prefix"
+  },
+  {
+    "ParameterKey": "SourceCodeKey",
+    "ParameterValue": "your-source-code-key"
+  },
+  {
+    "ParameterKey": "GitBranch",
+    "ParameterValue": ""
+  }
+]
