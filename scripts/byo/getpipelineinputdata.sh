@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Get the project name containing "PipelineDeployProject"
-PROJECT_NAME=$(aws codebuild list-projects --output text --query 'projects[?contains(@, `PipelineDeployProject`)] | [0]')
+PROJECT_NAME=$(aws codebuild list-projects --output text --query 'projects[?contains(@, `ChaosWsBuildPipeline`)] | [0]')
 
 if [ -z "$PROJECT_NAME" ]; then
-    echo "No CodeBuild project found containing 'PipelineDeployProject'"
+    echo "No CodeBuild project found containing 'ChaosWsBuildPipeline'"
     exit 1
 fi
 
