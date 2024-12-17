@@ -16,19 +16,19 @@
     "ParameterValue": "10.192.20.0/24"
   },
   {
-    "ParameterKey": "TeamRoleArn",
+    "ParameterKey": "EETeamRoleArn",
     "ParameterValue": "your-team-role-arn"
   },
   {
-    "ParameterKey": "AssetsBucket",
+    "ParameterKey": "EEAssetsBucket",
     "ParameterValue": "your-assets-bucket"
   },
   {
-    "ParameterKey": "AssetsBucketPrefix",
+    "ParameterKey": "EEAssetsBucketPrefix",
     "ParameterValue": "your-bucket-prefix"
   },
   {
-    "ParameterKey": "SourceCodeKey",
+    "ParameterKey": "EESourceCodeKey",
     "ParameterValue": "your-source-code-key"
   },
   {
