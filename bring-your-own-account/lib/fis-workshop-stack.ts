@@ -62,6 +62,7 @@ export class FisWorkshopStack extends cdk.Stack {
         const buildProject = new codebuild.Project(this, 'WorkshopBuildProject', {
             projectName: 'FIS-Workshop-Build',
             role: codeBuildServiceRole,
+            timeout: cdk.Duration.minutes(180),
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
                 privileged: true,
@@ -137,6 +138,7 @@ export class FisWorkshopStack extends cdk.Stack {
         const destroyProject = new codebuild.Project(this, 'WorkshopDestroyProject', {
             projectName: 'FIS-Workshop-Destroy',
             role: codeBuildServiceRole,
+            timeout: cdk.Duration.minutes(180),
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
                 privileged: true,
