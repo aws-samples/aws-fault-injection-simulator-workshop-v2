@@ -43,6 +43,12 @@ cd aws-fault-injection-simulator-workshop-v2/bring-your-own-account [[2]](https:
 npm install
 ```
 
+3. Set Environment Variables:
+```bash
+export eeTeamRoleArn=<your-team-role-arn> # for example arn:aws:iam::123456789012:role/TeamRole
+
+```
+
 3. Bootstrap CDK in both regions:
 
 ```bash
@@ -52,15 +58,9 @@ cdk bootstrap aws://ACCOUNT-NUMBER/us-west-2
 4. Deploy the workshop infrastructure:
 
 ```bash
-export eeTeamRoleArn=<your-team-role-arn> # for example arn:aws:iam::123456789012:role/TeamRole
-cdk deploy --all 
-
+cdk deploy --all
 ```
-or 
-
-```bash
-cdk deploy --context eeTeamRoleArn=arn:aws:iam::123456789012:role/TeamRole
-```
+// --context eeTeamRoleArn=arn:aws:iam::123456789012:role/TeamRole
 
 ##  Stack Resources
 The CDK stack creates the following resources:
