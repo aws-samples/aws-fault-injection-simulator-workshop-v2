@@ -18,6 +18,16 @@ Before you begin, ensure you have the following:
 - Git
 - Docker Desktop (latest stable version)
 
+### Environment Variables
+- `eeTeamRoleArn`: The ARN of the your role in AWS.
+
+#### Optional Parameters
+- `environmentName`: Name prefix for resources (default: "EEPipeline")
+- `gitBranch`: Git branch to check out (default: empty string for main branch)
+- `isEventEngine`: Variable that define if defines it is your own account ('false') or AWS provided environment ('true'). Default: 'false'
+
+
+
 ## Installation Steps
 
 1. Clone the workshop repository:
@@ -39,11 +49,17 @@ npm install
 cdk bootstrap aws://ACCOUNT-NUMBER/us-east-1
 cdk bootstrap aws://ACCOUNT-NUMBER/us-west-2
 ```
-
 4. Deploy the workshop infrastructure:
 
 ```bash
-cdk deploy --all
+export eeTeamRoleArn=<your-team-role-arn> # for example arn:aws:iam::123456789012:role/TeamRole
+cdk deploy --all 
+
+```
+or 
+
+```bash
+cdk deploy --context eeTeamRoleArn=arn:aws:iam::123456789012:role/TeamRole
 ```
 
 ##  Stack Resources

@@ -8,9 +8,43 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 
+interface FisWorkshopStackProps extends cdk.StackProps {
+    // environmentName: string;
+    eeTeamRoleArn: string;
+    isEventEngine: string;
+    gitBranch: string;
+}
+
 export class FisWorkshopStack extends cdk.Stack {
-    constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
+    constructor(scope: cdk.App, id: string, props: FisWorkshopStackProps) {
         super(scope, id, props);
+
+        // Define CloudFormation parameters
+        // const environmentName = new cdk.CfnParameter(this, 'EnvironmentName', {
+        //     type: 'String',
+        //     default: props.environmentName,
+        //     description: 'An environment name that is prefixed to resource names'
+        // });
+        const gitBranch = new cdk.CfnParameter(this, 'GitBranch', {
+            type: 'String',
+            description: 'Git branch to check out. KEEP EMPTY FOR MAIN BRANCH',
+            default: props.gitBranch
+        });
+
+        const eeTeamRoleArn = new cdk.CfnParameter(this, ' eeTeamRoleArn', {
+            type: 'String',
+            description: '',
+            default: props.eeTeamRoleArn
+        });
+
+        const isEventEngine = new cdk.CfnParameter(this, 'IsEventEngine', {
+            type: 'String',
+            description: 'Whether this is running in Event Engine',
+            default: props.isEventEngine,
+            allowedValues: ['true', 'false']
+        });
+
+
 
         // Generate random string for S3 bucket name
         const randomString = randomBytes(2).toString('hex');
@@ -21,6 +55,7 @@ export class FisWorkshopStack extends cdk.Stack {
             bucketName: bucketName,
             removalPolicy: cdk.RemovalPolicy.DESTROY,
             autoDeleteObjects: true,
+            versioned: true,
         });
 
         // Deploy buildspecs
@@ -73,7 +108,17 @@ export class FisWorkshopStack extends cdk.Stack {
                     },
                     ASSET_BUCKET: {
                         value: assetBucket.bucketName
+                    },
+                    GIT_BRANCH: {
+                        value: gitBranch.valueAsString
+                    },
+                    EE_TEAM_ROLE_ARN: {
+                        value: eeTeamRoleArn.valueAsString
+                    },
+                    IS_EVENT_ENGINE: {
+                        value: isEventEngine.valueAsString
                     }
+
                 }
             },
             cache: codebuild.Cache.local(codebuild.LocalCacheMode.DOCKER_LAYER),
@@ -102,8 +147,8 @@ export class FisWorkshopStack extends cdk.Stack {
                             'cd ../PetAdoptions/cdk/pet_stack/',
                             'npm install',
                             'npm run build',
-                            'cdk deploy Services --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy ServicesSecondary --require-approval=never --verbose -O ./out/out.json',
+                            'cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine=${IS_EVENT_ENGINE} --require-approval=never --verbose -O ./out/out.json',
+                            'cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine=${IS_EVENT_ENGINE} --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json',
