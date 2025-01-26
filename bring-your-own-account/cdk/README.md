@@ -36,7 +36,6 @@ git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-
 cd aws-fault-injection-simulator-workshop-v2/bring-your-own-account [[2]](https://docs.aws.amazon.com/fis/latest/userguide/update.html)
 ```
 
-
 2. Install dependencies:
 
 ```bash
@@ -46,7 +45,6 @@ npm install
 3. Set Environment Variables:
 ```bash
 export eeTeamRoleArn=<your-team-role-arn> # for example arn:aws:iam::123456789012:role/TeamRole
-
 ```
 
 3. Bootstrap CDK in both regions:

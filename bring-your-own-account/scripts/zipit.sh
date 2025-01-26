@@ -1,6 +1,4 @@
 #!/bin/bash
-# change directory to the folder with CloudFormation
-cd ../cfn/
 
 # Copy buildspec-build.yml to buildspec.yml
 cp buildspec-build.yml buildspec.yml
