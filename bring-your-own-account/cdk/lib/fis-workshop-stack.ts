@@ -61,7 +61,7 @@ export class FisWorkshopStack extends cdk.Stack {
         // Deploy buildspecs
         new s3deploy.BucketDeployment(this, 'assetBucketFISDeployment', {
             sources: [
-                s3deploy.Source.asset(path.join(__dirname, 'artifacts'), {
+                s3deploy.Source.asset(path.join(__dirname, '../../cfn/'), {
                     bundling: {
                         image: cdk.DockerImage.fromRegistry('ubuntu'),
                         user: "root",
