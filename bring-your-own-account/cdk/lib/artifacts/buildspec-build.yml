@@ -8,17 +8,19 @@ phases:
       - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
   build:
     commands:
-      - git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      - if [ -z "$GIT_BRANCH" ] ; then git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ; else git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; fi
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/cloud9   
+      - git log -1 --pretty=format:"%h %s" 
       - npm install
       - ../../scripts/cdkbootstrap.sh
+      #- if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
       - npm run build
-      - cdk deploy Cloud9Stack --context is_event_engine="true" --require-approval never
+      #- cdk deploy Cloud9Stack --context is_event_engine="true" --require-approval never
       - cd ../../PetAdoptions/cdk/pet_stack/
       - npm install
       - npm run build
-      - cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
-      - cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
+      - cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="false" --require-approval=never --verbose -O ./out/out.json
+      - cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="false" --require-approval=never --verbose -O ./out/out.json
       - cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json
       - cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json
       - cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json
@@ -29,7 +31,6 @@ phases:
       - cdk deploy Observability --require-approval never --verbose -O ./out/out.json
       - cdk deploy ObservabilitySecondary --require-approval never --verbose -O ./out/out.json
       - cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json
-      - sh ../../../az-experiment/scripts/removeusersimtags.sh
       - cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json
       - cdk deploy ObservabilityDashboard --require-approval never --verbose -O ./out/out.json
       - cd ../../../intro-experiment/cdk
