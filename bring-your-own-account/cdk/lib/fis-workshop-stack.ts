@@ -137,7 +137,11 @@ export class FisWorkshopStack extends cdk.Stack {
                     },
                     pre_build: {
                         commands: [
-                            'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git',
+                            'if [ -z "$GIT_BRANCH" ]; then ' +
+                            'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
+                            'else ' +
+                            'git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
+                            'fi',
                             'cd aws-fault-injection-simulator-workshop-v2/scripts/',
                             'bash cdkbootstrap.sh'
                         ]
