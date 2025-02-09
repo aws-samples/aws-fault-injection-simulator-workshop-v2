@@ -243,7 +243,7 @@ export class UserSimulationStack extends cdk.Stack {
 
     // Add a container to the task definition using your Docker image
     const azMonitorContainer = azMonitorTaskDefinition.addContainer('azMonitorContainer', {
-      image: ecs.ContainerImage.fromAsset('https://github.com/USERNAME/REPOSITORY.git', {
+      image: ecs.ContainerImage.fromAsset('https://github.com/mrvladis/aws_az_monitor.git', {
         file: dockerfileContentAzMonitor
       }),
       logging: new ecs.AwsLogDriver({ streamPrefix: 'azmonitor' }),
