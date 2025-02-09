@@ -5,6 +5,8 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs'
+import path = require('path');
+import fs = require('fs');
 
 export class UserSimulationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -237,6 +239,10 @@ export class UserSimulationStack extends cdk.Stack {
     # Run the application
     CMD ["./monitor"]
     `
+    // Write the Dockerfile to the current directory
+    const dockerfilePath = path.join(__dirname, 'Dockerfile.azmonitor');
+    fs.writeFileSync(dockerfilePath, dockerfileContentAzMonitor);
+
 
     // Add a container to the task definition using your Docker image
     const azMonitorContainer = azMonitorTaskDefinition.addContainer('azMonitorContainer', {
