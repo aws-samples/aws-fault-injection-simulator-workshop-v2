@@ -218,8 +218,11 @@ export class UserSimulationStack extends cdk.Stack {
     # Set working directory
     WORKDIR /app
 
-    # Copy go mod and sum files
-    COPY app/go.mod app/go.sum ./
+    # Clone the repository
+    RUN git clone https://github.com/mrvladis/aws_az_monitor.git .
+
+    // # Copy go mod and sum files
+    // COPY app/go.mod app/go.sum ./
 
     # Download dependencies
     RUN go mod download
@@ -243,7 +246,7 @@ export class UserSimulationStack extends cdk.Stack {
 
     // Add a container to the task definition using your Docker image
     const azMonitorContainer = azMonitorTaskDefinition.addContainer('azMonitorContainer', {
-      image: ecs.ContainerImage.fromAsset('https://github.com/mrvladis/aws_az_monitor.git', {
+      image: ecs.ContainerImage.fromAsset('.', {
         file: dockerfileContentAzMonitor
       }),
       logging: new ecs.AwsLogDriver({ streamPrefix: 'azmonitor' }),
