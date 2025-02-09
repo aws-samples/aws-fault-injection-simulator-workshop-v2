@@ -221,9 +221,6 @@ export class UserSimulationStack extends cdk.Stack {
     # Clone the repository
     RUN git clone https://github.com/mrvladis/aws_az_monitor.git .
 
-    # Copy source code
-    RUN cd aws_az_monitor
-
     # Download dependencies
     RUN go mod download
 
