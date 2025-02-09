@@ -221,14 +221,11 @@ export class UserSimulationStack extends cdk.Stack {
     # Clone the repository
     RUN git clone https://github.com/mrvladis/aws_az_monitor.git .
 
-    // # Copy go mod and sum files
-    // COPY app/go.mod app/go.sum ./
+    # Copy source code
+    RUN cd aws_az_monitor
 
     # Download dependencies
     RUN go mod download
-
-    # Copy source code
-    COPY app/. .
 
     # Build the application
     RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o monitor 
