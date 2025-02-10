@@ -211,44 +211,42 @@ export class UserSimulationStack extends cdk.Stack {
     // Create a build context directory
     const azMonitorDockerBuildDir = path.join(__dirname, 'azMonitorDockerBuild');
     if (!fs.existsSync(azMonitorDockerBuildDir)) {
-        fs.mkdirSync(azMonitorDockerBuildDir, { recursive: true });
+      fs.mkdirSync(azMonitorDockerBuildDir, { recursive: true });
     }
 
     // Create Dockerfile in the build directory
     const dockerfileContentAzMonitorPath = path.join(azMonitorDockerBuildDir, 'Dockerfile');
 
-    const dockerfileContentAzMonitor = `
-    # Start from the official Golang image
-    FROM  --platform=linux/amd64 golang:1.23.3-alpine
+    const dockerfileContentAzMonitor = `# Start from the official Golang image
+FROM --platform=linux/amd64 golang:1.21-alpine
 
-    ENV GOPROXY=https://goproxy.io,direct
+ENV GOPROXY=https://goproxy.io,direct
 
-    # Add necessary tools
-    RUN apk add --no-cache ca-certificates tzdata
+# Add necessary tools
+RUN apk add --no-cache ca-certificates tzdata git
 
-    # Set working directory
-    WORKDIR /app
+# Set working directory
+WORKDIR /app
 
-    # Clone the repository
-    RUN git clone https://github.com/mrvladis/aws_az_monitor.git .
+# Clone the repository
+RUN git clone https://github.com/mrvladis/aws_az_monitor.git .
 
-    # Download dependencies
-    RUN go mod download
+# Download dependencies
+RUN go mod download
 
-    # Build the application
-    RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o monitor 
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o monitor 
 
-    # Create a non-root user
-    RUN adduser -D appuser
-    USER appuser
+# Create a non-root user
+RUN adduser -D appuser
+USER appuser
 
-    # Set environment variable for polling interval (15 seconds)
-    ENV POLLING_INTERVAL=15
+# Set environment variable for polling interval (15 seconds)
+ENV POLLING_INTERVAL=15
 
-    # Run the application
-    CMD ["./monitor"]
-    `
-    
+# Run the application
+CMD ["./monitor"]`;
+
     fs.writeFileSync(dockerfileContentAzMonitorPath, dockerfileContentAzMonitor);
 
     // Add a container to the task definition using your Docker image
@@ -256,6 +254,7 @@ export class UserSimulationStack extends cdk.Stack {
       image: ecs.ContainerImage.fromAsset(azMonitorDockerBuildDir),
       logging: new ecs.AwsLogDriver({ streamPrefix: 'azmonitor' }),
     });
+
 
     // // Configure container settings, environment variables, etc.
     // searchListContainer.addPortMappings({ containerPort: 80 });
