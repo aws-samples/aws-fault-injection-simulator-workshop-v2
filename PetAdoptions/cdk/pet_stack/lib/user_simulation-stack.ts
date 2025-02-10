@@ -218,7 +218,7 @@ export class UserSimulationStack extends cdk.Stack {
     const dockerfileContentAzMonitorPath = path.join(azMonitorDockerBuildDir, 'Dockerfile');
 
     const dockerfileContentAzMonitor = `# Start from the official Golang image
-FROM --platform=linux/amd64 golang:1.21-alpine
+FROM --platform=linux/amd64 golang:1.23.11-alpine
 
 ENV GOPROXY=https://goproxy.io,direct
 
