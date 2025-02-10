@@ -208,6 +208,15 @@ export class UserSimulationStack extends cdk.Stack {
       resources: ['*'],
     }));
 
+    // Create a build context directory
+    const azMonitorDockerBuildDir = path.join(__dirname, 'azMonitorDockerBuild');
+    if (!fs.existsSync(azMonitorDockerBuildDir)) {
+        fs.mkdirSync(azMonitorDockerBuildDir, { recursive: true });
+    }
+
+    // Create Dockerfile in the build directory
+    const dockerfileContentAzMonitorPath = path.join(azMonitorDockerBuildDir, 'Dockerfile');
+
     const dockerfileContentAzMonitor = `
     # Start from the official Golang image
     FROM  --platform=linux/amd64 golang:1.23.3-alpine
@@ -239,16 +248,12 @@ export class UserSimulationStack extends cdk.Stack {
     # Run the application
     CMD ["./monitor"]
     `
-    // Write the Dockerfile to the current directory
-    const dockerfilePath = path.join(__dirname, 'Dockerfile.azmonitor');
-    fs.writeFileSync(dockerfilePath, dockerfileContentAzMonitor);
-
+    
+    fs.writeFileSync(dockerfileContentAzMonitorPath, dockerfileContentAzMonitor);
 
     // Add a container to the task definition using your Docker image
     const azMonitorContainer = azMonitorTaskDefinition.addContainer('azMonitorContainer', {
-      image: ecs.ContainerImage.fromAsset('.', {
-        file: dockerfileContentAzMonitor
-      }),
+      image: ecs.ContainerImage.fromAsset(azMonitorDockerBuildDir),
       logging: new ecs.AwsLogDriver({ streamPrefix: 'azmonitor' }),
     });
 
