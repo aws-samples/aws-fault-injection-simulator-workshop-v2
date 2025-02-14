@@ -5,7 +5,7 @@ import { FisWorkshopStack } from '../lib/fis-workshop-stack';
 const app = new cdk.App();
 
 const eeTeamRoleArn = app.node.tryGetContext('eeTeamRoleArn') || process.env.eeTeamRoleArn;
-
+ 
 if (!eeTeamRoleArn) {
     throw new Error('eeTeamRoleArn must be provided either via context or eeTeamRoleArn environment variable');
 }
