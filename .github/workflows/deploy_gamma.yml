@@ -99,6 +99,16 @@ jobs:
           npm install
           cdk deploy --require-approval=never
 
+      - name: Destroy Intro Experiment
+        working-directory: ./PetAdoptions/cdk/pet_stack
+        run: |
+          cdk destroy --force --all --require-approval never
+
+      - name: Destroy Workshop
+        working-directory: ./intro-experiment/cdk
+        run: |
+          cdk destroy --force --all --require-approval never
+
 #      - name: Upload Artifacts
 #        uses: actions/upload-artifact@v3
 #        with:
