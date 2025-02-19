@@ -21,6 +21,11 @@ jobs:
       - name: Git clone the repository
         uses: actions/checkout@v4
 
+      - name: Debug directory structure
+        run: |
+          pwd
+          ls -R
+
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -43,7 +48,7 @@ jobs:
           aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text
 
       - name: Deploy Pet Stack Services
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+        working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           npm install
           npm run build
@@ -51,14 +56,14 @@ jobs:
           cdk deploy ServicesSecondary --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="true" --require-approval=never 
 
       - name: Deploy Network Stacks
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+        working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy NetworkRegionPeering --require-approval=never
           cdk deploy NetworkRoutesMain --require-approval=never
           cdk deploy NetworkRoutesSecondary --require-approval=never
 
       - name: Deploy Application Stacks
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+        working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy S3Replica --require-approval=never
           cdk deploy Applications --require-approval=never
@@ -66,21 +71,21 @@ jobs:
           cdk deploy FisServerless --require-approval=never
 
       - name: Deploy Observability Stacks
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+        working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy Observability --require-approval=never
           cdk deploy ObservabilitySecondary --require-approval=never
           cdk deploy ObservabilityDashboard --require-approval=never
 
       - name: Deploy User Simulation Stacks
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+        working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy UserSimulationStack --require-approval=never
           sh ../../../az-experiment/scripts/removeusersimtags.sh
           cdk deploy UserSimulationStackSecondary --require-approval=never
 
       - name: Deploy Intro Experiment
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/intro-experiment/cdk
+        working-directory: ./intro-experiment/cdk
         run: |
           npm install
           cdk deploy --require-approval=never
