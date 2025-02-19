@@ -14,91 +14,70 @@ permissions:
       id-token: write   # This is required for requesting the JWT
       contents: read    # This is required for actions/checkout
 jobs:
-  AssumeRoleAndCallIdentity:
+  deploy:
     runs-on: ubuntu-latest
-    steps:
+    steps: 
       - name: Git clone the repository
         uses: actions/checkout@v4
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v1.7.0
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::992382547812:role/GithubActionRole
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: us-east-1
-      # Hello from AWS: WhoAmI
       - name: Sts GetCallerIdentity
         run: |
           aws sts get-caller-identity
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '14.x'  # adjust version as needed
+      - name: Install global dependencies
+        run: |
+          npm install aws-cdk -g
+          aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text
+      - name: Deploy Pet Stack Services
+        working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+        run: |
+          npm install
+          npm run build
+          cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never 
+          cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never 
 
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '14.x'  # adjust version as needed
+       - name: Deploy Network Stacks
+         working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+         run: |
+           cdk deploy NetworkRegionPeering --require-approval=never
+           cdk deploy NetworkRoutesMain --require-approval=never
+           cdk deploy NetworkRoutesSecondary --require-approval=never
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+       - name: Deploy Application Stacks
+         working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+         run: |
+           cdk deploy S3Replica --require-approval=never
+           cdk deploy Applications --require-approval=never
+           cdk deploy ApplicationsSecondary --require-approval=never
+           cdk deploy FisServerless --require-approval never
 
-    - name: Install global dependencies
-      run: |
-        npm install aws-cdk -g
-        aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text
+       - name: Deploy Observability Stacks
+         working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+         run: |
+           cdk deploy Observability --require-approval never
+           cdk deploy ObservabilitySecondary --require-approval never
+           cdk deploy ObservabilityDashboard --require-approval never
 
-    - name: Clone workshop repository
-      run: |
-        git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+       - name: Deploy User Simulation Stacks
+         working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
+         run: |
+           cdk deploy UserSimulationStack --require-approval never
+           sh ../../../az-experiment/scripts/removeusersimtags.sh
+           cdk deploy UserSimulationStackSecondary --require-approval never
 
-    - name: Deploy Pet Stack Services
-      working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
-      run: |
-        npm install
-        npm run build
-        cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
-        cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json
-
-    - name: Deploy Network Stacks
-      working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
-      run: |
-        cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json
-        cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json
-        cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json
-
-    - name: Deploy Application Stacks
-      working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
-      run: |
-        cdk deploy S3Replica --require-approval=never --verbose -O ./out/out.json
-        cdk deploy Applications --require-approval=never --verbose -O ./out/out.json
-        cdk deploy ApplicationsSecondary --require-approval=never --verbose -O ./out/out.json
-        cdk deploy FisServerless --require-approval never --verbose -O ./out/out.json
-
-    - name: Deploy Observability Stacks
-      working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
-      run: |
-        cdk deploy Observability --require-approval never --verbose -O ./out/out.json
-        cdk deploy ObservabilitySecondary --require-approval never --verbose -O ./out/out.json
-        cdk deploy ObservabilityDashboard --require-approval never --verbose -O ./out/out.json
-
-    - name: Deploy User Simulation Stacks
-      working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
-      run: |
-        cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json
-        sh ../../../az-experiment/scripts/removeusersimtags.sh
-        cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json
-
-    - name: Deploy Intro Experiment
-      working-directory: ./aws-fault-injection-simulator-workshop-v2/intro-experiment/cdk
-      run: |
-        npm install
-        cdk deploy --require-approval never --verbose -O ./out/out.json
+       - name: Deploy Intro Experiment
+         working-directory: ./aws-fault-injection-simulator-workshop-v2/intro-experiment/cdk
+         run: |
+           npm install
+           cdk deploy --require-approval never
 
 #    - name: Upload Artifacts
 #      uses: actions/upload-artifact@v2
