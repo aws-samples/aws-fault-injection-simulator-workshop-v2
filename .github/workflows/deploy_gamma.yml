@@ -8,6 +8,8 @@ on:
 env:
   AWS_REGION: "us-east-1"
   EE_TEAM_ROLE_ARN: "arn:aws:iam::992382547812:role/GithubActionRole"
+  IS_EVENT_ENGINE: false
+  
 
 # Permission can be added at job level or workflow level    
 permissions:
@@ -41,7 +43,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '23.x'  # adjust version as needed
-
 
       - name: Cache Node.js dependencies
         id: cache
