@@ -35,7 +35,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '14.x'  # adjust version as needed
+          node-version: '23.x'  # adjust version as needed
 
       - name: Install global dependencies
         run: |
@@ -47,8 +47,8 @@ jobs:
         run: |
           npm install
           npm run build
-          cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never 
-          cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never 
+          cdk deploy Services --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="true" --require-approval=never 
+          cdk deploy ServicesSecondary --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="true" --require-approval=never 
 
       - name: Deploy Network Stacks
         working-directory: ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack
