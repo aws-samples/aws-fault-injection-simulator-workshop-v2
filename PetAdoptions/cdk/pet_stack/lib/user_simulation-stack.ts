@@ -46,7 +46,10 @@ export class UserSimulationStack extends cdk.Stack {
       // Add a container to the task definition using your Docker image
       const catAdoptContainer = catAdoptTaskDefinition.addContainer('catAdoptContainer', {
         image: ecs.ContainerImage.fromAsset('./resources/user_simulation/catadopt'),
-        logging: new ecs.AwsLogDriver({ streamPrefix: 'catadopt' }),
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: 'catadopt',
+          removalPolicy: cdk.RemovalPolicy.DESTROY
+        }),
       });
 
       // Configure container settings, environment variables, etc.
@@ -83,7 +86,10 @@ export class UserSimulationStack extends cdk.Stack {
       // Add a container to the task definition using your Docker image
       const dogAdoptContainer = dogAdoptTaskDefinition.addContainer('dogAdoptContainer', {
         image: ecs.ContainerImage.fromAsset('./resources/user_simulation/dogadopt'),
-        logging: new ecs.AwsLogDriver({ streamPrefix: 'dogadopt' }),
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: 'dogadopt',
+          removalPolicy: cdk.RemovalPolicy.DESTROY
+        }),
       });
 
       // Configure container settings, environment variables, etc.
@@ -116,7 +122,10 @@ export class UserSimulationStack extends cdk.Stack {
     // Add a container to the task definition using your Docker image
     const getAllPetsContainer = getAllPetsTaskDefinition.addContainer('getAllPetsContainer', {
       image: ecs.ContainerImage.fromAsset('./resources/user_simulation/getallpets'),
-      logging: new ecs.AwsLogDriver({ streamPrefix: 'getallpets' }),
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'getallpets',
+        removalPolicy: cdk.RemovalPolicy.DESTROY
+      }),
     });
 
     // Configure container settings, environment variables, etc.
@@ -149,7 +158,10 @@ export class UserSimulationStack extends cdk.Stack {
     // Add a container to the task definition using your Docker image
     const searchListContainer = searchListTaskDefinition.addContainer('searchListContainer', {
       image: ecs.ContainerImage.fromAsset('./resources/user_simulation/searchlist'),
-      logging: new ecs.AwsLogDriver({ streamPrefix: 'searchlist' }),
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'searchlist',
+        removalPolicy: cdk.RemovalPolicy.DESTROY
+      }),
     });
 
     // Configure container settings, environment variables, etc.
