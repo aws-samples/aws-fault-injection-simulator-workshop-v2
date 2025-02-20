@@ -7,6 +7,15 @@ import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs'
 import path = require('path');
 import fs = require('fs');
+import * as logs from 'aws-cdk-lib/aws-logs';
+
+class LogGroupRemovalPolicyAspect implements cdk.IAspect {
+  visit(node: cdk.IConstruct): void {
+    if (node instanceof logs.LogGroup) {
+      node.applyRemovalPolicy(cdk.RemovalPolicy.DESTROY);
+    }
+  }
+}
 
 export class UserSimulationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -14,6 +23,9 @@ export class UserSimulationStack extends cdk.Stack {
 
     const stack = Stack.of(this);
     const region = stack.region;
+
+    // Apply the aspect to the stack
+    this.node.applyAspect(new LogGroupRemovalPolicyAspect());
 
     // Create a VPC
     const vpc = new ec2.Vpc(this, 'Vpc', { maxAzs: 2 });
