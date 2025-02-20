@@ -32,6 +32,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::992382547812:role/GithubActionRole
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 14400
           aws-region: us-east-1
 
       - name: Sts GetCallerIdentity
