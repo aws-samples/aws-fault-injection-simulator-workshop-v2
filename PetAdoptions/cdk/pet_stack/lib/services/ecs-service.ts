@@ -88,7 +88,10 @@ export abstract class EcsService extends Construct {
       cpu: props.cpu,
       taskRole: taskRole,
       memoryLimitMiB: props.memoryLimitMiB,
-      pidMode: ecs.PidMode.TASK
+      pidMode: ecs.PidMode.TASK,
+      runtimePlatform: {
+        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX
+      }
     });
 
     // Add fault injection capability by adding required configuration
