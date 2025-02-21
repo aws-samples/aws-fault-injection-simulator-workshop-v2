@@ -43,6 +43,36 @@ jobs:
         run: |
           aws sts get-caller-identity
 
+      - name: Delete UserSimulationStack Log Groups
+        run: |
+          echo "Searching for log groups containing 'UserSimulationStack'"
+        
+          # Get the log groups containing UserSimulationStack
+          LOG_GROUPS=$(aws logs describe-log-groups \
+              --query "logGroups[?contains(logGroupName, 'UserSimulationStack')].logGroupName" \
+              --output text)
+          
+          # Check if any log groups were found
+          if [ -z "$LOG_GROUPS" ] || [ "$LOG_GROUPS" = "None" ]; then
+              echo "No log groups found containing 'UserSimulationStack'. Skipping deletion."
+              exit 0
+          fi
+          
+          # Process each log group
+          echo "$LOG_GROUPS" | while read -r log_group; do
+              if [ ! -z "$log_group" ]; then
+                  echo "Deleting log group: $log_group"
+                  if aws logs delete-log-group --log-group-name "$log_group"; then
+                      echo "Successfully deleted: $log_group"
+                  else
+                      echo "Failed to delete: $log_group"
+                  fi
+              fi
+          done
+          
+          echo "Finished processing log groups"
+        shell: bash 
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
