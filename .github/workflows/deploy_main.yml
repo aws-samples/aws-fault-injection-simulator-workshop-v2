@@ -9,8 +9,6 @@ env:
   AWS_REGION: "us-east-1"
   EE_TEAM_ROLE_ARN: "arn:aws:iam::992382547812:role/GithubActionRole"
   
-
-# Permission can be added at job level or workflow level    
 permissions:
   id-token: write   # This is required for requesting the JWT
   contents: read    # This is required for actions/checkout
@@ -20,8 +18,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy_fis_workshop:
+  deploy:
     runs-on: ubuntu-latest
+    outputs:
+      deployment_status: ${{ job.status }}
     steps: 
       - name: Git clone the repository
         uses: actions/checkout@v4
@@ -46,20 +46,19 @@ jobs:
       - name: Delete UserSimulationStack Log Groups
         run: |
           echo "Searching for log groups containing 'UserSimulationStack'"
-        
           # Get the log groups containing UserSimulationStack
           LOG_GROUPS=$(aws logs describe-log-groups \
-              --query "logGroups[?contains(logGroupName, 'UserSimulationStack')].logGroupName" \
-              --output text)
-          
+            --query "logGroups[?contains(logGroupName, 'UserSimulationStack')].logGroupName" \
+            --output text)
+
           # Check if any log groups were found
           if [ -z "$LOG_GROUPS" ] || [ "$LOG_GROUPS" = "None" ]; then
               echo "No log groups found containing 'UserSimulationStack'. Skipping deletion."
               exit 0
           fi
-          
+
           # Process each log group
-          echo "$LOG_GROUPS" | while read -r log_group; do
+          echo "$LOG_GROUPS" | tr '\t' '\n' | while read -r log_group; do
               if [ ! -z "$log_group" ]; then
                   echo "Deleting log group: $log_group"
                   if aws logs delete-log-group --log-group-name "$log_group"; then
@@ -69,8 +68,7 @@ jobs:
                   fi
               fi
           done
-          
-          echo "Finished processing log groups"
+          echo "Finished processing log groups" 
         shell: bash 
 
       - name: Set up Node.js
@@ -133,10 +131,24 @@ jobs:
         run: |
           npm install
           cdk deploy --require-approval=never
+          
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: needs.deploy.result == 'success'
+    outputs:
+      verification_status: ${{ job.status }}
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v4
 
-      - name: Verification Stage
-        run: |
-          echo "VERIFY ENVIRONMENT IS HEALTHY"
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.EE_TEAM_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 14400
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Wait for 10 minutes
         run: |
@@ -188,24 +200,46 @@ jobs:
           else
               echo "Navigation Status: FAILED"
               echo "navigation_status=failed" >> $GITHUB_ENV
+              exit 1
           fi
 
-      - name: Check Navigation Result
-        if: env.navigation_status == 'failed'
-        run: |
-          echo "Navigation check failed!"
-          exit 1 
+  destroy:
+    needs: [deploy, verify]
+    runs-on: ubuntu-latest
+    if: |
+      always() && (
+        needs.deploy.result == 'failure' ||
+        needs.verify.result == 'failure' ||
+        (needs.deploy.result == 'success' && needs.verify.result == 'success')
+      )
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v4
 
-      - name: Destroy Stage
-        run: |
-          echo "DESTORY ENVIRONMENT"
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.EE_TEAM_ROLE_ARN }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-duration-seconds: 14400
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23.x'
+
+      - name: Install global dependencies
+        run: npm install aws-cdk -g
 
       - name: Destroy Intro Experiment FisStackAsg
         working-directory: ./intro-experiment/cdk
         run: |
+          npm install
           cdk destroy --force --all --require-approval never
 
       - name: Destroy Workshop
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
+          npm install
           cdk destroy --force --all --require-approval never
