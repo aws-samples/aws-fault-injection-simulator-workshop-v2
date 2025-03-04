@@ -14,7 +14,7 @@ export class VscodeServerStack extends cdk.Stack {
       
       // Optional: If your template has parameters, you can specify them here
       parameters: {
-        EC2KeyPair: 'laptop',
+        EC2KeyPair: 'ws-default-keypair',
       }
     });
     
