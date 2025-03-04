@@ -13,9 +13,9 @@ export class VscodeServerStack extends cdk.Stack {
       templateFile: __dirname + "/../../../vscode-server.yml",
       
       // Optional: If your template has parameters, you can specify them here
-      parameters: {
-        EC2KeyPair: 'ws-default-keypair',
-      }
+      //parameters: {
+      //  EC2KeyPair: 'ws-default-keypair',
+      //}
     });
     
     // Get the VSCodeInstanceRole resource from the imported CloudFormation template
