@@ -47,8 +47,8 @@ data:
         timeout: 60s
 
     exporters:
-      logging:
-        loglevel: debug
+      debug:
+        verbosity: detailed
       awsxray:
       awsemf:
         namespace: "PetAdoptionsHistory"
