@@ -8,7 +8,7 @@ Parameters:
   InstanceType:
     Description: Type of EC2 instance to launch
     Type: String
-    Default: c7i.xlarge
+    Default: t3.medium
     AllowedValues: [
       c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge,
       c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c5.9xlarge, c5.12xlarge, c5.18xlarge, c5.24xlarge,
