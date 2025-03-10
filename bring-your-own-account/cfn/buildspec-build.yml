@@ -8,9 +8,9 @@ phases:
       - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
   build:
     commands:
-      - if [ -z "$GIT_BRANCH" ] ; then git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ; else git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; fi
-      - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/cloud9   
+      - if [ -z "$GIT_BRANCH" ] ; then git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ; else git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; fi   
       - git log -1 --pretty=format:"%h %s" 
+      - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
       - npm install
       - ../../scripts/cdkbootstrap.sh
       #- if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
