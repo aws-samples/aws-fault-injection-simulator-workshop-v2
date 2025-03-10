@@ -10,6 +10,10 @@ phases:
     commands:
       - rm -rf aws-fault-injection-simulator-workshop-v2
       - if [ -z "$GIT_BRANCH" ] ; then git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ; else git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; fi
+      - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
+      - npm install
+      - cdk destroy --force --all --require-approval never
+      - cd ../../../
       - cd ./aws-fault-injection-simulator-workshop-v2/intro-experiment/cdk
       - npm install
       - cdk destroy --force --all --require-approval never
