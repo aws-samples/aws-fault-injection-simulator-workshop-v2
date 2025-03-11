@@ -38,6 +38,7 @@ jobs:
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           role-duration-seconds: 14400
           aws-region: us-east-1
+          mask-aws-account-id: true
 
       - name: Sts GetCallerIdentity
         run: |
