@@ -93,6 +93,8 @@ jobs:
         working-directory: ./supporting-services/vscode-server
         run: |
           # Deploy CDK once with outputs to file
+          npm install
+          npm run build
           cdk deploy VscodeServerStack --context is_event_engine="false" --require-approval never --outputs-file cdk-outputs.json > deployment_logs.txt 2>&1
           
           # Check if deployment succeeded
