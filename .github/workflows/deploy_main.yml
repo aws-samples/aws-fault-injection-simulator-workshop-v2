@@ -90,7 +90,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
 
       - name: Deploy VSCode Server Stack
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
+        working-directory: ./supporting-services/vscode-server
         run: |
           npm install
           npm run build
@@ -240,7 +240,7 @@ jobs:
         run: npm install aws-cdk -g
 
       - name: Destroy VSCode Server Stack
-        working-directory: ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
+        working-directory: ./supporting-services/vscode-server
         run: |
           npm install
           cdk destroy --force --all --require-approval never
