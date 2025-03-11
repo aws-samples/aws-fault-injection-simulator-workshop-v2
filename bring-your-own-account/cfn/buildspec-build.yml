@@ -13,9 +13,9 @@ phases:
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
       - npm install
       - ../../scripts/cdkbootstrap.sh
-      #- if [ -z "$CDK_STACK" ] ; then cdk bootstrap ; else echo "Already bootstrapped" ; fi
       - npm run build
-      #- cdk deploy Cloud9Stack --context is_event_engine="true" --require-approval never
+      # - cdk deploy Cloud9Stack --context is_event_engine="true" --require-approval never
+      - cdk deploy VscodeServerStack --context is_event_engine="true" --require-approval never
       - cd ../../PetAdoptions/cdk/pet_stack/
       - npm install
       - npm run build
