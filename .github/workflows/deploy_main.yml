@@ -92,9 +92,35 @@ jobs:
       - name: Deploy VSCode Server Stack
         working-directory: ./supporting-services/vscode-server
         run: |
-          npm install
-          npm run build
-          cdk deploy VscodeServerStack --context is_event_engine="false" --require-approval never
+          # Deploy CDK once with outputs to file
+          cdk deploy VscodeServerStack --context is_event_engine="false" --require-approval never --outputs-file cdk-outputs.json > deployment_logs.txt 2>&1
+          
+          # Check if deployment succeeded
+          if [ $? -ne 0 ]; then
+            echo "Deployment failed"
+            cat deployment_logs.txt
+            exit 1
+          fi
+          
+          # Extract sensitive values
+          password=$(jq -r '.VscodeServerStack.Password' cdk-outputs.json)
+          url=$(jq -r '.VscodeServerStack.URL' cdk-outputs.json)
+          
+          # Create sanitized logs by replacing sensitive data
+          sed -i "s/$password/[REDACTED PASSWORD]/g" deployment_logs.txt
+          sed -i "s,$url,[REDACTED URL],g" deployment_logs.txt
+          
+          # Now mask values for future output
+          echo "::add-mask::$password"
+          echo "::add-mask::$url"
+          
+          # Store as outputs
+          echo "password=$password" >> $GITHUB_OUTPUT
+          echo "url=$url" >> $GITHUB_OUTPUT
+          
+          # Display cleaned logs
+          echo "=== CLEANED DEPLOYMENT LOGS ==="
+          cat deployment_logs.txt
           
       - name: Deploy Pet Stack Services
         working-directory: ./PetAdoptions/cdk/pet_stack
