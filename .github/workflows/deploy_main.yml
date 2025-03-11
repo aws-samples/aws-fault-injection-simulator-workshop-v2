@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: "us-east-1"
-  EE_TEAM_ROLE_ARN: "arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubActionRole"
+  EE_TEAM_ROLE_ARN: "arn:aws:iam::992382547812:role/GithubActionRole"
   
 permissions:
   id-token: write   # This is required for requesting the JWT
@@ -34,7 +34,7 @@ jobs:
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::$AWS_ACCOUNT_ID:role/GithubActionRole
+          role-to-assume: arn:aws:iam::992382547812:role/GithubActionRole
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           role-duration-seconds: 14400
           aws-region: us-east-1
