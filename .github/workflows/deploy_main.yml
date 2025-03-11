@@ -89,7 +89,7 @@ jobs:
           aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text
         if: steps.cache.outputs.cache-hit != 'true'
 
-      - name: Deploy Vscode Server Stack
+      - name: Deploy VSCode Server Stack
         working-directory: ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
         run: |
           npm install
