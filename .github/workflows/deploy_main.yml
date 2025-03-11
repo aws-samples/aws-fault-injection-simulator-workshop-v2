@@ -110,7 +110,7 @@ jobs:
           url=$(jq -r '.VscodeServerStack.URL' cdk-outputs.json)
           
           # Create sanitized logs by replacing sensitive data
-          sed -i "s/$password/[REDACTED PASSWORD]/g" deployment_logs.txt
+          sed -i "s/$password/[REDACTED]/g" deployment_logs.txt
           sed -i "s,$url,[REDACTED URL],g" deployment_logs.txt
           
           # Now mask values for future output
