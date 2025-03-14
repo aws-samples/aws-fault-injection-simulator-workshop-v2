@@ -265,11 +265,10 @@ Resources:
               - jammy
           nodeVersion:
             type: String
-            default: node_20.x
+            default: setup_20.x
             allowedValues:
-              - node_21.x
-              - node_20.x
-              - node_19.x
+              - setup_20.x
+              - setup_19.x
           dotNetVersion:
             type: String
             default: dotnet-sdk-8.0
@@ -282,7 +281,8 @@ Resources:
             name: InstallAWSCLI
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl unzip
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && apt-get install -y curl unzip
                 - curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip -o /tmp/aws-cli.zip
                 - unzip -q -d /tmp /tmp/aws-cli.zip
                 - sudo /tmp/aws/install
@@ -292,9 +292,10 @@ Resources:
             name: InstallGit
             inputs:
               runCommand:
+                - export DEBIAN_FRONTEND=noninteractive
                 - add-apt-repository ppa:git-core/ppa
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y git
+                - apt-get update && apt-get install -y software-properties-common
+                - apt-get update && apt-get install -y git
                 - sudo -u ubuntu git config --global user.email "participant@workshops.aws"
                 - sudo -u ubuntu git config --global user.name "Workshop Participant"
                 - sudo -u ubuntu git config --global init.defaultBranch "main"
@@ -303,20 +304,37 @@ Resources:
             name: cloneRepository
             inputs:
               runCommand:
-              - su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop'
+              - !Sub |
+                if [ ! -d "/home/ubuntu/environment/workshopfiles" ]; then
+                  su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop'
+                fi
           - action: aws:runShellScript
             name: InstallNode
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl
-                - curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | gpg --dearmor -o /usr/share/keyrings/nodesource-keyring.gpg
-                - echo "deb [arch={{ architecture }} signed-by=/usr/share/keyrings/nodesource-keyring.gpg] https://deb.nodesource.com/{{ nodeVersion }} {{ ubuntuVersion }} main" >> /etc/apt/sources.list.d/nodesource.list
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+                - |
+                  #!/bin/bash
+                  # Check if Node.js is already installed
+                  if ! command -v node &> /dev/null; then
+                    echo "Node.js not found, installing..."
+                    # Install curl if needed
+                    if ! command -v curl &> /dev/null; then
+                      DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y curl
+                    fi
+                    
+                    # Install Node.js
+                    curl -fsSL https://deb.nodesource.com/{{ nodeVersion }} | sudo bash -
+                    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+                  else
+                    NODE_VERSION=$(node -v)
+                    echo "Node.js is already installed (version: $NODE_VERSION). Skipping installation."
+                  fi
           - action: aws:runShellScript
             name: InstallPython
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3.10-venv python3-boto3 python3-pytest
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && apt-get install -y python3-pip python3.10-venv python3-boto3 python3-pytest
                 - echo 'alias pytest=pytest-3' >> /home/ubuntu/.bashrc
                 - ln -s /usr/bin/python3 /usr/bin/python
                 - python3 --version
@@ -351,7 +369,8 @@ Resources:
             name: ConfigureCodeServer
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl nginx
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && apt-get install -y curl nginx
                 - '#!/bin/bash'
                 - export HOME=/home/ubuntu
                 - curl -fsSL https://code-server.dev/install.sh | sh
@@ -419,7 +438,8 @@ Resources:
             name: InstallQDeveloperExtension
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && apt-get install -y curl jq
                 - |
                   Q_URL=$(curl -sL https://api.github.com/repos/aws/aws-toolkit-vscode/releases/latest | jq -r '.assets[] | select(.name? | match("amazon-q-vscode-[0-9].[0-9].[0-9]*.vsix$";"g")) | .browser_download_url')
                   if [ -z "$Q_URL" ];
@@ -436,7 +456,8 @@ Resources:
             name: InstallAWSToolkit
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl jq
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && apt-get install -y curl jq
                 - |
                   TOOLKIT_URL=$(curl -sL https://api.github.com/repos/aws/aws-toolkit-vscode/releases/latest | jq -r '.assets[] | select(.name? | match("aws-toolkit-vscode-[0-9].[0-9].[0-9]*.vsix$";"g")) | .browser_download_url')
                   if [ -z "$TOOLKIT_URL" ];
@@ -457,26 +478,29 @@ Resources:
             name: InstallGo
             inputs:
               runCommand:
+                - export DEBIAN_FRONTEND=noninteractive
                 - add-apt-repository ppa:longsleep/golang-backports
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y golang-go
+                - apt-get update && apt-get install -y golang-go
                 - sudo chown ubuntu:ubuntu /home/ubuntu -R
                 - go version
           - action: aws:runShellScript
             name: InstallRust
             inputs:
               runCommand:
+                - export DEBIAN_FRONTEND=noninteractive
                 - add-apt-repository ppa:ubuntu-mozilla-security/rust-next
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y rustc cargo
+                - apt-get update && apt-get install -y rustc cargo
                 - sudo chown ubuntu:ubuntu /home/ubuntu -R
                 - rustc --version
           - action: aws:runShellScript
             name: InstallDocker
             inputs:
               runCommand:
+                - export DEBIAN_FRONTEND=noninteractive
                 - apt-get update && apt-get install -y apt-transport-https ca-certificates curl software-properties-common curl gnupg lsb-release
                 - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
                 - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable"
-                - apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce libpq-dev
+                - apt-get update && apt-get install -y docker-ce libpq-dev
                 - mkdir -p ~/.docker/cli-plugins/
                 - curl -SL https://github.com/docker/compose/releases/download/v2.3.3/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
                 - chmod +x ~/.docker/cli-plugins/docker-compose
@@ -486,6 +510,7 @@ Resources:
             name: InstallAmazonCorretto
             inputs:
               runCommand:
+                - export DEBIAN_FRONTEND=noninteractive
                 - wget -O - https://apt.corretto.aws/corretto.key | sudo gpg --dearmor -o /usr/share/keyrings/corretto-keyring.gpg
                 - echo "deb [signed-by=/usr/share/keyrings/corretto-keyring.gpg] https://apt.corretto.aws stable main" | tee /etc/apt/sources.list.d/corretto.list
                 - apt-get update && sudo apt-get install -y java-17-amazon-corretto-jdk maven
@@ -495,7 +520,8 @@ Resources:
             name: InstallDotnet
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive sudo apt-get install -y {{ dotNetVersion }}
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && sudo apt-get install -y {{ dotNetVersion }}
                 - dotnet tool install -g Microsoft.Web.LibraryManager.Cli
                 - export PATH="$PATH:/home/ubuntu/.dotnet/tools"
                 - chown ubuntu:ubuntu /home/ubuntu -R
@@ -504,20 +530,15 @@ Resources:
             name: InstallVite
             inputs:
               runCommand:
-                - apt-get update && DEBIAN_FRONTEND=noninteractive sudo apt-get install -y vite create-vite
+                - export DEBIAN_FRONTEND=noninteractive
+                - apt-get update && sudo apt-get install -y vite
           - action: aws:runShellScript
             name: DependencyInstall
             inputs:
               runCommand:
+              - export DEBIAN_FRONTEND=noninteractive
               - apt update -y
               - apt install -y jq gettext bash-completion moreutils
-              - pip install --upgrade awscli
-              - sudo -i -u ubuntu bash -l -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash'
-              - sudo -i -u ubuntu bash -l -c 'export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"'
-              - sudo -i -u ubuntu bash -l -c '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"'
-              - sudo -i -u ubuntu bash -l -c 'nvm install node --default'
-              - sudo -i -u ubuntu bash -l -c 'nvm alias default node'
-              - sudo -i -u ubuntu bash -l -c 'nvm exec node npm install -g aws-cdk --force'
           - action: aws:runShellScript
             name: KubectlInstall
             inputs:
