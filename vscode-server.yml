@@ -557,7 +557,18 @@ Resources:
             inputs:
               runCommand:
               - curl --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-              - sudo mv /tmp/eksctl /usr/local/bin        
+              - sudo mv /tmp/eksctl /usr/local/bin
+          - action: aws:runShellScript
+            name: installSamCli
+            inputs:
+              runCommand:
+              - cd ~
+              - mkdir sam_install
+              - cd sam_install
+              - curl --location https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip -o aws-sam-cli-linux-x86_64.zip
+              - unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
+              - sudo ./sam-installation/install
+              - sam --version          
   VSCodeInstanceSSMAssociation:
     Type: AWS::SSM::Association
     Properties:
