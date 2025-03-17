@@ -301,12 +301,12 @@ Resources:
                 - sudo -u ubuntu git config --global init.defaultBranch "main"
                 - git --version
           - action: aws:runShellScript
-            name: cloneRepository
+            name: cloneFisRepository
             inputs:
               runCommand:
               - !Sub |
-                if [ ! -d "/home/ubuntu/environment/workshopfiles" ]; then
-                  su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop'
+                if [ ! -d "/home/ubuntu/environment/workshopfiles/eks-experiments" ]; then
+                  su - ubuntu -c 'mkdir -p ~/environment/workshopfiles/ && cd ~/environment/workshopfiles/ && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git fis-workshop'
                 fi
           - action: aws:runShellScript
             name: InstallNode
