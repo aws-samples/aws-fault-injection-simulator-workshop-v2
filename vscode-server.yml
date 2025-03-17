@@ -301,7 +301,7 @@ Resources:
                 - sudo -u ubuntu git config --global init.defaultBranch "main"
                 - git --version
           - action: aws:runShellScript
-            name: cloneRepository
+            name: cloneFisRepository
             inputs:
               runCommand:
               - !Sub |
