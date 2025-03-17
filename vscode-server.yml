@@ -306,7 +306,7 @@ Resources:
               runCommand:
               - !Sub |
                 if [ ! -d "/home/ubuntu/environment/workshopfiles" ]; then
-                  su - ubuntu -c 'mkdir -p ~/environment/workshopfiles && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop'
+                  su - ubuntu -c 'mkdir -p ~/environment/workshopfiles/eks-experiment && git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git ~/environment/workshopfiles/fis-workshop'
                 fi
           - action: aws:runShellScript
             name: InstallNode
