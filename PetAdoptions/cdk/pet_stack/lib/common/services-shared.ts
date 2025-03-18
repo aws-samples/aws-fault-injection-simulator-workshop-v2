@@ -420,6 +420,13 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
         tags: [{ key: 'Name', value: `${contextId}TransitGatewayAttachment` }]
     });
+    
+    transitGatewayAttachment.cfnOptions.creationPolicy = {
+        resourceSignal: {
+            timeout: 'PT15M' // 15 minutes timeout
+        }
+    };
+    
     transitGatewayAttachment.addDependency(transitGateway);
 
     // Associate Transit Gateway Route Table with the Attachment
@@ -427,11 +434,18 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         transitGatewayAttachmentId: transitGatewayAttachment.ref,
         transitGatewayRouteTableId: transitGatewayRouteTable.ref,
     });
+
+    TransitGatewayRouteTableAssociationVPC.addDependency(transitGatewayAttachment);
+    TransitGatewayRouteTableAssociationVPC.node.addDependency(transitGatewayRouteTable);
+
     // Create Propagation for Transit Gateway Route Table t
     const TransitGatewayRouteTablePropagationVPC = new ec2.CfnTransitGatewayRouteTablePropagation(scope, `${contextId}TransitGatewayRouteTablePropagationVPC`, {
         transitGatewayAttachmentId: transitGatewayAttachment.ref,
         transitGatewayRouteTableId: transitGatewayRouteTable.ref,
     });
+
+    TransitGatewayRouteTablePropagationVPC.addDependency(transitGatewayAttachment);
+    TransitGatewayRouteTablePropagationVPC.node.addDependency(transitGatewayRouteTable);
 
     let privateRoute
     // Add a route to the Transit Gateway in each private subnet's route table
@@ -442,6 +456,10 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
             transitGatewayId: transitGateway.ref
         });
         privateRoute.addDependency(transitGatewayAttachment)
+
+        privateRoute.cfnOptions.condition = new cdk.CfnCondition(scope, `${contextId}TGWAttachmentReady${index}`, {
+            expression: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(transitGatewayAttachment.ref, ''))
+        });
     });
 
     let publicRoute
