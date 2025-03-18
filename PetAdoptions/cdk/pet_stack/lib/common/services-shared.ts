@@ -457,9 +457,9 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
         });
         privateRoute.addDependency(transitGatewayAttachment)
 
-        privateRoute.cfnOptions.condition = new cdk.CfnCondition(scope, `${contextId}TGWAttachmentReady${index}`, {
-            expression: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(transitGatewayAttachment.ref, ''))
-        });
+        //privateRoute.cfnOptions.condition = new cdk.CfnCondition(scope, `${contextId}TGWAttachmentReady${index}`, {
+        //    expression: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(transitGatewayAttachment.ref, ''))
+        //});
     });
 
     let publicRoute
