@@ -1,7 +1,6 @@
 #!/bin/bash
 
-ROLEARN=$(aws iam list-roles | jq '.Roles[].Arn | select(contains("cfn-exec"))' -r)
-
+ROLEARN=$(aws iam list-roles | jq '.Roles[].Arn | select(contains("cfn-exec") and contains("us-east-1"))' -r)
 ROLE_NAME="FisWorkshopServiceRole"
 
 echo "#########################################################"
