@@ -1,6 +1,7 @@
 {
   "name": "vscode-server",
   "version": "0.1.0",
+  "type": "commonjs",
   "bin": {
     "vscode-server": "bin/vscode-server.js"
   },
@@ -20,8 +21,19 @@
     "typescript": "~5.6.3"
   },
   "dependencies": {
-    "@aws-cdk/cloudformation-include": "^1.203.0",
+    "@aws-cdk/cloudformation-include": "^1.121.0",
     "aws-cdk-lib": "2.180.0",
-    "constructs": "^10.0.0"
+    "constructs": "^10.0.0",
+    "glob": "^10.3.10",
+    "lru-cache": "^10.1.0"
+  },
+  "resolutions": {
+    "glob": "^10.3.10",
+    "@babel/traverse": "^7.23.2",
+    "inflight": "npm:lru-cache@^10.1.0"
+  },
+  "overrides": {
+    "glob": "^10.3.10",
+    "inflight": "npm:lru-cache@^10.1.0"
   }
 }
