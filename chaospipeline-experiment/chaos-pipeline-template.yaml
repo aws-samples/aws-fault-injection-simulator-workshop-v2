@@ -1,0 +1,323 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS CodePipeline with Step Functions Integration'
+
+Parameters:
+  SourceObjectKey:
+    Type: String
+    Description: S3 object key for source code package
+    Default: source-code.zip
+  
+  StateMachineArn:
+    Type: String
+    Description: ARN of the Step Functions state machine to invoke
+  
+  ActionName:
+    Type: String
+    Description: Name for the Step Functions action in the pipeline
+    Default: InvokeStateMachine
+
+Resources:
+  # Create the source S3 bucket with auto-generated name
+  SourceBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+    DeletionPolicy: Retain
+
+  # Create an S3 bucket for CodePipeline artifacts
+  ArtifactBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+    DeletionPolicy: Retain
+
+  # Create the CodePipeline service role
+  CodePipelineServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # S3 permissions for source and artifact buckets
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:GetBucketVersioning'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                  - 's3:DeleteObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${SourceBucket}'
+                  - !Sub 'arn:aws:s3:::${SourceBucket}/*'
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+              
+              # Enhanced Step Functions permissions
+              - Effect: Allow
+                Action:
+                  - 'states:StartExecution'
+                  - 'states:DescribeExecution'
+                  - 'states:StopExecution'
+                  - 'states:DescribeStateMachine'
+                  - 'states:ListExecutions'
+                  - 'states:GetExecutionHistory'
+                Resource:
+                  # Allow specific state machine and its executions
+                  - !Ref StateMachineArn
+                  - !Sub '${StateMachineArn}:*'
+                  - !Sub '${StateMachineArn}/*'
+              
+              # Allow listing state machines for discovery
+              - Effect: Allow
+                Action:
+                  - 'states:ListStateMachines'
+                Resource: '*'
+              
+              # CodePipeline permissions - using wildcard for pipeline name
+              - Effect: Allow
+                Action:
+                  - 'codepipeline:StartPipelineExecution'
+                  - 'codepipeline:GetPipelineExecution'
+                  - 'codepipeline:GetPipelineState'
+                  - 'codepipeline:GetPipeline'
+                Resource:
+                  # Use wildcard pattern instead of specific pipeline reference
+                  - !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:*'
+              
+              # CodeBuild permissions
+              - Effect: Allow
+                Action:
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'
+                Resource: 
+                  - !GetAtt CodeBuildProject.Arn
+
+  # CodeBuild Service Role
+  CodeBuildServiceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AdministratorAccess'
+
+  # CodeBuild Project
+  CodeBuildProject:
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: !Sub '${AWS::StackName}-BuildProject'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+
+  # Lambda function to create the zip file in S3
+  S3PutObjectFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.8
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import io
+          import zipfile
+          import json
+
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      s3 = boto3.client('s3')
+                      bucket = event['ResourceProperties']['Bucket']
+                      key = event['ResourceProperties']['Key']
+                      
+                      # Check if we need to create a zip file with content
+                      if 'CreateZipWithContent' in event['ResourceProperties']:
+                          content = event['ResourceProperties']['CreateZipWithContent']
+                          zip_buffer = io.BytesIO()
+                          
+                          with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
+                              for file_name, file_content in content.items():
+                                  zip_file.writestr(file_name, file_content)
+                          
+                          zip_buffer.seek(0)
+                          s3.put_object(
+                              Bucket=bucket,
+                              Key=key,
+                              Body=zip_buffer.getvalue(),
+                              ContentType=event['ResourceProperties'].get('ContentType', 'application/zip')
+                          )
+                      else:
+                          # Just put the object as is
+                          s3.put_object(
+                              Bucket=bucket,
+                              Key=key,
+                              Body=event['ResourceProperties'].get('Body', ''),
+                              ContentType=event['ResourceProperties'].get('ContentType', 'text/plain')
+                          )
+                      
+                      responseData = {
+                          'Bucket': bucket,
+                          'Key': key,
+                          'Body': event['ResourceProperties'].get('Body', '')
+                      }
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                  elif event['RequestType'] == 'Delete':
+                      # We don't delete the object on stack deletion
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  print(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+  # IAM role for the Lambda function
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: S3PutObjectPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${SourceBucket}/*'
+
+  # Create an initial source code zip file in the bucket
+  SourceCodePackage:
+    Type: 'Custom::S3PutObject'
+    Properties:
+      ServiceToken: !GetAtt S3PutObjectFunction.Arn
+      Bucket: !Ref SourceBucket
+      Key: !Ref SourceObjectKey
+      ContentType: 'application/zip'
+      # We'll create a simple zip file with the buildspec
+      CreateZipWithContent: 
+        'buildspec.yml': |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.8
+            pre_build:
+              commands:
+                - echo "Starting mock build process..."
+            build:
+              commands:
+                - echo "This is a mock build step that will always succeed."
+            post_build:
+              commands:
+                - echo "Mock build completed successfully."
+          artifacts:
+            files:
+              - '**/*'
+
+  # Define the CodePipeline
+  Pipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    DependsOn: SourceCodePackage
+    Properties:
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        # Source Stage
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: '1'
+              Configuration:
+                S3Bucket: !Ref SourceBucket
+                S3ObjectKey: !Ref SourceObjectKey
+              OutputArtifacts:
+                - Name: Artifact_Source_S3Bucket
+        
+        # Build Stage using CodeBuild
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: Artifact_Source_S3Bucket
+              OutputArtifacts:
+                - Name: Artifact_Build_Output
+        
+        # Step Functions Stage
+        - Name: InvokeChaosStepFunction
+          Actions:
+            - Name: !Ref ActionName
+              ActionTypeId:
+                Category: Invoke
+                Owner: AWS
+                Provider: StepFunctions
+                Version: '1'
+              Configuration:
+                StateMachineArn: !Ref StateMachineArn
+              Region: !Ref AWS::Region
+              InputArtifacts:
+                - Name: Artifact_Build_Output
+
+Outputs:
+  PipelineArn:
+    Description: ARN of the created pipeline
+    Value: !Ref Pipeline
+  SourceBucketName:
+    Description: Name of the source S3 bucket
+    Value: !Ref SourceBucket
+  SourceBucketUrl:
+    Description: URL of the source S3 bucket
+    Value: !Sub 'https://s3.console.aws.amazon.com/s3/buckets/${SourceBucket}'
+  CodeBuildProjectName:
+    Description: Name of the CodeBuild project
+    Value: !Ref CodeBuildProject
+
