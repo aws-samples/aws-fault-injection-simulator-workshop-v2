@@ -142,7 +142,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.8
+      Runtime: python3.11
       Timeout: 30
       Code:
         ZipFile: |
