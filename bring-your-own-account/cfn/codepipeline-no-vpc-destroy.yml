@@ -291,7 +291,7 @@ Resources:
             http = urllib3.PoolManager()
             http.request('PUT', os.environ['SIGNAL_URL'], body=encoded_body)
 
-      Runtime: python3.9
+      Runtime: python3.11
       Timeout: 900
       Environment:
         Variables:
@@ -419,7 +419,7 @@ Resources:
             cfnresponse.send(event, context, responseResult, responseData, "CustomResourcePhysicalID")            
             return  
   
-      Runtime: python3.9
+      Runtime: python3.11
       Timeout: 900
       Environment:
         Variables:
