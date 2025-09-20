@@ -148,7 +148,7 @@ export abstract class EcsEc2Service extends Construct {
 
     this.taskDefinition.addContainer('amazon-ssm-agent',{
       image: ecs.ContainerImage.fromRegistry('public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest'),
-      memoryLimitMiB: 256,
+      memoryLimitMiB: 512,
       essential: false,
       //cpu: 256,
       logging,

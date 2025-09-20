@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ROLEARN=$(aws iam list-roles | jq '.Roles[].Arn | select(contains("cfn-exec"))' -r)
+ROLEARN=$(aws iam list-roles | jq '.Roles[].Arn | select(contains("cfn-exec") and contains("us-east-1"))' -r)
 SUBNETID=$(aws ec2 describe-subnets --filters "Name=tag:Name,Values=Services/Microservices/PublicSubnet1" --query "Subnets[].SubnetId" --output text)
 
 echo "Stack deployment takes about 2min"
