@@ -127,7 +127,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '22'
                         },
                         commands: [
                             'nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &',
@@ -206,7 +206,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '22'
                         },
                         commands: [
                             'npm install -g aws-cdk'
