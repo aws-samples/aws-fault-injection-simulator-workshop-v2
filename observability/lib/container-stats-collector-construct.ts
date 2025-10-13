@@ -62,7 +62,7 @@ export class ContainerStatsCollectorConstruct extends Construct {
 
     // Create Lambda function
     this.function = new lambda.Function(this, 'ContainerStatsCollector', {
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'index.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/container_stats')),
       role: lambdaRole,

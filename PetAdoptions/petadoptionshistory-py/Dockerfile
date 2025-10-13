@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM --platform=linux/amd64 python:3.8
+FROM --platform=linux/amd64 python:3.11
 
 WORKDIR /app
 

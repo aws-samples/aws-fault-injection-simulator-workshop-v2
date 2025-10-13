@@ -212,7 +212,7 @@ Resources:
       FunctionName: FisHeartbeatHandler
       CodeUri: assets/
       Handler: lambda_waiter.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.11
       # # Maybe we should pass dynamoDB table name here ... 
       # Environment:
       #   Variables:

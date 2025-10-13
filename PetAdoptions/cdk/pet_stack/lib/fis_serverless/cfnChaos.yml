@@ -94,7 +94,7 @@ Resources:
         - name: Step1
           action: aws:executeScript
           inputs:
-            Runtime: python3.7
+            Runtime: python3.11
             Handler: handler
             InputPayload:
               FunctionName: "{{FunctionName}}"
@@ -180,7 +180,7 @@ Resources:
         - name: Step1
           action: aws:executeScript
           inputs:
-            Runtime: python3.7
+            Runtime: python3.11
             Handler: handler
             InputPayload:
               FunctionName: "{{FunctionName}}"

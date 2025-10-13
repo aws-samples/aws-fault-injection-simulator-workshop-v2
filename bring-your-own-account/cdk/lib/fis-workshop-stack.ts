@@ -58,27 +58,10 @@ export class FisWorkshopStack extends cdk.Stack {
             versioned: true,
         });
 
-        // Deploy buildspecs
+        // Create a dummy file to trigger pipeline
         new s3deploy.BucketDeployment(this, 'assetBucketFISDeployment', {
             sources: [
-                s3deploy.Source.asset(path.join(__dirname, '../../cfn/'), {
-                    bundling: {
-                        image: cdk.DockerImage.fromRegistry('ubuntu'),
-                        user: "root",
-                        command: [
-                            'bash', '-c', `
-                apt-get update && \
-                apt-get install -y zip && \
-                mkdir -p /asset-output/build && \
-                mkdir -p /asset-output/destroy && \
-                cp /asset-input/buildspec-build.yml /asset-output/build/buildspec.yml && \
-                cp /asset-input/buildspec-destroy.yml /asset-output/destroy/buildspec.yml && \
-                cd /asset-output/build && zip -r ../build.zip . && \
-                cd /asset-output/destroy && zip -r ../destroy.zip . 
-                `
-                        ]
-                    }
-                })
+                s3deploy.Source.data('trigger.txt', 'Pipeline trigger file')
             ],
             destinationBucket: assetBucket,
             destinationKeyPrefix: 'assets'
@@ -127,7 +110,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '18'
                         },
                         commands: [
                             'nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &',
@@ -141,18 +124,18 @@ export class FisWorkshopStack extends cdk.Stack {
                             'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
                             'else ' +
                             'git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
-                            'fi',
-                            'cd aws-fault-injection-simulator-workshop-v2/scripts/',
-                            'bash cdkbootstrap.sh'
+                            'fi'
                         ]
                     },
                     build: {
                         commands: [
-                            'cd ../PetAdoptions/cdk/pet_stack/',
+                            'cd aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/',
                             'npm install',
                             'npm run build',
-                            'cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine=${IS_EVENT_ENGINE} --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine=${IS_EVENT_ENGINE} --require-approval=never --verbose -O ./out/out.json',
+                            'mkdir -p ./out',
+                            'cdk synth Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}"',
+                            'cdk deploy Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
+                            'cdk deploy ServicesSecondary --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json',
@@ -206,7 +189,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '18'
                         },
                         commands: [
                             'npm install -g aws-cdk'
@@ -245,7 +228,7 @@ export class FisWorkshopStack extends cdk.Stack {
                         new codepipeline_actions.S3SourceAction({
                             actionName: 'S3Source',
                             bucket: assetBucket,
-                            bucketKey: 'assets/build.zip',
+                            bucketKey: 'assets/trigger.txt',
                             output: new codepipeline.Artifact('SourceOutput'),
                             role: codePipelineServiceRole
                         })

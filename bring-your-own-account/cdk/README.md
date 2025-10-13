@@ -1,59 +1,47 @@
 # AWS Fault Injection Simulator Workshop - Bring Your Own Account Setup
 
-This guide helps you set up the AWS Fault Injection Simulator Workshop in your own AWS account using AWS CDK.
+This guide helps you set up the AWS Fault Injection Simulator Workshop in your own AWS account using the AWS Cloud Development Kit (CDK). See the [Bring your own AWS account](https://catalog.workshops.aws/fis-v2/en-US/environment/bring-your-own) page in the Chaos Engineering Workshop V2 for more details.
 
 ## Prerequisites
-
-Before you begin, ensure you have the following:
-
-### AWS Account Requirements
-- An AWS account with AdministratorAccess permissions
-- Access to regions: us-east-1 (primary) and us-west-2 (secondary)
-- Ability to create and manage AWS resources including IAM roles, S3 buckets, CodePipeline, CodeBuild, etc.
+Before you begin, ensure you have satisfied the following prerequisites.
 
 ### Local Development Environment
-- Node.js (version 16.x or later)
-- AWS CLI v2 configured with your credentials
-- AWS CDK CLI (v2.x)
+- Node.js (version 18 or later) and Node Package Manager (npm)
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) configured with your credentials
+- [AWS CDK v2](https://docs.aws.amazon.com/cdk/v2/guide/home.html)
 - Git
-- Docker Desktop (latest stable version)
+- Docker
+
+### AWS Account Requirements
+- An AWS account [bootstrapped](https://docs.aws.amazon.com/cdk/v2/guide/ref-cli-cmd-bootstrap.html) for the AWS CDK in both the us-east-1 and us-west-2 Regions
+```bash
+cdk bootstrap aws://{account-id}/us-east-1 aws://{account-id}/us-west-2
+```
+- If not using the default IAM service roles created by the bootstrapping process, an IAM role with sufficient permissions to deploy all of the workshop stacks. See [Customize bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping-customizing.html) and [Secure CDK deployments with IAM permission boundaries](https://aws.amazon.com/blogs/devops/secure-cdk-deployments-with-iam-permission-boundaries/) for more details.
 
 ### Environment Variables
-- `eeTeamRoleArn`: The ARN of the your role in AWS.
+- `eeTeamRoleArn`: The ARN of the IAM role you will be using to execute the workshop. This role can be different than the role with AdministratorAccess permissions used to created the workshop infrastructure via CDK, but should have the same permissions.
 
 #### Optional Parameters
 - `environmentName`: Name prefix for resources (default: "EEPipeline")
 - `gitBranch`: Git branch to check out (default: empty string for main branch)
 - `isEventEngine`: Variable that define if defines it is your own account ('false') or AWS provided environment ('true'). Default: 'false'
 
-
-
 ## Installation Steps
-
-1. Clone the workshop repository:
+- Clone the workshop repository:
 ```bash
 git clone https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
-cd aws-fault-injection-simulator-workshop-v2/bring-your-own-account [[2]](https://docs.aws.amazon.com/fis/latest/userguide/update.html)
+cd aws-fault-injection-simulator-workshop-v2/bring-your-own-account/cdk
 ```
-
-2. Install dependencies:
-
+- Install dependencies:
 ```bash
 npm install
 ```
-
-3. Set Environment Variables:
+- Set Environment Variables:
 ```bash
 export eeTeamRoleArn=<your-team-role-arn> # for example arn:aws:iam::123456789012:role/TeamRole
 ```
-
-3. Bootstrap CDK in both regions:
-
-```bash
-cdk bootstrap aws://ACCOUNT-NUMBER/us-east-1
-cdk bootstrap aws://ACCOUNT-NUMBER/us-west-2
-```
-4. Deploy the workshop infrastructure:
+- Deploy the workshop supporting infrastructure in FisWorkshopStack. The CodePipeline pipeline that launches the PetAdoptions application should start automatically.
 
 ```bash
 cdk deploy --all
@@ -69,18 +57,9 @@ The CDK stack creates the following resources:
 + Build and destroy specifications
 
 ## Workshop Deployment
-
-To trigger builds:
-
-### Start workshop deployment
-
+The workshop deployment should start automatically when the `build.zip` is uploaded to the S3 bucket, which triggers the CodePipeline job. If it does not, you can start the job directly in CodeBuild using
 ```bash
 aws codebuild start-build --project-name FIS-Workshop-Build
-```
-### Clean up workshop resources
-
-```bash
-aws codebuild start-build --project-name FIS-Workshop-Destroy
 ```
 
 ### Monitoring Deployment
@@ -121,12 +100,10 @@ Common issues and solutions:
 - Check region-specific service quotas
 
 ## Resource Limits
-
 + Verify service quotas for EC2, VPC, and other services
 + Request quota increases if needed
 
 ## Useful Commands
-
 1. Compile TypeScript to JS
 ```bash
 npm run build

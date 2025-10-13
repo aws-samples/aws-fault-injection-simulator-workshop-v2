@@ -81,7 +81,7 @@ Resources:
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt lambdaIAMRole.Arn
-      Runtime: python3.8
+      Runtime: python3.11
 
   lambdaThrottleInvoke:
     Type: AWS::Lambda::Permission

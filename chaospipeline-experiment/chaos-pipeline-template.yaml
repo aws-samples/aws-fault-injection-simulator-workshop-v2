@@ -142,7 +142,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.8
+      Runtime: python3.11
       Timeout: 30
       Code:
         ZipFile: |
@@ -237,7 +237,7 @@ Resources:
           phases:
             install:
               runtime-versions:
-                python: 3.8
+                python: 3.11
             pre_build:
               commands:
                 - echo "Starting mock build process..."
