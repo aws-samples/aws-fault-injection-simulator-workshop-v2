@@ -12,6 +12,7 @@ interface FisWorkshopStackProps extends cdk.StackProps {
     // environmentName: string;
     eeTeamRoleArn: string;
     isEventEngine: string;
+    gitRepoUrl: string;
     gitBranch: string;
 }
 
@@ -25,13 +26,19 @@ export class FisWorkshopStack extends cdk.Stack {
         //     default: props.environmentName,
         //     description: 'An environment name that is prefixed to resource names'
         // });
+        const gitRepoUrl = new cdk.CfnParameter(this, 'GitRepoUrl', {
+            type: 'String',
+            description: 'URL of the project repo, e.g. a fork.',
+            default: 'https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git'
+        });
+
         const gitBranch = new cdk.CfnParameter(this, 'GitBranch', {
             type: 'String',
-            description: 'Git branch to check out. KEEP EMPTY FOR MAIN BRANCH',
+            description: 'Git branch to check out. KEEP EMPTY FOR MAIN BRANCH.',
             default: props.gitBranch
         });
 
-        const eeTeamRoleArn = new cdk.CfnParameter(this, ' eeTeamRoleArn', {
+        const eeTeamRoleArn = new cdk.CfnParameter(this, 'eeTeamRoleArn', {
             type: 'String',
             description: '',
             default: props.eeTeamRoleArn
@@ -43,8 +50,6 @@ export class FisWorkshopStack extends cdk.Stack {
             default: props.isEventEngine,
             allowedValues: ['true', 'false']
         });
-
-
 
         // Generate random string for S3 bucket name
         const randomString = randomBytes(2).toString('hex');
@@ -92,6 +97,9 @@ export class FisWorkshopStack extends cdk.Stack {
                     ASSET_BUCKET: {
                         value: assetBucket.bucketName
                     },
+                    GIT_REPO_URL: {
+                        value: gitRepoUrl.valueAsString
+                    }
                     GIT_BRANCH: {
                         value: gitBranch.valueAsString
                     },
@@ -121,9 +129,9 @@ export class FisWorkshopStack extends cdk.Stack {
                     pre_build: {
                         commands: [
                             'if [ -z "$GIT_BRANCH" ]; then ' +
-                            'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
+                            'git clone --single-branch ${GIT_REPO_URL}; ' +
                             'else ' +
-                            'git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
+                            'git clone --branch ${GIT_BRANCH} --single-branch ${GIT_REPO_URL}; ' +
                             'fi'
                         ]
                     },
@@ -197,7 +205,7 @@ export class FisWorkshopStack extends cdk.Stack {
                     },
                     build: {
                         commands: [
-                            'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git',
+                            'git clone --single-branch ${GIT_REPO_URL}',
                             'cd aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/',
                             'npm install',
                             'npm run build',
