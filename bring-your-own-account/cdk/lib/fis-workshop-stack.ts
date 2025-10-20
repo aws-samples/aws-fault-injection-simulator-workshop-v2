@@ -86,6 +86,13 @@ export class FisWorkshopStack extends cdk.Stack {
             projectName: 'FIS-Workshop-Build',
             role: codeBuildServiceRole,
             timeout: cdk.Duration.minutes(180),
+            // CloudWatch logs enabled by default; S3 for backup
+            logging: {
+                s3: {
+                    bucket: assetBucket,
+                    prefix: 'build-logs'
+                }
+            },
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
                 privileged: true,
@@ -179,6 +186,13 @@ export class FisWorkshopStack extends cdk.Stack {
             projectName: 'FIS-Workshop-Destroy',
             role: codeBuildServiceRole,
             timeout: cdk.Duration.minutes(180),
+            // CloudWatch logs enabled by default; S3 for backup
+            logging: {
+                s3: {
+                    bucket: assetBucket,
+                    prefix: 'destroy-logs'
+                }
+            },
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
                 privileged: true,
