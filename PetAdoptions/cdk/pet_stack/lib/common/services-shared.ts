@@ -278,7 +278,7 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
                 username: rdsUsername,
                 replicaRegions: props.secondaryRegion ? [{ region: props.secondaryRegion }] : undefined,
             },
-            engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_16_9 }),
+            engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
             writer: rds.ClusterInstance.provisioned('writer', {
                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
             }),
