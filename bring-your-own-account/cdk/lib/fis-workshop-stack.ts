@@ -26,13 +26,13 @@ export class FisWorkshopStack extends cdk.Stack {
         //     default: props.environmentName,
         //     description: 'An environment name that is prefixed to resource names'
         // });
-        const gitRepoUrl = new cdk.CfnParameter(this, 'GitRepoUrl', {
+        const gitRepoUrl = new cdk.CfnParameter(this, 'gitRepoUrl', {
             type: 'String',
             description: 'URL of the project repo, e.g. a fork.',
-            default: 'https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git'
+            default: props.gitRepoUrl
         });
 
-        const gitBranch = new cdk.CfnParameter(this, 'GitBranch', {
+        const gitBranch = new cdk.CfnParameter(this, 'gitBranch', {
             type: 'String',
             description: 'Git branch to check out. KEEP EMPTY FOR MAIN BRANCH.',
             default: props.gitBranch
@@ -44,7 +44,7 @@ export class FisWorkshopStack extends cdk.Stack {
             default: props.eeTeamRoleArn
         });
 
-        const isEventEngine = new cdk.CfnParameter(this, 'IsEventEngine', {
+        const isEventEngine = new cdk.CfnParameter(this, 'isEventEngine', {
             type: 'String',
             description: 'Whether this is running in Event Engine',
             default: props.isEventEngine,
@@ -99,7 +99,7 @@ export class FisWorkshopStack extends cdk.Stack {
                     },
                     GIT_REPO_URL: {
                         value: gitRepoUrl.valueAsString
-                    }
+                    },
                     GIT_BRANCH: {
                         value: gitBranch.valueAsString
                     },

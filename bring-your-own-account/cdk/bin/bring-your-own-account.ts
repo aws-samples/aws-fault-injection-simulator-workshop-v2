@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
 import { FisWorkshopStack } from '../lib/fis-workshop-stack';
+import { GitHubEnterpriseSourceCredentials } from 'aws-cdk-lib/aws-codebuild';
 
 const app = new cdk.App();
 
@@ -10,6 +11,7 @@ if (!eeTeamRoleArn) {
     throw new Error('eeTeamRoleArn must be provided either via context or eeTeamRoleArn environment variable');
 }
 
+const gitRepoUrl = app.node.tryGetContext('gitRepoUrl') ||  process.env.gitRepoUrl || 'https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git';
 const gitBranch = app.node.tryGetContext('gitBranch') ||  process.env.gitBranch || 'main';
 // const environmentName = app.node.tryGetContext('environmentName') ||  process.env.environmentName || 'FISWorkshopPipeline'; //'An environment name that is prefixed to resource names'
 const isEventEngine = app.node.tryGetContext('isEventEngine') ||  process.env.isEventEngine || 'false'; // 'Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone'
@@ -22,6 +24,7 @@ new FisWorkshopStack(app, 'FisWorkshopStack', {
     region: 'us-east-1'
   },
   eeTeamRoleArn: eeTeamRoleArn,
+  gitRepoUrl: gitRepoUrl,
   gitBranch: gitBranch,
   // environmentName: environmentName,
   isEventEngine: isEventEngine
