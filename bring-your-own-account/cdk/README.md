@@ -23,9 +23,10 @@ cdk bootstrap aws://{account-id}/us-east-1 aws://{account-id}/us-west-2
 - `eeTeamRoleArn`: The ARN of the IAM role you will be using to execute the workshop. This role can be different than the role with AdministratorAccess permissions used to created the workshop infrastructure via CDK, but should have the same permissions.
 
 #### Optional Parameters
-- `environmentName`: Name prefix for resources (default: "EEPipeline")
-- `gitBranch`: Git branch to check out (default: empty string for main branch)
-- `isEventEngine`: Variable that define if defines it is your own account ('false') or AWS provided environment ('true'). Default: 'false'
+- `environmentName`: A prefix to apply to resource names (default: `EEPipeline`).
+- `gitRepoUrl`: URL of the project repo to pull for the CodeBuild job, e.g. a fork for working on feature branches. Default is the [upstream project repo]('https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git').
+- `gitBranch`: Git branch to pull for the CodeBuild job. The default is an empty string (`""`) for `main`.
+- `isEventEngine`: Set to `false` (default) if deploying in your own account or `true` if deploying in an AWS provided environment, e.g. workshop.
 
 ## Installation Steps
 - Clone the workshop repository:
