@@ -1,43 +1,41 @@
 plugins {
-    id 'org.springframework.boot' version '2.7.3'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.springframework.boot' version '3.3.5'
+    id 'io.spring.dependency-management' version '1.1.6'
     id 'java'
 }
 
 group = 'org.example'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
+sourceCompatibility = '21'
 
 repositories {
     mavenCentral()
 }
 
 ext {
-    set('springCloudAwsVersion', "2.4.2")
-    set('testContainerVersion', '1.16.2')
-    set('opentelemetryVersion', '1.17.0')
-    set('log4j2.version', '2.18.0')
+    set('springCloudAwsVersion', "3.2.0")
+    set('testContainerVersion', '1.20.2')
+    set('opentelemetryVersion', '1.43.0')
+    set('log4j2.version', '2.24.1')
 }
 
 dependencies {
     
-    implementation 'ch.qos.logback:logback-classic:1.2.3'
+    implementation 'ch.qos.logback:logback-classic:1.5.12'
     implementation 'ch.qos.logback.contrib:logback-jackson:0.1.5'
     implementation 'ch.qos.logback.contrib:logback-json-classic:0.1.5'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.0'
-    implementation 'org.slf4j:slf4j-api:1.7.25'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.1'
+    implementation 'org.slf4j:slf4j-api:2.0.16'
   
-
-
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "io.awspring.cloud:spring-cloud-starter-aws:${springCloudAwsVersion}"
     implementation "io.awspring.cloud:spring-cloud-aws-autoconfigure:${springCloudAwsVersion}"
 
-    implementation 'com.amazonaws:aws-java-sdk-core'
-    implementation 'com.amazonaws:aws-java-sdk-s3'
-    implementation 'com.amazonaws:aws-java-sdk-dynamodb'
-    implementation 'com.amazonaws:aws-java-sdk-ssm'
-    implementation 'com.amazonaws:aws-java-sdk-sqs'
+    implementation 'software.amazon.awssdk:core'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:ssm'
+    implementation 'software.amazon.awssdk:sqs'
 
     implementation "io.opentelemetry:opentelemetry-api"
     implementation "io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations"
@@ -53,11 +51,11 @@ dependencies {
 
 dependencyManagement {
     imports {
-        mavenBom "com.amazonaws:aws-xray-recorder-sdk-bom:2.11.2"
+        mavenBom "com.amazonaws:aws-xray-recorder-sdk-bom:2.18.2"
         mavenBom "io.opentelemetry:opentelemetry-bom:${opentelemetryVersion}"
         mavenBom "io.opentelemetry:opentelemetry-bom-alpha:${opentelemetryVersion}-alpha"
         mavenBom "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:${opentelemetryVersion}-alpha"
-        mavenBom 'com.amazonaws:aws-java-sdk-bom:1.12.297'
+        mavenBom 'software.amazon.awssdk:bom:2.29.15'
     }
 }
 

@@ -1,15 +1,17 @@
 module petadoptions
 
-go 1.20
+go 1.23
 
 require (
-	github.com/aws/aws-sdk-go v1.44.276
+	github.com/aws/aws-sdk-go-v2 v1.32.4
+	github.com/aws/aws-sdk-go-v2/config v1.28.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.37.1
+	github.com/aws/aws-sdk-go-v2/service/rds v1.87.0
 	github.com/aws/aws-xray-sdk-go v1.8.1
 	github.com/dghubble/sling v1.4.1
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/gorilla/mux v1.8.0
-	github.com/guregu/dynamo v1.19.0
 	github.com/lib/pq v1.10.9
 	github.com/prometheus/client_golang v1.15.1
 	github.com/spf13/viper v1.16.0

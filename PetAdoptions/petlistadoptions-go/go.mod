@@ -1,9 +1,11 @@
 module petadoptions
 
-go 1.20
+go 1.23
 
 require (
-	github.com/aws/aws-sdk-go v1.44.276
+	github.com/aws/aws-sdk-go-v2 v1.32.4
+	github.com/aws/aws-sdk-go-v2/config v1.28.0
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.37.1
 	github.com/aws/aws-xray-sdk-go v1.8.1
 	github.com/go-kit/kit v0.12.0
 	github.com/gorilla/mux v1.8.0
