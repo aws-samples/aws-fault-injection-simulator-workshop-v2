@@ -28,8 +28,7 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.16'
   
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation "io.awspring.cloud:spring-cloud-starter-aws:${springCloudAwsVersion}"
-    implementation "io.awspring.cloud:spring-cloud-aws-autoconfigure:${springCloudAwsVersion}"
+    implementation "io.awspring.cloud:spring-cloud-aws-starter:${springCloudAwsVersion}"
 
     implementation 'software.amazon.awssdk:core'
     implementation 'software.amazon.awssdk:s3'
