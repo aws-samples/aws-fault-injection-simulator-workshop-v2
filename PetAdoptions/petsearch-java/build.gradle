@@ -33,7 +33,7 @@ dependencies {
   
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "io.awspring.cloud:spring-cloud-aws-starter:${springCloudAwsVersion}"
-    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.30'
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'
 
     implementation 'com.amazonaws:aws-java-sdk-s3:1.12.772'
     implementation 'com.amazonaws:aws-java-sdk-dynamodb:1.12.772'
