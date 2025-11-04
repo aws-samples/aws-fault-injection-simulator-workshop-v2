@@ -287,7 +287,7 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
                     instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
                 }),
             ],
-            parameterGroup: rds.ParameterGroup.fromParameterGroupName(props.scope, 'ParameterGroup', 'default.aurora-postgresql13'),
+            parameterGroup: rds.ParameterGroup.fromParameterGroupName(props.scope, 'ParameterGroup', 'default.aurora-postgresql16'),
             vpc: props.vpc,
             securityGroups: [rdssecuritygroup],
             defaultDatabaseName: 'adoptions'
