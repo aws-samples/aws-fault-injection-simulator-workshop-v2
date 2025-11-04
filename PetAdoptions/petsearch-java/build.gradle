@@ -21,6 +21,7 @@ ext {
 
 dependencyManagement {
     imports {
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.3.5'
         mavenBom "com.amazonaws:aws-xray-recorder-sdk-bom:2.18.2"
         mavenBom "io.opentelemetry:opentelemetry-bom:${opentelemetryVersion}"
         mavenBom "io.opentelemetry:opentelemetry-bom-alpha:${opentelemetryVersion}-alpha"
