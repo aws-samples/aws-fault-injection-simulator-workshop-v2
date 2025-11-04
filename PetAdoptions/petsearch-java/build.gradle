@@ -33,11 +33,11 @@ dependencies {
   
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "io.awspring.cloud:spring-cloud-aws-starter:${springCloudAwsVersion}"
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:10.1.30'
 
-    implementation 'software.amazon.awssdk:s3'
-    implementation 'software.amazon.awssdk:dynamodb'
-    implementation 'software.amazon.awssdk:ssm'
-    implementation 'software.amazon.awssdk:sqs'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.772'
+    implementation 'com.amazonaws:aws-java-sdk-dynamodb:1.12.772'
+    implementation 'com.amazonaws:aws-java-sdk-ssm:1.12.772'
 
     implementation 'io.opentelemetry:opentelemetry-api'
     implementation 'io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations'
