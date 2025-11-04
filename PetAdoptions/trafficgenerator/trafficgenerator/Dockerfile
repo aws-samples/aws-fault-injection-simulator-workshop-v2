@@ -1,9 +1,9 @@
-FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:6.0-bullseye-slim AS base
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS base
 WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 
-FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:6.0-bullseye-slim AS build
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 WORKDIR /src
 COPY . .
 RUN dotnet restore "trafficgenerator.csproj" 
