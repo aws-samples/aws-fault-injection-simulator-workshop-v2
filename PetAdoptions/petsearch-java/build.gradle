@@ -34,7 +34,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "io.awspring.cloud:spring-cloud-aws-starter:${springCloudAwsVersion}"
 
-    implementation 'software.amazon.awssdk:core'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:dynamodb'
     implementation 'software.amazon.awssdk:ssm'
