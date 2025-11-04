@@ -222,7 +222,7 @@ export abstract class EcsService extends Construct {
     if (!props.disableService) {
       this.service = new ecs_patterns.ApplicationLoadBalancedFargateService(this, "ecs-service", {
         cluster: props.cluster,
-        taskDefinition: this.taskDefinition,
+        taskDefinition: this.taskDefinition as ecs.FargateTaskDefinition,
         publicLoadBalancer: true,
         desiredCount: props.desiredTaskCount,
         listenerPort: 80,
