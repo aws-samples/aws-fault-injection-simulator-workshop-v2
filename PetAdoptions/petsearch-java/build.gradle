@@ -23,8 +23,7 @@ dependencies {
     implementation platform('org.springframework.boot:spring-boot-dependencies:3.3.5')
     implementation platform('software.amazon.awssdk:bom:2.29.15')
     implementation platform("io.opentelemetry:opentelemetry-bom:${opentelemetryVersion}")
-    implementation platform("io.opentelemetry:opentelemetry-bom-alpha:${opentelemetryVersion}-alpha")
-    implementation platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha:${opentelemetryVersion}-alpha")
+    implementation platform("io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom:2.10.0")
     
     implementation 'ch.qos.logback:logback-classic:1.5.12'
     implementation 'ch.qos.logback.contrib:logback-jackson:0.1.5'
