@@ -4,9 +4,9 @@
     <UserSecretsId>dotnet-trafficgenerator-24A0A2C8-664C-4353-AA89-98AB3F5B653C</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="7.1.0" />
+    <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.11" />
-    <PackageReference Include="AWSXRayRecorder.Core" Version="2.15.2" />
+    <PackageReference Include="AWSXRayRecorder.Core" Version="2.15.0" />
   </ItemGroup>
 </Project>
