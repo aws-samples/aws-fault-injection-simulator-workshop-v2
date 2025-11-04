@@ -99,7 +99,7 @@ export class FisWorkshopStack extends cdk.Stack {
             role: codeBuildServiceRole,
             timeout: cdk.Duration.minutes(180),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
+                buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
                 privileged: true,
                 computeType: codebuild.ComputeType.LARGE,
                 environmentVariables: {
@@ -127,7 +127,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '20'
                         },
                         commands: [
                             'nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &',
@@ -189,7 +189,7 @@ export class FisWorkshopStack extends cdk.Stack {
             role: codeBuildServiceRole,
             timeout: cdk.Duration.minutes(180),
             environment: {
-                buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
+                buildImage: codebuild.LinuxBuildImage.STANDARD_7_0,
                 privileged: true,
                 computeType: codebuild.ComputeType.LARGE,
                 environmentVariables: {
@@ -206,7 +206,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '20'
                         },
                         commands: [
                             'npm install -g aws-cdk'

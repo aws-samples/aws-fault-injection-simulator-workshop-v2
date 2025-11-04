@@ -24,7 +24,7 @@ import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import 'ts-replace-all'
-import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
+import { KubectlV31Layer } from '@aws-cdk/lambda-layer-kubectl-v31';
 // import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
@@ -426,7 +426,7 @@ export class Services extends Stack {
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
             version: KubernetesVersion.of('1.31'),
-            kubectlLayer: new KubectlLayer(this, 'kubectl')
+            kubectlLayer: new KubectlV31Layer(this, 'kubectl')
         });
 
         const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {

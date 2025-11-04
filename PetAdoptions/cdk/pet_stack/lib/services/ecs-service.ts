@@ -100,8 +100,8 @@ export abstract class EcsService extends Construct {
     );
 
     this.taskDefinition.addToExecutionRolePolicy(EcsService.ExecutionRolePolicy);
-    this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonECSTaskExecutionRolePolicy', 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'));
-    this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AWSXrayWriteOnlyAccess', 'arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess'));
+    this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'));
+    this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXrayWriteOnlyAccess'));
 
     // Build locally the image only if the repository URI is not specified
     // Can help speed up builds if we are not rebuilding anything
@@ -201,20 +201,20 @@ export abstract class EcsService extends Construct {
       // This collector would be used for both traces collected using
       // open telemetry or X-Ray
       case "otel": {
-        this.addOtelCollectorContainer(this.taskDefinition, logging);
+        this.addOtelCollectorContainer(this.taskDefinition as ecs.FargateTaskDefinition, logging);
         break;
       }
 
       // Default X-Ray traces collector
       case "xray": {
-        this.addXRayContainer(this.taskDefinition, logging);
+        this.addXRayContainer(this.taskDefinition as ecs.FargateTaskDefinition, logging);
         break;
       }
 
       // Default X-Ray traces collector
       // enabled by default
       default: {
-        this.addXRayContainer(this.taskDefinition, logging);
+        this.addXRayContainer(this.taskDefinition as ecs.FargateTaskDefinition, logging);
         break;
       }
     }
