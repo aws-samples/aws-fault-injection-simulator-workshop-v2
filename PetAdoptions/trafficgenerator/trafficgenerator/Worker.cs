@@ -83,8 +83,15 @@ namespace trafficgenerator
             await LoadPetData();
 
             _logger.LogInformation($"Total number of pets - {_allPets.Count}");
+            
+            if (_allPets.Count == 0)
+            {
+                _logger.LogWarning("No pets available in database, skipping traffic generation");
+                return;
+            }
+            
             Random random = new Random();
-            var loadSize = random.Next(5, _allPets.Count);
+            var loadSize = random.Next(5, Math.Max(6, _allPets.Count));
 
          //   Console.WriteLine($"PetSite URL: {_petSiteUrl}");
 
