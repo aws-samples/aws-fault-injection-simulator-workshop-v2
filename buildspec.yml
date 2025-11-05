@@ -8,7 +8,8 @@ phases:
       - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
   build:
     commands:
-      - git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      #- git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      - git clone --single-branch --branch byoa-fix-jeb https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
       - npm install
       - ../../scripts/cdkbootstrap.sh
