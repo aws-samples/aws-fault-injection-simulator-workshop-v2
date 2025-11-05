@@ -11,10 +11,11 @@ namespace trafficgenerator
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            CreateWebBuilder(args).Build().RunAsync();
-            CreateHostBuilder(args).Build().Run();
+            var webHost = CreateWebBuilder(args).Build().RunAsync();
+            var workerHost = CreateHostBuilder(args).Build().RunAsync();
+            await Task.WhenAll(webHost, workerHost);
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
