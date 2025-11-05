@@ -425,13 +425,13 @@ export class Services extends Stack {
             defaultCapacity: 0,
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
-            version: KubernetesVersion.of('1.31'),
+            version: KubernetesVersion.of('1.34'),
             kubectlLayer: new KubectlV31Layer(this, 'kubectl')
         });
 
         const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
             cpuArch: eks.CpuArch.X86_64,
-            kubernetesVersion: '1.31',
+            kubernetesVersion: '1.34',
             nodeType: eks.NodeType.STANDARD,
         });
 
