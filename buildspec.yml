@@ -9,6 +9,7 @@ phases:
   build:
     commands:
       - git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      #- git clone --single-branch --branch <> https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
       - npm install
       - ../../scripts/cdkbootstrap.sh

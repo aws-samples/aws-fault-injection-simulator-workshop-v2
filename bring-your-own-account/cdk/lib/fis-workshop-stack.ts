@@ -12,6 +12,7 @@ interface FisWorkshopStackProps extends cdk.StackProps {
     // environmentName: string;
     eeTeamRoleArn: string;
     isEventEngine: string;
+    gitRepoUrl: string;
     gitBranch: string;
 }
 
@@ -25,26 +26,30 @@ export class FisWorkshopStack extends cdk.Stack {
         //     default: props.environmentName,
         //     description: 'An environment name that is prefixed to resource names'
         // });
-        const gitBranch = new cdk.CfnParameter(this, 'GitBranch', {
+        const gitRepoUrl = new cdk.CfnParameter(this, 'gitRepoUrl', {
             type: 'String',
-            description: 'Git branch to check out. KEEP EMPTY FOR MAIN BRANCH',
+            description: 'URL of the project repo, e.g. a fork.',
+            default: props.gitRepoUrl
+        });
+
+        const gitBranch = new cdk.CfnParameter(this, 'gitBranch', {
+            type: 'String',
+            description: 'Git branch to check out. KEEP EMPTY FOR MAIN BRANCH.',
             default: props.gitBranch
         });
 
-        const eeTeamRoleArn = new cdk.CfnParameter(this, ' eeTeamRoleArn', {
+        const eeTeamRoleArn = new cdk.CfnParameter(this, 'eeTeamRoleArn', {
             type: 'String',
             description: '',
             default: props.eeTeamRoleArn
         });
 
-        const isEventEngine = new cdk.CfnParameter(this, 'IsEventEngine', {
+        const isEventEngine = new cdk.CfnParameter(this, 'isEventEngine', {
             type: 'String',
             description: 'Whether this is running in Event Engine',
             default: props.isEventEngine,
             allowedValues: ['true', 'false']
         });
-
-
 
         // Generate random string for S3 bucket name
         const randomString = randomBytes(2).toString('hex');
@@ -58,27 +63,10 @@ export class FisWorkshopStack extends cdk.Stack {
             versioned: true,
         });
 
-        // Deploy buildspecs
+        // Create a dummy file to trigger pipeline
         new s3deploy.BucketDeployment(this, 'assetBucketFISDeployment', {
             sources: [
-                s3deploy.Source.asset(path.join(__dirname, '../../cfn/'), {
-                    bundling: {
-                        image: cdk.DockerImage.fromRegistry('ubuntu'),
-                        user: "root",
-                        command: [
-                            'bash', '-c', `
-                apt-get update && \
-                apt-get install -y zip && \
-                mkdir -p /asset-output/build && \
-                mkdir -p /asset-output/destroy && \
-                cp /asset-input/buildspec-build.yml /asset-output/build/buildspec.yml && \
-                cp /asset-input/buildspec-destroy.yml /asset-output/destroy/buildspec.yml && \
-                cd /asset-output/build && zip -r ../build.zip . && \
-                cd /asset-output/destroy && zip -r ../destroy.zip . 
-                `
-                        ]
-                    }
-                })
+                s3deploy.Source.data('trigger.txt', 'Pipeline trigger file')
             ],
             destinationBucket: assetBucket,
             destinationKeyPrefix: 'assets'
@@ -98,6 +86,13 @@ export class FisWorkshopStack extends cdk.Stack {
             projectName: 'FIS-Workshop-Build',
             role: codeBuildServiceRole,
             timeout: cdk.Duration.minutes(180),
+            // CloudWatch logs enabled by default; S3 for backup
+            logging: {
+                s3: {
+                    bucket: assetBucket,
+                    prefix: 'build-logs'
+                }
+            },
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
                 privileged: true,
@@ -109,6 +104,9 @@ export class FisWorkshopStack extends cdk.Stack {
                     ASSET_BUCKET: {
                         value: assetBucket.bucketName
                     },
+                    GIT_REPO_URL: {
+                        value: gitRepoUrl.valueAsString
+                    },
                     GIT_BRANCH: {
                         value: gitBranch.valueAsString
                     },
@@ -118,7 +116,6 @@ export class FisWorkshopStack extends cdk.Stack {
                     IS_EVENT_ENGINE: {
                         value: isEventEngine.valueAsString
                     }
-
                 }
             },
             cache: codebuild.Cache.local(codebuild.LocalCacheMode.DOCKER_LAYER),
@@ -127,7 +124,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '18'
                         },
                         commands: [
                             'nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &',
@@ -138,21 +135,21 @@ export class FisWorkshopStack extends cdk.Stack {
                     pre_build: {
                         commands: [
                             'if [ -z "$GIT_BRANCH" ]; then ' +
-                            'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
+                            'git clone --single-branch ${GIT_REPO_URL}; ' +
                             'else ' +
-                            'git clone --branch ${GIT_BRANCH} --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git; ' +
-                            'fi',
-                            'cd aws-fault-injection-simulator-workshop-v2/scripts/',
-                            'bash cdkbootstrap.sh'
+                            'git clone --branch ${GIT_BRANCH} --single-branch ${GIT_REPO_URL}; ' +
+                            'fi'
                         ]
                     },
                     build: {
                         commands: [
-                            'cd ../PetAdoptions/cdk/pet_stack/',
+                            'cd aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/',
                             'npm install',
                             'npm run build',
-                            'cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine=${IS_EVENT_ENGINE} --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy ServicesSecondary --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine=${IS_EVENT_ENGINE} --require-approval=never --verbose -O ./out/out.json',
+                            'mkdir -p ./out',
+                            'cdk synth Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}"',
+                            'cdk deploy Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
+                            'cdk deploy ServicesSecondary --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json',
@@ -188,6 +185,13 @@ export class FisWorkshopStack extends cdk.Stack {
             projectName: 'FIS-Workshop-Destroy',
             role: codeBuildServiceRole,
             timeout: cdk.Duration.minutes(180),
+            // CloudWatch logs enabled by default; S3 for backup
+            logging: {
+                s3: {
+                    bucket: assetBucket,
+                    prefix: 'destroy-logs'
+                }
+            },
             environment: {
                 buildImage: codebuild.LinuxBuildImage.STANDARD_5_0,
                 privileged: true,
@@ -206,7 +210,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 phases: {
                     install: {
                         'runtime-versions': {
-                            nodejs: '16'
+                            nodejs: '18'
                         },
                         commands: [
                             'npm install -g aws-cdk'
@@ -214,7 +218,7 @@ export class FisWorkshopStack extends cdk.Stack {
                     },
                     build: {
                         commands: [
-                            'git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git',
+                            'git clone --single-branch ${GIT_REPO_URL}',
                             'cd aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/',
                             'npm install',
                             'npm run build',
@@ -245,7 +249,7 @@ export class FisWorkshopStack extends cdk.Stack {
                         new codepipeline_actions.S3SourceAction({
                             actionName: 'S3Source',
                             bucket: assetBucket,
-                            bucketKey: 'assets/build.zip',
+                            bucketKey: 'assets/trigger.txt',
                             output: new codepipeline.Artifact('SourceOutput'),
                             role: codePipelineServiceRole
                         })

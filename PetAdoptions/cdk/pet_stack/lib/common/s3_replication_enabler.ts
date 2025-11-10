@@ -18,7 +18,7 @@ export class S3ReplicationSetup extends Construct {
 
     // Create the Lambda function
     const lambdaFunction = new lambda.Function(this, 'S3ReplicationSetupFunction', {
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'index.handler',
       timeout: cdk.Duration.minutes(15),
       code: lambda.Code.fromAsset('lib/lambda/s3replication'),

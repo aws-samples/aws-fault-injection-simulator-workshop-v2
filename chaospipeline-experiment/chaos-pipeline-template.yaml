@@ -237,7 +237,7 @@ Resources:
           phases:
             install:
               runtime-versions:
-                python: 3.8
+                python: 3.11
             pre_build:
               commands:
                 - echo "Starting mock build process..."

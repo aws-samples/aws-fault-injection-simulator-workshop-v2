@@ -778,7 +778,7 @@ export class Services extends Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
             handler: 'petsite-application-resource-controler.lambda_handler',
             memorySize: 128,
-            runtime: lambda.Runtime.PYTHON_3_9,
+            runtime: lambda.Runtime.PYTHON_3_11,
             role: customWidgetLambdaRole,
             timeout: Duration.minutes(10)
         });
@@ -794,7 +794,7 @@ export class Services extends Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
             handler: 'cloudwatch-custom-widget.lambda_handler',
             memorySize: 128,
-            runtime: lambda.Runtime.PYTHON_3_9,
+            runtime: lambda.Runtime.PYTHON_3_11,
             role: customWidgetLambdaRole,
             timeout: Duration.seconds(60)
         });

@@ -53,7 +53,7 @@ export class ASGMetricsCollectorConstruct extends Construct {
 
     // Create Lambda function
     this.function = new lambda.Function(this, 'ASGMetricsCollector', {
-      runtime: lambda.Runtime.PYTHON_3_9,
+      runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'index.lambda_handler',
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda/asg_metrics')),
       role: lambdaRole,
