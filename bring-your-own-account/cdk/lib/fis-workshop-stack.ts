@@ -55,15 +55,6 @@ export class FisWorkshopStack extends cdk.Stack {
         const randomString = randomBytes(2).toString('hex');
         const bucketName = `fis-asset-${randomString}`;
 
-        // Create WaitCondition Handle and WaitCondition
-        const waitHandle = new cdk.CfnWaitConditionHandle(this, 'CodePipelineWaitHandle');
-        
-        const waitCondition = new cdk.CfnWaitCondition(this, 'CodePipelineWaitCondition', {
-            handle: waitHandle.ref,
-            timeout: '10800', // 3 hours
-            count: 1
-        });
-
         // Create S3 bucket for assets
         const assetBucket = new s3.Bucket(this, 'assetBucketFIS', {
             bucketName: bucketName,
@@ -124,9 +115,6 @@ export class FisWorkshopStack extends cdk.Stack {
                     },
                     IS_EVENT_ENGINE: {
                         value: isEventEngine.valueAsString
-                    },
-                    WAIT_HANDLE_URL: {
-                        value: waitHandle.ref
                     }
                 }
             },
@@ -174,11 +162,6 @@ export class FisWorkshopStack extends cdk.Stack {
                             'cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy ObservabilityDashboard --require-approval never --verbose -O ./out/out.json'
-                        ]
-                    },
-                    post_build: {
-                        commands: [
-                            'curl -X PUT -H "Content-Type:" --data-binary \'{"Status":"SUCCESS","Reason":"Build completed","UniqueId":"'"$(date +%s)"'","Data":"Complete"}\' "$WAIT_HANDLE_URL"'
                         ]
                     }
                 },

@@ -8,8 +8,8 @@ phases:
       - CDK_STACK=$(aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text)
   build:
     commands:
-      #- git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
-      - git clone --single-branch --branch byoa-fix-jeb https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      - git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      #- git clone --single-branch --branch <> https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
       - npm install
       - ../../scripts/cdkbootstrap.sh
@@ -36,11 +36,5 @@ phases:
       - cd ../../../intro-experiment/cdk
       - npm install
       - cdk deploy --require-approval never --verbose -O ./out/out.json
-  post_build:
-    commands:
-      - |
-        if [ -n "$WAIT_HANDLE_URL" ]; then
-          curl -X PUT -H 'Content-Type:' --data-binary '{"Status":"SUCCESS","Reason":"Build completed successfully","UniqueId":"'$(date +%s)'","Data":"Build complete"}' "$WAIT_HANDLE_URL"
-        fi
 artifacts:
   files: './aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/out/out.json'
