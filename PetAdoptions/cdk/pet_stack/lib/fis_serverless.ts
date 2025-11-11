@@ -17,7 +17,7 @@ export class FisServerless extends Stack {
         const nodeLayer = new LayerVersion(this, 'NodeChaosLayer', {
             layerVersionName: 'ChaosNodeLayer',
             compatibleRuntimes: [
-                Runtime.NODEJS_16_X
+                Runtime.NODEJS_22_X
             ],
             code: Code.fromAsset('lib/fis_serverless/layer'),
             compatibleArchitectures: [
