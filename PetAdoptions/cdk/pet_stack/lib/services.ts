@@ -203,6 +203,8 @@ export class Services extends Stack {
             vpc: theVPC,
             containerInsights: true
         });
+        cdk.Tags.of(ecsPayForAdoptionCluster).add('AZApplicationSlowdown', 'Ready');
+        cdk.Tags.of(ecsPayForAdoptionCluster).add('CrossAZTrafficSlowdown', 'Ready');
 
         // PayForAdoption service definitions-----------------------------------------------------------------------
         const payForAdoptionService = createPayForAdoptionService({
@@ -230,6 +232,8 @@ export class Services extends Stack {
             vpc: theVPC,
             containerInsights: true
         });
+        cdk.Tags.of(ecsPetListAdoptionCluster).add('AZApplicationSlowdown', 'Ready');
+        cdk.Tags.of(ecsPetListAdoptionCluster).add('CrossAZTrafficSlowdown', 'Ready');
         // PetListAdoptions service definitions-----------------------------------------------------------------------
         const listAdoptionsService = createListAdoptionsService({
             scope: this,
@@ -276,6 +280,8 @@ export class Services extends Stack {
             vpc: theVPC,
             containerInsights: true,
         });
+        cdk.Tags.of(ecsEc2PetSearchCluster).add('AZApplicationSlowdown', 'Ready');
+        cdk.Tags.of(ecsEc2PetSearchCluster).add('CrossAZTrafficSlowdown', 'Ready');
         // Replacing with addAsgCapacityProvider as per best practice
         // ecsEc2PetSearchCluster.addCapacity('PetSearchEc2', {
         //     instanceType: new ec2.InstanceType('m5.large'),
@@ -302,6 +308,8 @@ export class Services extends Stack {
             desiredCapacity: 2,
             launchTemplate: ecsEc2PetSearchlaunchTemplate,
         });
+        cdk.Tags.of(ecsEc2PetSearchAutoScalingGroup).add('AZApplicationSlowdown', 'Ready');
+        cdk.Tags.of(ecsEc2PetSearchAutoScalingGroup).add('CrossAZTrafficSlowdown', 'Ready');
 
         const ecsEc2PetSearchCapacityProvider = new ecs.AsgCapacityProvider(this, 'PetSearchAsgCapacityProvider', {
             autoScalingGroup: ecsEc2PetSearchAutoScalingGroup,
@@ -436,7 +444,7 @@ export class Services extends Stack {
         });
 
         const userData = ec2.UserData.forLinux();
-        userData.addCommands(`/etc/eks/bootstrap.sh ${cluster.clusterName} --node-labels AzImpairmentPower=Ready,foo=bar,goo=far`);
+        userData.addCommands(`/etc/eks/bootstrap.sh ${cluster.clusterName} --node-labels AzImpairmentPower=Ready,AZApplicationSlowdown=Ready,CrossAZTrafficSlowdown=Ready,foo=bar,goo=far`);
 
         const eksPetSitelt = new ec2.LaunchTemplate(this, 'eksPetSitelt', {
             machineImage: eksOptimizedImage,
@@ -476,11 +484,15 @@ export class Services extends Stack {
             },
             labels: {
                 ["AzImpairmentPower"]: "Ready",
+                ["AZApplicationSlowdown"]: "Ready",
+                ["CrossAZTrafficSlowdown"]: "Ready",
             },
             desiredSize: 2,
             maxSize: 2,
             tags: {
                 ["AzImpairmentPower"]: "Ready",
+                ["AZApplicationSlowdown"]: "Ready",
+                ["CrossAZTrafficSlowdown"]: "Ready",
             },
             nodeRole: eksPetsiteASGClusterNodeGroupRole,
         };
@@ -497,6 +509,8 @@ export class Services extends Stack {
             setClusterAutoscalerTagsForNodeTaints: true,
             tags: {
                 'AzImpairmentPower': 'Ready',
+                'AZApplicationSlowdown': 'Ready',
+                'CrossAZTrafficSlowdown': 'Ready',
             },
         });
 

@@ -243,6 +243,53 @@
 			"Resource": [
 				"*"
 			]
+		},
+		{
+			"Sid": "NetworkLatencyECS",
+			"Effect": "Allow",
+			"Action": [
+				"ecs:DescribeTasks",
+				"ecs:DescribeClusters",
+				"ecs:DescribeContainerInstances",
+				"ecs:ListTasks",
+				"ecs:ListContainerInstances",
+				"ecs:UpdateTaskProtection"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "NetworkLatencyEKS",
+			"Effect": "Allow",
+			"Action": [
+				"eks:DescribeCluster",
+				"eks:DescribeNodegroup",
+				"eks:ListClusters",
+				"eks:ListNodegroups"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "NetworkLatencySSM",
+			"Effect": "Allow",
+			"Action": [
+				"ssm:SendCommand",
+				"ssm:ListCommands",
+				"ssm:ListCommandInvocations",
+				"ssm:CancelCommand",
+				"ssm:GetCommandInvocation"
+			],
+			"Resource": "*"
+		},
+		{
+			"Sid": "NetworkLatencyTransitGateway",
+			"Effect": "Allow",
+			"Action": [
+				"ec2:DescribeTransitGateways",
+				"ec2:DescribeTransitGatewayAttachments",
+				"ec2:DescribeTransitGatewayRouteTables",
+				"ec2:ModifyTransitGatewayVpcAttachment"
+			],
+			"Resource": "*"
 		}
 	]
 }
