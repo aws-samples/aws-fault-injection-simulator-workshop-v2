@@ -7,6 +7,7 @@ import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
+import { IamRoleWaiter } from './constructs/iam-role-waiter';
 
 interface FisWorkshopStackProps extends cdk.StackProps {
     // environmentName: string;
@@ -81,6 +82,11 @@ export class FisWorkshopStack extends cdk.Stack {
             ]
         });
 
+        // Wait for IAM role to be eventually consistent
+        const codeBuildServiceRoleWaiter = new IamRoleWaiter(this, 'CodeBuildServiceRoleWaiter', {
+            role: codeBuildServiceRole,
+        });
+
         // Create CodeBuild Project for Workshop Build
         const buildProject = new codebuild.Project(this, 'WorkshopBuildProject', {
             projectName: 'FIS-Workshop-Build',
@@ -149,18 +155,19 @@ export class FisWorkshopStack extends cdk.Stack {
                             'mkdir -p ./out',
                             'cdk synth Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}"',
                             'cdk deploy Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy ServicesSecondary --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy S3Replica --require-approval=never --verbose -O ./out/out.json',
+                            '# Multi-region deployments - set ENABLE_MULTI_REGION=true to enable',
+                            '# cdk deploy ServicesSecondary --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
+                            '# cdk deploy NetworkRegionPeering --require-approval=never --verbose -O ./out/out.json',
+                            '# cdk deploy NetworkRoutesMain --require-approval=never --verbose -O ./out/out.json',
+                            '# cdk deploy NetworkRoutesSecondary --require-approval=never --verbose -O ./out/out.json',
+                            '# cdk deploy S3Replica --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy Applications --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy ApplicationsSecondary --require-approval=never --verbose -O ./out/out.json',
+                            '# cdk deploy ApplicationsSecondary --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy FisServerless --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy Observability --require-approval never --verbose -O ./out/out.json',
-                            'cdk deploy ObservabilitySecondary --require-approval never --verbose -O ./out/out.json',
+                            '# cdk deploy ObservabilitySecondary --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json',
-                            'cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json',
+                            '# cdk deploy UserSimulationStackSecondary --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy ObservabilityDashboard --require-approval never --verbose -O ./out/out.json'
                         ]
                     }
@@ -179,6 +186,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 }
             })
         });
+        buildProject.node.addDependency(codeBuildServiceRoleWaiter);
 
         // Create CodeBuild Project for Workshop Destroy
         const destroyProject = new codebuild.Project(this, 'WorkshopDestroyProject', {
@@ -228,6 +236,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 }
             })
         });
+        destroyProject.node.addDependency(codeBuildServiceRoleWaiter);
 
         // Create CodePipeline Role
         const codePipelineServiceRole = new iam.Role(this, 'CodePipelineServiceRole', {
@@ -235,6 +244,11 @@ export class FisWorkshopStack extends cdk.Stack {
             managedPolicies: [
                 iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess')
             ]
+        });
+
+        // Wait for IAM role to be eventually consistent
+        const codePipelineServiceRoleWaiter = new IamRoleWaiter(this, 'CodePipelineServiceRoleWaiter', {
+            role: codePipelineServiceRole,
         });
 
         // Create CodePipeline
@@ -269,6 +283,7 @@ export class FisWorkshopStack extends cdk.Stack {
                 }
             ]
         });
+        pipeline.node.addDependency(codePipelineServiceRoleWaiter);
 
         // Outputs
         new cdk.CfnOutput(this, 'AssetBucketName', {

@@ -270,7 +270,9 @@ export function createOrGetRDSCluster(props: CreateOrGetRDSClusterProps): RDSClu
         });
 
         rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultPrimaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
-        rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultSecondaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
+        if (props.secondaryRegion) {
+            rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.defaultSecondaryCIDR), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
+        }
 
         const rdsUsername = props.rdsUsername || "petadmin";
         const auroraCluster = new rds.DatabaseCluster(props.scope, 'Database', {

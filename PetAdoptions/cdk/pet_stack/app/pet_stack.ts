@@ -12,6 +12,7 @@ import { RegionNetworkConnect } from '../lib/network_connect';
 import { RegionNetworkRoutes } from '../lib/network_routes';
 import { UserSimulationStack } from '../lib/user_simulation-stack';
 import { ObservabilityDashboard } from '../lib/observability_dashboard';
+import { getDeploymentConfig } from '../lib/common/deployment-config';
 
 
 
@@ -24,6 +25,7 @@ if (!process.env.CDK_DEFAULT_REGION) {
 const MAIN_REGION: REGION = process.env.CDK_DEFAULT_REGION as REGION;
 // This needs to be updated if the second region is different from the US-WEST-2
 const SECONDARY_REGION: REGION = 'us-west-2' as REGION;
+const deploymentConfig = getDeploymentConfig();
 
 const stackName = "Services";
 const app = new App();
@@ -64,58 +66,65 @@ const stack_primary = new Services(app, stackName, {
 //   DeploymentType: 'secondary',
 //  });
 
-const stack_secondary = new Services(app, "ServicesSecondary", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  },
-  crossRegionReferences: true,
-  MainRegion: MAIN_REGION,
-  SecondaryRegion: SECONDARY_REGION,
-  DeploymentType: 'secondary',
-});
+// Multi-region stacks - only deploy if multi-region is enabled
+if (deploymentConfig.enableMultiRegion) {
+  const stack_secondary = new Services(app, "ServicesSecondary", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: SECONDARY_REGION as string
+    },
+    crossRegionReferences: true,
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'secondary',
+  });
+}
 
-// stack_secondary.addDependency(fisLambdaActionsExperimentStackSecondary, "For FIS Lambda Extension Config Bucket");
+// Network peering stacks - only deploy if network peering is enabled
+if (deploymentConfig.enableNetworkPeering) {
+  const stack_network = new RegionNetworkConnect(app, "NetworkRegionPeering", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: MAIN_REGION as string
+    },
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'primary',
+  });
 
-const stack_network = new RegionNetworkConnect(app, "NetworkRegionPeering", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: MAIN_REGION as string
-  },
-  MainRegion: MAIN_REGION,
-  SecondaryRegion: SECONDARY_REGION,
-  DeploymentType: 'primary',
-});
+  const stack_tgw_routes = new RegionNetworkRoutes(app, "NetworkRoutesMain", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: MAIN_REGION as string
+    },
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'primary',
+  });
 
-const stack_tgw_routes = new RegionNetworkRoutes(app, "NetworkRoutesMain", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: MAIN_REGION as string
-  },
-  MainRegion: MAIN_REGION,
-  SecondaryRegion: SECONDARY_REGION,
-  DeploymentType: 'primary',
-});
+  const stack_tgw_routes_secondary = new RegionNetworkRoutes(app, "NetworkRoutesSecondary", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: SECONDARY_REGION as string
+    },
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'secondary',
+  });
+}
 
-const stack_tgw_routes_secondary = new RegionNetworkRoutes(app, "NetworkRoutesSecondary", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  },
-  MainRegion: MAIN_REGION,
-  SecondaryRegion: SECONDARY_REGION,
-  DeploymentType: 'secondary',
-});
-
-const s3replica = new S3Replica(app, "S3Replica", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: MAIN_REGION as string
-  },
-  MainRegion: MAIN_REGION,
-  SecondaryRegion: SECONDARY_REGION,
-  DeploymentType: 'primary',
-});
+// S3 replication - only deploy if S3 replication is enabled
+if (deploymentConfig.enableS3Replication) {
+  const s3replica = new S3Replica(app, "S3Replica", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: MAIN_REGION as string
+    },
+    MainRegion: MAIN_REGION,
+    SecondaryRegion: SECONDARY_REGION,
+    DeploymentType: 'primary',
+  });
+}
 
 const applications = new Applications(app, "Applications", {
   env: {
@@ -127,15 +136,18 @@ const applications = new Applications(app, "Applications", {
   deploymentType: 'primary',
 });
 
-const applications_secondary = new Applications(app, "ApplicationsSecondary", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  },
-  mainRegion: MAIN_REGION,
-  secondaryRegion: SECONDARY_REGION,
-  deploymentType: 'secondary',
-});
+// Secondary applications - only deploy if multi-region is enabled
+if (deploymentConfig.enableMultiRegion) {
+  const applications_secondary = new Applications(app, "ApplicationsSecondary", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: SECONDARY_REGION as string
+    },
+    mainRegion: MAIN_REGION,
+    secondaryRegion: SECONDARY_REGION,
+    deploymentType: 'secondary',
+  });
+}
 
 
 
@@ -153,12 +165,15 @@ const observability = new Observability(app, "Observability", {
   }
 });
 
-const observabilitysecondary = new Observability(app, "ObservabilitySecondary", {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  }
-});
+// Secondary observability - only deploy if multi-region is enabled
+if (deploymentConfig.enableMultiRegion) {
+  const observabilitysecondary = new Observability(app, "ObservabilitySecondary", {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: SECONDARY_REGION as string
+    }
+  });
+}
 
 //const load_testing = new LoadTesting(app, "LoadTesting", {
 //  env: {
@@ -173,12 +188,15 @@ const usersimulationstack = new UserSimulationStack(app, 'UserSimulationStack', 
     region: process.env.CDK_DEFAULT_REGION 
 }});
 
-const usersimulationstacksecondary =  new UserSimulationStack(app, 'UserSimulationStackSecondary', {
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: SECONDARY_REGION as string
-  }
-});
+// Secondary user simulation - only deploy if multi-region is enabled
+if (deploymentConfig.enableMultiRegion) {
+  const usersimulationstacksecondary = new UserSimulationStack(app, 'UserSimulationStackSecondary', {
+    env: {
+      account: process.env.CDK_DEFAULT_ACCOUNT,
+      region: SECONDARY_REGION as string
+    }
+  });
+}
 
 const observabilityDashboard = new ObservabilityDashboard(app, "ObservabilityDashboard", {
   env: {

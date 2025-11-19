@@ -32,6 +32,8 @@ import { createListAdoptionsService, createPayForAdoptionService, createOrGetDyn
 import { SSMParameterReader } from './common/ssm-parameter-reader';
 import { StatusUpdaterCloudwatchDashboard } from './services/status-updater-cloudwatch-dashboard';
 import { FisLambdaActionsExperiment } from './services/fis-lambda-actions-experiment';
+import { IamRoleWaiter } from './common/iam-role-waiter';
+import { getDeploymentConfig } from './common/deployment-config';
 
 export class Services extends Stack {
     constructor(scope: Construct, id: string, props: ServiceStackProps) {
@@ -40,6 +42,7 @@ export class Services extends Stack {
         const stack = Stack.of(this);
         const region = stack.region;
         const stackName = id;
+        const deploymentConfig = getDeploymentConfig();
         const defaultPrimaryCIDR = this.node.tryGetContext('vpc_cidr_primary') || "10.1.0.0/16";
         const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
         const fisLambdaTagName = this.node.tryGetContext('fisLambdaTagName') || 'FISExperimentReady';
@@ -91,6 +94,7 @@ export class Services extends Stack {
             contextId: 'Microservices',
             defaultPrimaryCIDR: defaultPrimaryCIDR,
             defaultSecondaryCIDR: defaultSecondaryCIDR,
+            createTransitGateway: deploymentConfig.enableNetworkPeering,
             // And optionally override natGateways and maxAzs:
             // natGateways: 2,
             // maxAzs: 3,
@@ -99,7 +103,7 @@ export class Services extends Stack {
         const theVPC = VPCwitTGW.vpc
         const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
 
-        if (isPrimaryRegionDeployment) { } else {
+        if (isPrimaryRegionDeployment) { } else if (deploymentConfig.enableNetworkPeering) {
             const ssmTGWId = new SSMParameterReader(this, 'ssmTGWId', {
                 parameterName: "/petstore/tgwid",
                 region: props.MainRegion
@@ -129,7 +133,7 @@ export class Services extends Stack {
             scope: this,
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             mainRegion: props.MainRegion,
-            secondaryRegion: props.SecondaryRegion,
+            secondaryRegion: deploymentConfig.enableS3Replication ? props.SecondaryRegion : props.MainRegion,
         });
 
         let s3PetAdoptionsarn: string
@@ -160,7 +164,7 @@ export class Services extends Stack {
             isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             vpc: theVPC,
             mainRegion: props.MainRegion,
-            secondaryRegion: props.SecondaryRegion,
+            secondaryRegion: deploymentConfig.enableRDSCrossRegion ? props.SecondaryRegion : undefined,
             defaultPrimaryCIDR: defaultPrimaryCIDR,
             defaultSecondaryCIDR: defaultSecondaryCIDR,
             rdsUsername: this.node.tryGetContext('rdsusername')
@@ -288,12 +292,18 @@ export class Services extends Stack {
 
         ecsEc2PetSearchRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
 
+        // Wait for IAM role to be eventually consistent
+        const ecsEc2PetSearchRoleWaiter = new IamRoleWaiter(this, 'EcsEc2PetSearchRoleWaiter', {
+            role: ecsEc2PetSearchRole,
+        });
+
         const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
             machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
             instanceType: new ec2.InstanceType('m5.xlarge'),
             userData: ec2.UserData.forLinux(),
             role: ecsEc2PetSearchRole,
         });
+        ecsEc2PetSearchlaunchTemplate.node.addDependency(ecsEc2PetSearchRoleWaiter);
 
         const ecsEc2PetSearchAutoScalingGroup = new asg.AutoScalingGroup(this, 'ecsEc2PetSearchASG', {
             vpc: theVPC,
@@ -467,6 +477,11 @@ export class Services extends Stack {
             ],
         });
 
+        // Wait for IAM role to be eventually consistent
+        const eksPetsiteASGClusterNodeGroupRoleWaiter = new IamRoleWaiter(this, 'EksPetsiteASGClusterNodeGroupRoleWaiter', {
+            role: eksPetsiteASGClusterNodeGroupRole,
+        });
+
         // Create nodeGroup properties
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
@@ -487,6 +502,7 @@ export class Services extends Stack {
 
         // Adding Node Group
         const eksPetsiteASGClusterNodeGroup = new eks.Nodegroup(this, 'eksPetsiteASGClusterNodeGroup', eksPetSiteNodegroupProps);
+        eksPetsiteASGClusterNodeGroup.node.addDependency(eksPetsiteASGClusterNodeGroupRoleWaiter);
 
         // Tagging  Node Group resources https://classic.yarnpkg.com/en/package/eks-nodegroup-asg-tags-cdk
         new NodegroupAsgTags(this, 'petSiteNodeGroupAsgTags', {
@@ -545,6 +561,11 @@ export class Services extends Stack {
         });
         cwserviceaccount.assumeRolePolicy?.addStatements(cw_trustRelationship);
 
+        // Wait for IAM role to be eventually consistent
+        const cwserviceaccountWaiter = new IamRoleWaiter(this, 'CWServiceAccountWaiter', {
+            role: cwserviceaccount,
+        });
+
         const xray_federatedPrincipal = new iam.FederatedPrincipal(
             cluster.openIdConnectProvider.openIdConnectProviderArn,
             {
@@ -571,6 +592,11 @@ export class Services extends Stack {
         });
         xrayserviceaccount.assumeRolePolicy?.addStatements(xray_trustRelationship);
 
+        // Wait for IAM role to be eventually consistent
+        const xrayserviceaccountWaiter = new IamRoleWaiter(this, 'XRayServiceAccountWaiter', {
+            role: xrayserviceaccount,
+        });
+
         const loadbalancer_federatedPrincipal = new iam.FederatedPrincipal(
             cluster.openIdConnectProvider.openIdConnectProviderArn,
             {
@@ -596,6 +622,11 @@ export class Services extends Stack {
         });
 
         loadBalancerserviceaccount.assumeRolePolicy?.addStatements(loadBalancer_trustRelationship);
+
+        // Wait for IAM role to be eventually consistent
+        const loadBalancerserviceaccountWaiter = new IamRoleWaiter(this, 'LoadBalancerServiceAccountWaiter', {
+            role: loadBalancerserviceaccount,
+        });
 
         // Fix for EKS Dashboard access
 
@@ -646,6 +677,7 @@ export class Services extends Stack {
             cluster: cluster,
             manifest: xRayYaml
         });
+        xrayManifest.node.addDependency(xrayserviceaccountWaiter);
 
         var loadBalancerServiceAccountYaml = yaml.loadAll(readFileSync("./resources/load_balancer/service_account.yaml", "utf8")) as Record<string, any>[];
         loadBalancerServiceAccountYaml[0].metadata.annotations["eks.amazonaws.com/role-arn"] = new CfnJson(this, "loadBalancer_Role", { value: `${loadBalancerserviceaccount.roleArn}` });
@@ -654,6 +686,7 @@ export class Services extends Stack {
             cluster: cluster,
             manifest: loadBalancerServiceAccountYaml
         });
+        loadBalancerServiceAccount.node.addDependency(loadBalancerserviceaccountWaiter);
 
         const waitForLBServiceAccount = new eks.KubernetesObjectValue(this, 'LBServiceAccount', {
             cluster: cluster,
@@ -721,6 +754,7 @@ export class Services extends Stack {
             cluster: cluster,
             manifest: fluentbitYaml
         });
+        fluentbitManifest.node.addDependency(cwserviceaccountWaiter);
 
         // CloudWatch agent for prometheus metrics
         var prometheusYaml = yaml.loadAll(readFileSync("./resources/prometheus-eks.yaml", "utf8")) as Record<string, any>[];
@@ -733,6 +767,7 @@ export class Services extends Stack {
         });
 
         prometheusManifest.node.addDependency(fluentbitManifest); // Namespace creation dependency
+        prometheusManifest.node.addDependency(cwserviceaccountWaiter);
 
 
         var dashboardBody = readFileSync("./resources/cw_dashboard_fluent_bit.json", "utf-8");
@@ -869,8 +904,8 @@ export class Services extends Stack {
             '/petstore/rdsinstanceIdentifierWriter': `${rdsResult.instanceIdentifierWriter}`,
             '/petstore/rdsinstanceIdentifierReader': `${rdsResult.instanceIdentifierReader}`,
             '/petstore/stackname': stackName,
-            '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
-            '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref}`,
+            '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId || 'disabled'}`,
+            '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref || 'disabled'}`,
             // '/petstore/tgwassociationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.associationDefaultRouteTableId}`,
             // '/petstore/tgwpropagationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.propagationDefaultRouteTableId}`,
             '/petstore/vpcid': `${VPCwitTGW.vpc.vpcId}`,
