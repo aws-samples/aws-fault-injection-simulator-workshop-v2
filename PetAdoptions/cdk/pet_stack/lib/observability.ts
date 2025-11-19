@@ -68,9 +68,9 @@ export class Observability extends cdk.Stack {
     
     // Fix IAM eventual consistency - ensure role is created before Lambda
     const role = putParameter.node.findChild('CustomResourcePolicy').node.defaultChild;
-    const lambda = putParameter.node.findChild('Resource').node.defaultChild;
-    if (role && lambda) {
-      lambda.node.addDependency(role);
+    const lambdaResource = putParameter.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
     }
 
 

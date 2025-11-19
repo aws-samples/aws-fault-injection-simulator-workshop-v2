@@ -43,9 +43,9 @@ export class SSMParameterReader extends CustomResource.AwsCustomResource {
     
     // Fix IAM eventual consistency - ensure role is created before Lambda
     const role = this.node.findChild('CustomResourcePolicy').node.defaultChild;
-    const lambda = this.node.findChild('Resource').node.defaultChild;
-    if (role && lambda) {
-      lambda.node.addDependency(role);
+    const lambdaResource = this.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
     }
   }
 

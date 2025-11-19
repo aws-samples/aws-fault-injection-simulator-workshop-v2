@@ -50,9 +50,9 @@ export class TransitGatewayPeeringIdentifier extends CustomResource.AwsCustomRes
     
     // Fix IAM eventual consistency - ensure role is created before Lambda
     const role = this.node.findChild('CustomResourcePolicy').node.defaultChild;
-    const lambda = this.node.findChild('Resource').node.defaultChild;
-    if (role && lambda) {
-      lambda.node.addDependency(role);
+    const lambdaResource = this.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
     }
   }
 
@@ -92,9 +92,9 @@ export class TransitGatewayPeeringAcceptor extends CustomResource.AwsCustomResou
     
     // Fix IAM eventual consistency - ensure role is created before Lambda
     const role = this.node.findChild('CustomResourcePolicy').node.defaultChild;
-    const lambda = this.node.findChild('Resource').node.defaultChild;
-    if (role && lambda) {
-      lambda.node.addDependency(role);
+    const lambdaResource = this.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
     }
   }
 
@@ -148,9 +148,9 @@ export class TransitGatewayPeeringAttachmentWaiter extends Construct {
     
     // Fix IAM eventual consistency - ensure role is created before Lambda
     const role = tgwWaiterResource.node.findChild('CustomResourcePolicy').node.defaultChild;
-    const lambda = tgwWaiterResource.node.findChild('Resource').node.defaultChild;
-    if (role && lambda) {
-      lambda.node.addDependency(role);
+    const lambdaResource = tgwWaiterResource.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
     }
   }
 }

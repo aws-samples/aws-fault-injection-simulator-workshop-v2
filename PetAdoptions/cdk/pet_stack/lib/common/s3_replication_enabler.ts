@@ -75,9 +75,9 @@ export class S3ReplicationSetup extends Construct {
     
     // Fix IAM eventual consistency - ensure role is created before Lambda
     const role = s3ReplicationResource.node.findChild('CustomResourcePolicy').node.defaultChild;
-    const lambda = s3ReplicationResource.node.findChild('Resource').node.defaultChild;
-    if (role && lambda) {
-      lambda.node.addDependency(role);
+    const lambdaResource = s3ReplicationResource.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
     }
   }
 }
