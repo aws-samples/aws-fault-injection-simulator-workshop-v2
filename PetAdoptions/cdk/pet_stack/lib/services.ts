@@ -487,6 +487,9 @@ export class Services extends Stack {
 
         // Adding Node Group
         const eksPetsiteASGClusterNodeGroup = new eks.Nodegroup(this, 'eksPetsiteASGClusterNodeGroup', eksPetSiteNodegroupProps);
+        
+        // Ensure IAM role is fully propagated before nodegroup creation
+        eksPetsiteASGClusterNodeGroup.node.addDependency(eksPetsiteASGClusterNodeGroupRole);
 
         // Tagging  Node Group resources https://classic.yarnpkg.com/en/package/eks-nodegroup-asg-tags-cdk
         new NodegroupAsgTags(this, 'petSiteNodeGroupAsgTags', {
