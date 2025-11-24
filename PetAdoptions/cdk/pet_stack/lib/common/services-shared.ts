@@ -423,7 +423,7 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
     
     transitGatewayAttachment.cfnOptions.creationPolicy = {
         resourceSignal: {
-            timeout: 'PT15M' // 15 minutes timeout
+            timeout: 'PT30M' // 30 minutes timeout
         }
     };
     
@@ -455,7 +455,8 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
             destinationCidrBlock: '10.0.0.0/8',
             transitGatewayId: transitGateway.ref
         });
-        privateRoute.addDependency(transitGatewayAttachment)
+        privateRoute.addDependency(transitGatewayAttachment);
+        privateRoute.addDependency(TransitGatewayRouteTableAssociationVPC);
 
         //privateRoute.cfnOptions.condition = new cdk.CfnCondition(scope, `${contextId}TGWAttachmentReady${index}`, {
         //    expression: cdk.Fn.conditionNot(cdk.Fn.conditionEquals(transitGatewayAttachment.ref, ''))
@@ -470,7 +471,8 @@ export function createVPCWithTransitGateway(props: CreateVPCWithTransitGatewayPr
             destinationCidrBlock: '10.0.0.0/8',
             transitGatewayId: transitGateway.ref
         });
-        publicRoute.addDependency(transitGatewayAttachment)
+        publicRoute.addDependency(transitGatewayAttachment);
+        publicRoute.addDependency(TransitGatewayRouteTableAssociationVPC);
     });
 
     // Tagging Resources for the FIS
