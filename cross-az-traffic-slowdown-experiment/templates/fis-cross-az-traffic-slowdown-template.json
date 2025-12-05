@@ -1,0 +1,116 @@
+{
+  "description": "Inject packet loss to disrupt cross-AZ traffic, simulating gray failures that impair communication between Availability Zones in the Pet Adoptions application.",
+  "actions": {
+    "PacketLossForECS": {
+      "actionId": "aws:ecs:task-network-packet-loss",
+      "description": "Inject 15% packet loss on ECS tasks for traffic destined to other AZs",
+      "parameters": {
+        "duration": "PT30M",
+        "lossPercent": "15",
+        "sources": "{{OTHER_AZS}}",
+        "interface": "DEFAULT",
+        "flowsPercent": "100"
+      },
+      "targets": {
+        "Tasks": "TargetsForECS"
+      }
+    },
+    "PacketLossForEKS": {
+      "actionId": "aws:eks:pod-network-packet-loss",
+      "description": "Inject 15% packet loss on EKS pods for traffic destined to other AZs",
+      "parameters": {
+        "duration": "PT30M",
+        "lossPercent": "15",
+        "sources": "{{OTHER_AZS}}",
+        "kubernetesServiceAccount": "fis-experiment-sa",
+        "clusterIdentifier": "{{EKS_CLUSTER}}",
+        "namespace": "{{EKS_NAMESPACE}}",
+        "interface": "DEFAULT",
+        "flowsPercent": "100"
+      },
+      "targets": {
+        "Pods": "TargetsForEKS"
+      }
+    },
+    "PacketLossForEC2": {
+      "actionId": "aws:ssm:send-command",
+      "description": "Inject 15% packet loss on EC2 instances for traffic destined to other AZs using SSM",
+      "parameters": {
+        "documentArn": "arn:aws:ssm:{{REGION}}::document/AWSFIS-Run-Network-Packet-Loss-Sources",
+        "documentParameters": "{\"DurationSeconds\":\"1800\",\"LossPercent\":\"15\",\"Interface\":\"eth0\",\"Sources\":\"{{OTHER_AZS}}\",\"InstallDependencies\":\"True\"}",
+        "duration": "PT30M"
+      },
+      "targets": {
+        "Instances": "TargetsForEC2"
+      }
+    }
+  },
+  "targets": {
+    "TargetsForECS": {
+      "resourceType": "aws:ecs:task",
+      "resourceTags": {
+        "CrossAZTrafficSlowdown": "PacketLossForECS"
+      },
+      "filters": [
+        {
+          "path": "Placement.AvailabilityZone",
+          "values": [
+            "{{TARGET_AZ}}"
+          ]
+        }
+      ],
+      "selectionMode": "ALL"
+    },
+    "TargetsForEKS": {
+      "resourceType": "aws:eks:pod",
+      "selectionMode": "ALL",
+      "parameters": {
+        "clusterIdentifier": "{{EKS_CLUSTER}}",
+        "namespace": "{{EKS_NAMESPACE}}",
+        "selectorType": "labelSelector",
+        "selectorValue": "CrossAZTrafficSlowdown=PacketLossForEKS",
+        "availabilityZoneIdentifier": "{{TARGET_AZ}}"
+      }
+    },
+    "TargetsForEC2": {
+      "resourceType": "aws:ec2:instance",
+      "resourceTags": {
+        "CrossAZTrafficSlowdown": "PacketLossForEC2"
+      },
+      "filters": [
+        {
+          "path": "State.Name",
+          "values": [
+            "running"
+          ]
+        },
+        {
+          "path": "Placement.AvailabilityZone",
+          "values": [
+            "{{TARGET_AZ}}"
+          ]
+        }
+      ],
+      "selectionMode": "ALL"
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "none"
+    }
+  ],
+  "roleArn": "arn:aws:iam::{{ACCOUNT_ID}}:role/fis-cross-az-traffic-slowdown-role",
+  "tags": {
+    "Name": "Cross-AZ: Traffic Slowdown"
+  },
+  "logConfiguration": {
+    "cloudWatchLogsConfiguration": {
+      "logGroupArn": "arn:aws:logs:{{REGION}}:{{ACCOUNT_ID}}:log-group:FISExperiments:*"
+    },
+    "logSchemaVersion": 2
+  },
+  "experimentOptions": {
+    "accountTargeting": "single-account",
+    "emptyTargetResolutionMode": "skip"
+  }
+}

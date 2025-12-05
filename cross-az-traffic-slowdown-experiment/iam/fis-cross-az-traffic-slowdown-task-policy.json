@@ -1,0 +1,63 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowFISExperimentLogging",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECSNetworkPacketLoss",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeTasks",
+        "ecs:DescribeClusters",
+        "ecs:DescribeContainerInstances",
+        "ecs:ListTasks",
+        "ecs:ListContainerInstances",
+        "ecs:UpdateTaskProtection"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EKSNetworkPacketLoss",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeCluster",
+        "eks:DescribeNodegroup",
+        "eks:ListClusters",
+        "eks:ListNodegroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SSMNetworkPacketLoss",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:ListCommands",
+        "ssm:ListCommandInvocations",
+        "ssm:CancelCommand",
+        "ssm:GetCommandInvocation"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TargetResolution",
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources",
+        "ec2:DescribeInstances",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeAvailabilityZones"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
