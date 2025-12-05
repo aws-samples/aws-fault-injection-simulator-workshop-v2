@@ -36,6 +36,8 @@ spec:
     metadata:
       labels:
         app: pethistory
+        AZApplicationSlowdown: Ready
+        CrossAZTrafficSlowdown: Ready
     spec:
       serviceAccountName: pethistory-sa
       containers:

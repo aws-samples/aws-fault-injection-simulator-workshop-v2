@@ -39,6 +39,8 @@ spec:
     metadata:
       labels:
         app: petsite
+        AZApplicationSlowdown: Ready
+        CrossAZTrafficSlowdown: Ready
     spec:
       serviceAccountName: petsite-sa
       containers:

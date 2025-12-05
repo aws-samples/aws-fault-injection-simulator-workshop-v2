@@ -1,4 +1,4 @@
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { RemovalPolicy, Tags } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -219,6 +219,10 @@ export abstract class EcsService extends Construct {
       }
     }
 
+    // Add tags to task definition for FIS targeting
+    Tags.of(this.taskDefinition).add('AZApplicationSlowdown', 'Ready');
+    Tags.of(this.taskDefinition).add('CrossAZTrafficSlowdown', 'Ready');
+
     if (!props.disableService) {
       this.service = new ecs_patterns.ApplicationLoadBalancedFargateService(this, "ecs-service", {
         cluster: props.cluster,
@@ -226,9 +230,14 @@ export abstract class EcsService extends Construct {
         publicLoadBalancer: true,
         desiredCount: props.desiredTaskCount,
         listenerPort: 80,
-        securityGroups: [props.securityGroup]
-
+        securityGroups: [props.securityGroup],
+        enableECSManagedTags: true,
+        propagateTags: ecs.PropagatedTagSource.SERVICE,
       })
+
+      // Add tags to service for FIS targeting
+      Tags.of(this.service.service).add('AZApplicationSlowdown', 'Ready');
+      Tags.of(this.service.service).add('CrossAZTrafficSlowdown', 'Ready');
 
       if (props.healthCheck) {
         this.service.targetGroup.configureHealthCheck({

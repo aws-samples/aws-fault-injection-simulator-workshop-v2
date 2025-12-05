@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: petfood-metric
+        AZApplicationSlowdown: Ready
+        CrossAZTrafficSlowdown: Ready
     spec:
       containers:
       - env:
