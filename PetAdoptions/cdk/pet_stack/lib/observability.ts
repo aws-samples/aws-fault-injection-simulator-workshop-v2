@@ -65,6 +65,13 @@ export class Observability extends cdk.Stack {
         resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE,
       }),
     })
+    
+    // Fix IAM eventual consistency - ensure role is created before Lambda
+    const role = putParameter.node.findChild('CustomResourcePolicy').node.defaultChild;
+    const lambdaResource = putParameter.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
+    }
 
 
     // Alarm for Frustrating navigation experience

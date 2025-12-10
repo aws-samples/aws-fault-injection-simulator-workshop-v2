@@ -40,6 +40,13 @@ export class SSMParameterReader extends CustomResource.AwsCustomResource {
     });
 
     super(scope, name, { onUpdate: ssmAwsSdkCall, policy: ssmCrPolicy });
+    
+    // Fix IAM eventual consistency - ensure role is created before Lambda
+    const role = this.node.findChild('CustomResourcePolicy').node.defaultChild;
+    const lambdaResource = this.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
+    }
   }
 
   public getParameterValue(): string {

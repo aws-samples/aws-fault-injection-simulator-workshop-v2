@@ -47,6 +47,13 @@ export class TransitGatewayPeeringIdentifier extends CustomResource.AwsCustomRes
       onUpdate: describeAttachmentsSdkCall,
       policy: ec2CrPolicy,
     });
+    
+    // Fix IAM eventual consistency - ensure role is created before Lambda
+    const role = this.node.findChild('CustomResourcePolicy').node.defaultChild;
+    const lambdaResource = this.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
+    }
   }
 
   public getAttachmentId(): string {
@@ -82,6 +89,13 @@ export class TransitGatewayPeeringAcceptor extends CustomResource.AwsCustomResou
       onUpdate: acceptAttachmentSdkCall,
       policy: ec2CrPolicy,
     });
+    
+    // Fix IAM eventual consistency - ensure role is created before Lambda
+    const role = this.node.findChild('CustomResourcePolicy').node.defaultChild;
+    const lambdaResource = this.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
+    }
   }
 
   public getAttachmentId(): string {
@@ -131,5 +145,12 @@ export class TransitGatewayPeeringAttachmentWaiter extends Construct {
         }),
       ])
     });
+    
+    // Fix IAM eventual consistency - ensure role is created before Lambda
+    const role = tgwWaiterResource.node.findChild('CustomResourcePolicy').node.defaultChild;
+    const lambdaResource = tgwWaiterResource.node.findChild('Resource').node.defaultChild;
+    if (role && lambdaResource) {
+      lambdaResource.node.addDependency(role);
+    }
   }
 }
