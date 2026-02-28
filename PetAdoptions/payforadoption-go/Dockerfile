@@ -1,7 +1,7 @@
 FROM --platform=linux/amd64 golang:1.23.3-alpine as builder
 WORKDIR /go/src/app
 COPY . .
-ENV GOPROXY=https://goproxy.io,direct
+ENV GOPROXY=https://proxy.golang.org,direct
 RUN go get .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o app .
 
