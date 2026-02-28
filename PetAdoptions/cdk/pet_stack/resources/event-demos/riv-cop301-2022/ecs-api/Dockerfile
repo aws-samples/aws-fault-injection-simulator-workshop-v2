@@ -1,5 +1,5 @@
 FROM golang:1.18 as builder
-ENV GOPROXY=https://goproxy.io,direct
+ENV GOPROXY=https://proxy.golang.org,direct
 WORKDIR /go/src/app
 COPY . .
 RUN go get .
