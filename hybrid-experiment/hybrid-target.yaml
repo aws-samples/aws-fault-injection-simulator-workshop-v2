@@ -28,7 +28,7 @@ mainSteps:
   onCancel: 'step:ExitHook'
   timeoutSeconds: 60
   inputs:
-    Runtime: "python3.6"
+    Runtime: "python3.12"
     Handler: "script_handler"
     InputPayload:
       JSONstring: "{{Filters}}"

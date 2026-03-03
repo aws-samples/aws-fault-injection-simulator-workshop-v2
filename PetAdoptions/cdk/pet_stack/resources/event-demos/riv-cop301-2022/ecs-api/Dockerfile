@@ -1,8 +1,9 @@
-FROM golang:1.18 as builder
-ENV GOPROXY=https://goproxy.io,direct
+FROM golang:1.23-alpine AS builder
+ENV GOPROXY=https://proxy.golang.org,direct
 WORKDIR /go/src/app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN go get .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
 FROM alpine:latest

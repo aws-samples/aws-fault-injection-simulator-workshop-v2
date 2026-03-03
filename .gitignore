@@ -9,3 +9,4 @@ observability/node_modules
 observability/node_modules/*
 bring-your-own-account/cdk/cdk.out/*
 bring-your-own-account/cdk/node_modules/*
+UPGRADE_PLAN.md

@@ -145,7 +145,7 @@ Resources:
     Type: 'AWS::EC2::Instance'
     Properties:
       ImageId: >-
-        {{resolve:ssm:/aws/service/ami-windows-latest/Windows_Server-2016-English-Full-Base}}
+        {{resolve:ssm:/aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base}}
       SubnetId: !Ref PrivateSubnet1
       InstanceType: t2.micro
       IamInstanceProfile: !Ref InstanceProfile

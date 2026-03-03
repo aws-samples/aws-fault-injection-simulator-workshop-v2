@@ -26,7 +26,7 @@ Resources:
     Properties:
       CodeUri: dequeue/
       Handler: dequeue.lambdaHandler
-      Runtime: nodejs16.x
+      Runtime: nodejs20.x
       Environment:
         Variables:
           TABLE_NAME:
@@ -48,7 +48,7 @@ Resources:
     Properties:
       CodeUri: function/
       Handler: app.lambdaHandler
-      Runtime: nodejs16.x
+      Runtime: nodejs20.x
       MemorySize: 512
       Environment:
         Variables:
