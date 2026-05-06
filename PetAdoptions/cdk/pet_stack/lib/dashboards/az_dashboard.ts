@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Duration } from 'aws-cdk-lib';
-import { ServiceStackProps } from '../common/services-shared-properties';
 
 export interface AZDashboardProps extends cdk.StackProps {
     dashboardName?: string;
@@ -21,11 +20,11 @@ interface AZDashboardParameters {
 
 export class AZDashboard {
     private readonly parameters: AZDashboardParameters;
-    private readonly props: ServiceStackProps;
+    private readonly region: string;
 
-    constructor(stack: cdk.Stack, props: ServiceStackProps) {
+    constructor(stack: cdk.Stack) {
 
-        this.props = props;
+        this.region = stack.region;
 
         const dashboard = new cloudwatch.Dashboard(stack, 'AvailabilityZonePowerImpairment', {
             dashboardName: 'AvailabilityZonePowerImpairment'
@@ -99,7 +98,7 @@ export class AZDashboard {
                     },
                     statistic: 'Sum',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: `[${az}] ${this.parameters.loadBalancerArn}`
                 })
             )
@@ -121,7 +120,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: `[${az}] ${this.parameters.loadBalancerArn}`
                 })
             )
@@ -143,7 +142,7 @@ export class AZDashboard {
                     },
                     statistic: 'Maximum',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: `[${az}] ${this.parameters.loadBalancerArn}`
                 })
             )
@@ -166,7 +165,7 @@ export class AZDashboard {
                     },
                     statistic: 'Maximum',
                     period: Duration.seconds(300),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: `[${az}] ${this.parameters.loadBalancerArn}`
                 })
             )
@@ -188,7 +187,7 @@ export class AZDashboard {
                         ServiceType: 'AWS::ECS::EC2'
                     },
                     statistic: 'p50',
-                    region: this.props.MainRegion
+                    region: this.region
                 }),
                 new cloudwatch.Metric({
                     namespace: 'AWS/X-Ray',
@@ -199,7 +198,7 @@ export class AZDashboard {
                         ServiceType: 'AWS::ECS::EC2'
                     },
                     statistic: 'p90',
-                    region: this.props.MainRegion
+                    region: this.region
                 }),
             ],
             view: cloudwatch.GraphWidgetView.TIME_SERIES,
@@ -223,7 +222,7 @@ export class AZDashboard {
                         ServiceType: 'AWS::EC2::Instance'
                     },
                     statistic: 'p50',
-                    region: this.props.MainRegion,
+                    region: this.region,
                     color: '#17becf'
                 }),
                 new cloudwatch.Metric({
@@ -235,7 +234,7 @@ export class AZDashboard {
                         ServiceType: 'AWS::EC2::Instance'
                     },
                     statistic: 'p90',
-                    region: this.props.MainRegion,
+                    region: this.region,
                     color: '#bcbd22'
                 }),
             ],
@@ -260,7 +259,7 @@ export class AZDashboard {
                         ServiceType: 'AWS::ECS::Fargate'
                     },
                     statistic: 'p50',
-                    region: this.props.MainRegion
+                    region: this.region
                 }),
                 new cloudwatch.Metric({
                     namespace: 'AWS/X-Ray',
@@ -271,7 +270,7 @@ export class AZDashboard {
                         ServiceType: 'AWS::ECS::Fargate'
                     },
                     statistic: 'p90',
-                    region: this.props.MainRegion
+                    region: this.region
                 })
             ],
             view: cloudwatch.GraphWidgetView.TIME_SERIES,
@@ -297,7 +296,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: 'ecsEc2PetSearchASG'
                 }),
                 new cloudwatch.Metric({
@@ -309,7 +308,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: 'eksPetsiteASG'
                 })
             ]
@@ -331,7 +330,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: `eksPetsiteASG-${az}`
                 }),
                 new cloudwatch.Metric({
@@ -343,7 +342,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion,
+                    region: this.region,
                     label: `ecsEc2PetSearchASG-${az}`
                 }),
             ]),
@@ -368,7 +367,7 @@ export class AZDashboard {
                         AutoScalingGroupName: this.parameters.eksAutoScalingGroupName,
                         AvailabilityZone: az
                     },
-                    region: this.props.MainRegion
+                    region: this.region
                 }),
                 new cloudwatch.Metric({
                     namespace: 'CustomAZMetrics',
@@ -377,7 +376,7 @@ export class AZDashboard {
                         AutoScalingGroupName: this.parameters.ecsAutoScalingGroupName,
                         AvailabilityZone: az
                     },
-                    region: this.props.MainRegion
+                    region: this.region
                 })
             ]),
             view: cloudwatch.GraphWidgetView.PIE,
@@ -406,7 +405,7 @@ export class AZDashboard {
                     },
                     statistic: 'Maximum',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion
+                    region: this.region
                 }),
                 new cloudwatch.Metric({
                     namespace: 'AWS/RDS',
@@ -416,7 +415,7 @@ export class AZDashboard {
                     },
                     statistic: 'Maximum',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion
+                    region: this.region
                 })
             ]
         });
@@ -438,7 +437,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion
+                    region: this.region
                 })
             )
         });
@@ -460,7 +459,7 @@ export class AZDashboard {
                     },
                     statistic: 'Average',
                     period: Duration.seconds(60),
-                    region: this.props.MainRegion
+                    region: this.region
                 })
             )
         });
@@ -479,7 +478,7 @@ export class AZDashboard {
                         DBClusterIdentifier: this.parameters.rdsClusterIdentifier,
                         AvailabilityZone: az
                     },
-                    region: this.props.MainRegion,
+                    region: this.region,
                     period: Duration.seconds(60),
                     statistic: 'Average'
                 })

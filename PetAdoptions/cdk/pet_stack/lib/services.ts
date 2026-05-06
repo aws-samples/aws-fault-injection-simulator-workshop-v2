@@ -13,7 +13,6 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-////import * as cloud9 from 'aws-cdk-lib/aws-cloud9';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { Construct } from 'constructs'
 import { SearchEc2Service } from './services/search-service-ec2'
@@ -25,11 +24,9 @@ import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } fr
 import { readFileSync } from 'fs';
 import 'ts-replace-all'
 import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
-// import { Cloud9Environment } from './modules/core/cloud9';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
-import { createListAdoptionsService, createPayForAdoptionService, createOrGetDynamoDBTable, createOrGetRDSCluster, createVPCWithTransitGateway, createOrGetAdoptionsBucket, createOrGetFISReportBucket } from './common/services-shared';
-import { SSMParameterReader } from './common/ssm-parameter-reader';
+import { createListAdoptionsService, createPayForAdoptionService, createDynamoDBTable, createRDSCluster, createVPC, createAdoptionsBucket, createFISReportBucket } from './common/services-shared';
 import { StatusUpdaterCloudwatchDashboard } from './services/status-updater-cloudwatch-dashboard';
 import { FisLambdaActionsExperiment } from './services/fis-lambda-actions-experiment';
 
@@ -40,13 +37,10 @@ export class Services extends Stack {
         const stack = Stack.of(this);
         const region = stack.region;
         const stackName = id;
-        const defaultPrimaryCIDR = this.node.tryGetContext('vpc_cidr_primary') || "10.1.0.0/16";
-        const defaultSecondaryCIDR = this.node.tryGetContext('vpc_cidr_secondary') || "10.2.0.0/16";
+        const defaultCIDR = this.node.tryGetContext('vpc_cidr_primary') || "10.1.0.0/16";
         const fisLambdaTagName = this.node.tryGetContext('fisLambdaTagName') || 'FISExperimentReady';
         const fisLambdaTagValue = this.node.tryGetContext('fisLambdaTagValue') || 'Yes';
-        const fisLambdaExtensionArnPrimary = this.node.tryGetContext('fisLambdaExtensionArn')||'arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9';
-        const fisLambdaExtensionArnSecondary = this.node.tryGetContext('fisLambdaExtensionArnUSWest2')||'arn:aws:lambda:us-west-2:975050054544:layer:aws-fis-extension-x86_64:9';
-
+        const fisLambdaExtensionArn = this.node.tryGetContext('fisLambdaExtensionArn')||'arn:aws:lambda:us-east-1:211125607513:layer:aws-fis-extension-x86_64:9';
         const fisLambdaExecWrapper = this.node.tryGetContext('fisLambdaExecWrapper')||'/opt/aws-fis/bootstrap';
         const fisExtensionMetrics = this.node.tryGetContext('fisExtensionMetrics')||'all';
 
@@ -55,18 +49,6 @@ export class Services extends Stack {
             TagValue: fisLambdaTagValue
         }
 
-        let isPrimaryRegionDeployment;
-        let fisLambdaExtensionArn ;
-
-        if (props.DeploymentType as string == 'primary') {
-             fisLambdaExtensionArn = fisLambdaExtensionArnPrimary;
-            // DeploymentType is Primary Region Deployment
-            isPrimaryRegionDeployment = true
-        } else {
-            fisLambdaExtensionArn = fisLambdaExtensionArnSecondary;
-            // DeploymentType is Secondary Region Deployment
-            isPrimaryRegionDeployment = false
-        }
         var isEventEngine = 'false';
         if (this.node.tryGetContext('is_event_engine') != undefined) {
             isEventEngine = this.node.tryGetContext('is_event_engine');
@@ -85,84 +67,32 @@ export class Services extends Stack {
         topic_petadoption.addSubscription(new subs.EmailSubscription(topic_email));
 
         // Create VPC
-        const VPCwitTGW = createVPCWithTransitGateway({
+        const theVPC = createVPC({
             scope: this,
-            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             contextId: 'Microservices',
-            defaultPrimaryCIDR: defaultPrimaryCIDR,
-            defaultSecondaryCIDR: defaultSecondaryCIDR,
-            // And optionally override natGateways and maxAzs:
-            // natGateways: 2,
-            // maxAzs: 3,
+            cidr: defaultCIDR,
         });
 
-        const theVPC = VPCwitTGW.vpc
-        const transitGatewayRouteTable = VPCwitTGW.transitGatewayRouteTable
-
-        if (isPrimaryRegionDeployment) { } else {
-            const ssmTGWId = new SSMParameterReader(this, 'ssmTGWId', {
-                parameterName: "/petstore/tgwid",
-                region: props.MainRegion
-            });
-            const mainTGWId = ssmTGWId.getParameterValue();
-
-            // Create TGW Peering
-            const TransitGatewayPeeringAttachment = new ec2.CfnTransitGatewayPeeringAttachment(this, 'MyCfnTransitGatewayPeeringAttachment', {
-                peerAccountId: `${props.env?.account}`,
-                peerRegion: props.MainRegion as string,
-                peerTransitGatewayId: mainTGWId,
-                transitGatewayId: `${VPCwitTGW.transitGateway?.attrId}`,
-            });
-        }
+        // Creates an S3 bucket for FIS experiment reports
+        const s3ExperimentReport = createFISReportBucket({ scope: this });
 
         // Creates an S3 bucket to store pet images
-        const s3ExperimentReport = createOrGetFISReportBucket({
-            scope: this,
-            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
-            mainRegion: props.MainRegion,
-            secondaryRegion: props.SecondaryRegion,
-        });
-
-
-        // Creates an S3 bucket to store pet images
-        const s3PetAdoptions = createOrGetAdoptionsBucket({
-            scope: this,
-            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
-            mainRegion: props.MainRegion,
-            secondaryRegion: props.SecondaryRegion,
-        });
-
-        let s3PetAdoptionsarn: string
-        if (s3PetAdoptions.s3IAMReplicationRole != undefined) {
-            s3PetAdoptionsarn = s3PetAdoptions.s3IAMReplicationRole.roleArn 
-        } else {
-            s3PetAdoptionsarn = "undefined"
-        }
+        const s3PetAdoptions = createAdoptionsBucket({ scope: this });
 
         // Seeds the S3 bucket with pet images
         new s3seeder.BucketDeployment(this, "s3seeder_petadoption", {
-            destinationBucket: s3PetAdoptions.s3Bucket,
+            destinationBucket: s3PetAdoptions,
             sources: [s3seeder.Source.asset('./resources/kitten.zip'), s3seeder.Source.asset('./resources/puppies.zip'), s3seeder.Source.asset('./resources/bunnies.zip')]
         });
 
         // Creates the DynamoDB table for Petadoption data
-        // Define the DynamoDB table properties 
-        const dynamoDBTableName = createOrGetDynamoDBTable({
-            scope: this,
-            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
-            secondaryRegion: props.SecondaryRegion,
-            mainRegion: props.MainRegion
-        });
+        const dynamoDBTableName = createDynamoDBTable({ scope: this });
 
         // RDS
-        const rdsResult = createOrGetRDSCluster({
+        const rdsResult = createRDSCluster({
             scope: this,
-            isPrimaryRegionDeployment: isPrimaryRegionDeployment,
             vpc: theVPC,
-            mainRegion: props.MainRegion,
-            secondaryRegion: props.SecondaryRegion,
-            defaultPrimaryCIDR: defaultPrimaryCIDR,
-            defaultSecondaryCIDR: defaultSecondaryCIDR,
+            vpcCidr: defaultCIDR,
             rdsUsername: this.node.tryGetContext('rdsusername')
         });
 
@@ -357,7 +287,7 @@ export class Services extends Stack {
         const statusUpdaterServiceObservabilityDashboard = new StatusUpdaterCloudwatchDashboard(this, 'StatusUpdaterObservabilityDashboard', {
             lambdaFunctionNames: [statusUpdaterService.statusUpdaterLambdaFunctionName],
             apiGatewayAPIName: statusUpdaterService.api.restApiName,
-            dashboardNameSuffix: props.DeploymentType
+            dashboardNameSuffix: 'primary'
             
         });
         statusUpdaterServiceObservabilityDashboard.node.addDependency(statusUpdaterService);
@@ -445,14 +375,7 @@ export class Services extends Stack {
             //   role: eksPetSiteRole,
         });
 
-        // Adding ClusterNodeGroupRole
-        // Add SSM Permissions to the node role and EKS Node required permissions
-        let eksPNodeGroupRoleName
-        if (isPrimaryRegionDeployment) {
-            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole'
-        } else {
-            eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole' + props.DeploymentType
-        }
+        const eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole';
 
 
 
@@ -613,18 +536,6 @@ export class Services extends Stack {
         if (isEventEngine === 'true') {
             const teamRole = iam.Role.fromRoleArn(this, 'TeamRole', "arn:aws:iam::" + stack.account + ":role/WSParticipantRole");
             cluster.awsAuth.addRoleMapping(teamRole, { groups: ["dashboard-view"] });
-
-            const ssmVSrole = new SSMParameterReader(this, 'ssmVSrole', {
-                parameterName: "/vscode/vsiamrolearn",
-                region: props.MainRegion
-            });
-            const cvSrole = ssmVSrole.getParameterValue();
-
-            if (cvSrole != undefined) {
-                cluster.awsAuth.addMastersRole(iam.Role.fromRoleArn(this, 'cvSrole', cvSrole, { mutable: false }));
-            }
-
-
         }
 
         const eksAdminArn = this.node.tryGetContext('admin_role');
@@ -743,13 +654,7 @@ export class Services extends Stack {
         dashboardBody = dashboardBody.replaceAll("{{YOUR_AWS_REGION}}", region);
         
         
-        let fluentBitDashboardName
-
-        if (isPrimaryRegionDeployment) {
-            fluentBitDashboardName = 'EKS_FluentBit_Dashboard'
-        } else {
-            fluentBitDashboardName = 'EKS_FluentBit_Dashboard' + props.DeploymentType
-        }
+        const fluentBitDashboardName = 'EKS_FluentBit_Dashboard';
 
         const fluentBitDashboard = new cloudwatch.CfnDashboard(this, fluentBitDashboardName, {
             dashboardName: fluentBitDashboardName,
@@ -813,13 +718,7 @@ export class Services extends Stack {
         var costControlDashboardBody = readFileSync("./resources/cw_dashboard_cost_control.json", "utf-8");
         costControlDashboardBody = costControlDashboardBody.replaceAll("{{YOUR_LAMBDA_ARN}}", customWidgetFunction.functionArn);
 
-        let petSiteCostControlDashboardName
-
-        if (isPrimaryRegionDeployment) {
-            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard'
-        } else {
-            petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard' + props.DeploymentType
-        }
+        const petSiteCostControlDashboardName = 'PetSite_Cost_Control_Dashboard';
 
         const petSiteCostControlDashboard = new cloudwatch.CfnDashboard(this, petSiteCostControlDashboardName, {
             dashboardName: petSiteCostControlDashboardName,
@@ -852,11 +751,10 @@ export class Services extends Stack {
             '/petstore/queueurl': sqsQueue.queueUrl,
             '/petstore/snsarn': topic_petadoption.topicArn,
             '/petstore/dynamodbtablename': dynamoDBTableName,
-            '/petstore/s3bucketname': s3PetAdoptions.s3Bucket.bucketName,
-            '/petstore/s3bucketarn': s3PetAdoptions.s3Bucket.bucketArn,
-            '/petstore/s3fisreportbucketname': s3ExperimentReport.s3Bucket.bucketName,
-            '/petstore/s3fisreportbucketarn': s3ExperimentReport.s3Bucket.bucketArn,
-            '/petstore/s3iamroleresplication': s3PetAdoptionsarn,
+            '/petstore/s3bucketname': s3PetAdoptions.bucketName,
+            '/petstore/s3bucketarn': s3PetAdoptions.bucketArn,
+            '/petstore/s3fisreportbucketname': s3ExperimentReport.bucketName,
+            '/petstore/s3fisreportbucketarn': s3ExperimentReport.bucketArn,
             '/petstore/searchapiurl': `http://${searchServiceEc2.service.loadBalancer.loadBalancerDnsName}/api/search?`,
             '/petstore/searchimage': searchServiceEc2.container.imageName,
             '/petstore/petlistadoptionsurl': `http://${listAdoptionsService.service.loadBalancer.loadBalancerDnsName}/api/adoptionlist/`,
@@ -872,12 +770,8 @@ export class Services extends Stack {
             '/petstore/rdsinstanceIdentifierWriter': `${rdsResult.instanceIdentifierWriter}`,
             '/petstore/rdsinstanceIdentifierReader': `${rdsResult.instanceIdentifierReader}`,
             '/petstore/stackname': stackName,
-            '/petstore/tgwid': `${VPCwitTGW.transitGateway?.attrId}`,
-            '/petstore/tgwroutetableid': `${transitGatewayRouteTable?.ref}`,
-            // '/petstore/tgwassociationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.associationDefaultRouteTableId}`,
-            // '/petstore/tgwpropagationDefaultRouteTableId': `${VPCwitTGW.transitGateway?.propagationDefaultRouteTableId}`,
-            '/petstore/vpcid': `${VPCwitTGW.vpc.vpcId}`,
-            '/petstore/vpccidr': `${VPCwitTGW.vpc.vpcCidrBlock}`,
+            '/petstore/vpcid': `${theVPC.vpcId}`,
+            '/petstore/vpccidr': `${theVPC.vpcCidrBlock}`,
             '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
             '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,

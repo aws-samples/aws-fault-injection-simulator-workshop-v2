@@ -10,7 +10,6 @@ import { Construct } from 'constructs'
 import { ContainerImageBuilder } from './common/container-image-builder'
 import { PetAdoptionsHistory } from './applications/pet-adoptions-history-application'
 import { ApplicationsStackProps } from './common/services-shared-properties';
-import { SSMParameterReader } from './common/ssm-parameter-reader';
 
 
 export class Applications extends Stack {
@@ -22,34 +21,14 @@ export class Applications extends Stack {
         const account = stack.account;
         const stackName = id;
 
-        let isPrimaryRegionDeployment
-        if (props.deploymentType as string == 'primary') {
-            // DeploymentType is Primary Region Deployment
-            isPrimaryRegionDeployment = true
-        } else {
-            // DeploymentType is Secondary Region Deployment
-            isPrimaryRegionDeployment = false
-        }
-
         const roleArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamClusterAdmin', { parameterName: "/eks/petsite/EKSMasterRoleArn" }).stringValue;
         const targetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getParamTargetGroupArn', { parameterName: "/eks/petsite/TargetGroupArn" }).stringValue;
         const oidcProviderUrl = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderUrl', { parameterName: "/eks/petsite/OIDCProviderUrl" }).stringValue;
         const oidcProviderArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getOIDCProviderArn', { parameterName: "/eks/petsite/OIDCProviderArn" }).stringValue;
         const petHistoryTargetGroupArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getPetHistoryParamTargetGroupArn', { parameterName: "/eks/pethistory/TargetGroupArn" }).stringValue;
 
-        // let rdsSecret
-        const ssmrdsSecretName = new SSMParameterReader(this, 'rdsSecretName', {
-            parameterName: "/petstore/rdssecretname",
-            region: props.mainRegion
-        });
-        const rdsSecretName = ssmrdsSecretName.getParameterValue();
+        const rdsSecretName = ssm.StringParameter.fromStringParameterAttributes(this, 'getRdsSecretName', { parameterName: "/petstore/rdssecretname" }).stringValue;
         const rdsSecret = secretsmanager.Secret.fromSecretNameV2(this, 'rdsSecret', rdsSecretName);
-
-        // if (isPrimaryRegionDeployment) {
-        //     rdsSecretArn = ssm.StringParameter.fromStringParameterAttributes(this, 'getRdsSecretArn', { parameterName: "/petstore/rdssecretarn" }).stringValue;
-        // } else {
-            
-        // }
 
         const cluster = eks.Cluster.fromClusterAttributes(this, 'MyCluster', {
             clusterName: 'PetSite',
