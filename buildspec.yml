@@ -10,12 +10,7 @@ phases:
     commands:
       - git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       #- git clone --single-branch --branch <> https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
-      - cd ./aws-fault-injection-simulator-workshop-v2/supporting-services/vscode-server
-      - npm install
-      - ../../scripts/cdkbootstrap.sh
-      - npm run build
-      - cdk deploy VscodeServerStack --require-approval never
-      - cd ../../PetAdoptions/cdk/pet_stack/
+      - cd ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/
       - npm install
       - npm run build
       - cdk deploy Services --context admin_role=${EE_TEAM_ROLE_ARN} --context is_event_engine="true" --require-approval=never --verbose -O ./out/out.json

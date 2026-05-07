@@ -23,7 +23,7 @@ import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import 'ts-replace-all'
-import { KubectlLayer } from 'aws-cdk-lib/lambda-layer-kubectl';
+import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createDynamoDBTable, createRDSCluster, createVPC, createAdoptionsBucket, createFISReportBucket } from './common/services-shared';
@@ -356,7 +356,7 @@ export class Services extends Stack {
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
             version: KubernetesVersion.of('1.31'),
-            kubectlLayer: new KubectlLayer(this, 'kubectl')
+            kubectlLayer: new KubectlV32Layer(this, 'kubectl')
         });
 
         const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
