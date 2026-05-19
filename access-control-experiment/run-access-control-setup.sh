@@ -1,5 +1,6 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROLEARN=$(aws iam list-roles | jq '.Roles[].Arn | select(contains("cfn-exec") and contains("us-east-1"))' -r)
 ROLE_NAME="FisWorkshopServiceRole"
 
@@ -10,7 +11,7 @@ echo "#########################################################"
 if aws iam get-role --role-name $ROLE_NAME > /dev/null 2>&1; then
         echo "IAM role $ROLE_NAME exists"
 else
-        cd ~/environment/workshopfiles/fis-workshop/access-control-experiment/
+        cd "$SCRIPT_DIR"
         aws iam create-role --role-name FisWorkshopServiceRole --assume-role-policy-document file://fis-trust-policy.json
         aws iam put-role-policy --role-name FisWorkshopServiceRole --policy-name FisWorkshopServicPolicy --policy-document file://workshop-policy.json  
 fi
