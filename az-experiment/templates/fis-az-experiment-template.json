@@ -205,7 +205,7 @@
   },
   "logConfiguration": {
     "cloudWatchLogsConfiguration": {
-      "logGroupArn": "arn:aws:logs:eu-west-2:your_aws_account:log-group:FISExperiments:*"
+      "logGroupArn": "arn:aws:logs:us-east-1:your_aws_account:log-group:FISExperiments:*"
     },
     "logSchemaVersion": 2
   },

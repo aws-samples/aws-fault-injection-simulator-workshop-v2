@@ -130,7 +130,7 @@ Resources:
                 Effect: Allow
                 Action: 
                   - fis:TagResource
-                Resource: !Sub 'arn:aws:fis:us-west-2:${AWS::AccountId}:experiment/*'
+                Resource: !Sub 'arn:aws:fis:${AWS::Region}:${AWS::AccountId}:experiment/*'
               - Sid: DenyFisProdAccess
                 Condition:
                   StringEquals:
