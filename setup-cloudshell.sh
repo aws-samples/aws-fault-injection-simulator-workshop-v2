@@ -46,6 +46,15 @@ if ! command -v eksctl &>/dev/null; then
 	rm eksctl_$PLATFORM.tar.gz
 fi
 
+# Install SAM CLI if not present (needed for EC2 Spot experiment)
+if ! command -v sam &>/dev/null; then
+	echo "Installing AWS SAM CLI..."
+	curl -sL "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip" -o /tmp/sam.zip
+	unzip -q /tmp/sam.zip -d /tmp/sam-install
+	/tmp/sam-install/install --install-dir $HOME/.local/sam-cli --bin-dir $HOME/.local/bin
+	rm -rf /tmp/sam.zip /tmp/sam-install
+fi
+
 # Configure kubectl for the PetSite EKS cluster
 echo "Configuring kubectl for PetSite EKS cluster..."
 CLUSTER_NAME="PetSite"
