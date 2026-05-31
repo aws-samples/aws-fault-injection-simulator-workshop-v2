@@ -9,8 +9,7 @@ phases:
       - if [ -z "$CDK_STACK" ]; then cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/us-east-1; fi
   build:
     commands:
-      #- git clone --single-branch https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
-      - git clone --single-branch --branch hn-workshop-update https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
+      - git clone --single-branch --branch main https://github.com/aws-samples/aws-fault-injection-simulator-workshop-v2.git
       - cd ./aws-fault-injection-simulator-workshop-v2/PetAdoptions/cdk/pet_stack/
       - npm install
       - npm run build
