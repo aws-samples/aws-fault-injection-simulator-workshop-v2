@@ -220,7 +220,7 @@ export class UserSimulationStack extends cdk.Stack {
     const dockerfileContentAzMonitor = `# Start from the official Golang image
 FROM --platform=linux/amd64 public.ecr.aws/docker/library/golang:1.23.6-alpine
 
-ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=direct
 
 # Add necessary tools
 RUN apk add --no-cache ca-certificates tzdata git

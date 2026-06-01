@@ -71,6 +71,11 @@ export class FisServerless extends Stack {
             actions: ["iam:CreateServiceLinkedRole"],
         }));
 
+        fisRole.addToPolicy(new PolicyStatement({
+            resources: ['arn:aws:fis:*:*:experiment/*'],
+            actions: ["fis:InjectApiInternalError", "fis:InjectApiThrottleError"],
+        }));
+
         const machineRole = new Role(this, 'StepFunctionRole', {
             assumedBy: new ServicePrincipal('states.amazonaws.com'),
         });

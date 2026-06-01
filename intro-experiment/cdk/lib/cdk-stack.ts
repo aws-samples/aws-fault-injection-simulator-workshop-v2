@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as autoscaling from 'aws-cdk-lib/aws-autoscaling'
+import * as iam from 'aws-cdk-lib/aws-iam'
 import * as loadbalancing from 'aws-cdk-lib/aws-elasticloadbalancingv2'
 import fs = require('fs');
 import * as cloudwatch  from 'aws-cdk-lib/aws-cloudwatch';
@@ -28,7 +29,10 @@ export class FisStackAsg extends cdk.Stack {
       desiredCapacity: 1,
       maxCapacity: 9,
       groupMetrics: [autoscaling.GroupMetrics.all()],
+      ssmSessionPermissions: true,
     })
+
+    asg.role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
 
     asg.addUserData(fs.readFileSync('scripts/install.sh', 'utf8'))
     

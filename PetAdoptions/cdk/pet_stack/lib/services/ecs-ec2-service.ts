@@ -81,9 +81,7 @@ export abstract class EcsEc2Service extends Construct {
     this.taskDefinition.addToExecutionRolePolicy(EcsEc2Service.ExecutionRolePolicy);
     this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonECSTaskExecutionRolePolicy', 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'));
     this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AWSXrayWriteOnlyAccess', 'arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess'));
-    this.taskDefinition.taskRole?.addManagedPolicy({
-      managedPolicyArn: 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess',
-    });
+    this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AWSXRayDaemonWriteAccess', 'arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess'));
 
     this.taskDefinition.taskRole?.addToPrincipalPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,

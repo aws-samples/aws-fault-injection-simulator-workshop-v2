@@ -9,3 +9,6 @@ observability/node_modules
 observability/node_modules/*
 bring-your-own-account/cdk/cdk.out/*
 bring-your-own-account/cdk/node_modules/*
+cdk.out/
+cdk-out-*
+SINGLE_REGION_MIGRATION.md

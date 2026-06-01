@@ -4,14 +4,14 @@
     "ASG": {
       "resourceType": "aws:ec2:autoscaling-group",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "selectionMode": "ALL"
     },
     "ASG-EC2-Instances": {
       "resourceType": "aws:ec2:instance",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "filters": [
         {
@@ -32,7 +32,7 @@
     "EBS-Volumes": {
       "resourceType": "aws:ec2:ebs-volume",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "filters": [
         {
@@ -50,7 +50,7 @@
     "EC2-Instances": {
       "resourceType": "aws:ec2:instance",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "filters": [
         {
@@ -71,7 +71,7 @@
     "ElastiCache-Cluster": {
       "resourceType": "aws:elasticache:redis-replicationgroup",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "selectionMode": "ALL",
       "parameters": {
@@ -88,7 +88,7 @@
     "RDS-Cluster": {
       "resourceType": "aws:rds:cluster",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "selectionMode": "ALL",
       "parameters": {
@@ -98,7 +98,7 @@
     "Subnet": {
       "resourceType": "aws:ec2:subnet",
       "resourceTags": {
-        "AzImpairmentPowerReady": "true"
+        "AzImpairmentPower": "Ready"
       },
       "filters": [
         {
@@ -205,7 +205,7 @@
   },
   "logConfiguration": {
     "cloudWatchLogsConfiguration": {
-      "logGroupArn": "arn:aws:logs:eu-west-2:your_aws_account:log-group:FISExperiments:*"
+      "logGroupArn": "arn:aws:logs:us-east-1:your_aws_account:log-group:FISExperiments:*"
     },
     "logSchemaVersion": 2
   },
