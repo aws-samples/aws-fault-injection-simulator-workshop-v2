@@ -1,0 +1,90 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowDescribeNetworkResources",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeManagedPrefixLists"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowCreateTagsFIS",
+      "Effect": "Allow",
+      "Action": "ec2:CreateTags",
+      "Resource": "arn:aws:ec2:*:*:network-acl/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": "CreateNetworkAcl",
+          "aws:RequestTag/managedByFIS": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCreateNetworkAclWithTag",
+      "Effect": "Allow",
+      "Action": "ec2:CreateNetworkAcl",
+      "Resource": "arn:aws:ec2:*:*:network-acl/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/managedByFIS": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowCreateNetworkAclVpc",
+      "Effect": "Allow",
+      "Action": "ec2:CreateNetworkAcl",
+      "Resource": "arn:aws:ec2:*:*:vpc/*"
+    },
+    {
+      "Sid": "AllowManageNetworkAclEntries",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateNetworkAclEntry",
+        "ec2:DeleteNetworkAcl"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:*:network-acl/*",
+        "arn:aws:ec2:*:*:vpc/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/managedByFIS": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AllowReplaceNetworkAclAssociation",
+      "Effect": "Allow",
+      "Action": "ec2:ReplaceNetworkAclAssociation",
+      "Resource": [
+        "arn:aws:ec2:*:*:subnet/*",
+        "arn:aws:ec2:*:*:network-acl/*"
+      ]
+    },
+    {
+      "Sid": "TargetResolutionByTags",
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

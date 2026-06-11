@@ -1,0 +1,51 @@
+{
+  "description": "Inject packet loss on cross-AZ traffic to simulate degraded inter-AZ network performance.",
+  "targets": {
+    "Subnets": {
+      "resourceType": "aws:ec2:subnet",
+      "resourceTags": {
+        "CrossAzTrafficSlowdown": "Ready"
+      },
+      "filters": [
+        {
+          "path": "AvailabilityZone",
+          "values": [
+            "your_availability_zone_identifier"
+          ]
+        }
+      ],
+      "selectionMode": "ALL"
+    }
+  },
+  "actions": {
+    "Disrupt-Cross-AZ-Traffic": {
+      "actionId": "aws:network:disrupt-connectivity",
+      "parameters": {
+        "scope": "availability-zone",
+        "duration": "PT10M"
+      },
+      "targets": {
+        "Subnets": "Subnets"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "none"
+    }
+  ],
+  "roleArn": "arn:aws:iam::your_aws_account:role/fis-cross-az-slowdown-role",
+  "tags": {
+    "Name": "Cross-AZ: Traffic Slowdown"
+  },
+  "logConfiguration": {
+    "cloudWatchLogsConfiguration": {
+      "logGroupArn": "arn:aws:logs:us-east-1:your_aws_account:log-group:FISExperiments:*"
+    },
+    "logSchemaVersion": 2
+  },
+  "experimentOptions": {
+    "accountTargeting": "single-account",
+    "emptyTargetResolutionMode": "skip"
+  }
+}

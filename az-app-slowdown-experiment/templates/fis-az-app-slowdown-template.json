@@ -1,0 +1,58 @@
+{
+  "description": "Inject network latency within a single AZ to simulate application-level gray failure (slowdown).",
+  "targets": {
+    "EC2-Instances": {
+      "resourceType": "aws:ec2:instance",
+      "resourceTags": {
+        "AzAppSlowdown": "Ready"
+      },
+      "filters": [
+        {
+          "path": "State.Name",
+          "values": [
+            "running"
+          ]
+        },
+        {
+          "path": "Placement.AvailabilityZone",
+          "values": [
+            "your_availability_zone_identifier"
+          ]
+        }
+      ],
+      "selectionMode": "ALL"
+    }
+  },
+  "actions": {
+    "Inject-Latency-SSM": {
+      "actionId": "aws:ssm:send-command",
+      "parameters": {
+        "documentArn": "arn:aws:ssm:us-east-1::document/AWSFIS-Run-Network-Latency",
+        "documentParameters": "{\"DurationSeconds\":\"600\",\"DelayMilliseconds\":\"200\",\"Interface\":\"eth0\",\"InstallDependencies\":\"True\"}",
+        "duration": "PT12M"
+      },
+      "targets": {
+        "Instances": "EC2-Instances"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "none"
+    }
+  ],
+  "roleArn": "arn:aws:iam::your_aws_account:role/fis-az-app-slowdown-role",
+  "tags": {
+    "Name": "AZ: Application Slowdown"
+  },
+  "logConfiguration": {
+    "cloudWatchLogsConfiguration": {
+      "logGroupArn": "arn:aws:logs:us-east-1:your_aws_account:log-group:FISExperiments:*"
+    },
+    "logSchemaVersion": 2
+  },
+  "experimentOptions": {
+    "accountTargeting": "single-account",
+    "emptyTargetResolutionMode": "skip"
+  }
+}

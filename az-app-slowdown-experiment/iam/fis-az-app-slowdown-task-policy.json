@@ -1,0 +1,56 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowSSMSendCommand",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:ListCommands",
+        "ssm:ListCommandInvocations",
+        "ssm:GetCommandInvocation",
+        "ssm:CancelCommand"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowSSMGetDocument",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:DescribeDocument"
+      ],
+      "Resource": [
+        "arn:aws:ssm:*::document/AWSFIS-Run-Network-Latency",
+        "arn:aws:ssm:*::document/AWSFIS-Run-Network-Latency-Sources"
+      ]
+    },
+    {
+      "Sid": "AllowEC2Describe",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TargetResolutionByTags",
+      "Effect": "Allow",
+      "Action": [
+        "tag:GetResources"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
