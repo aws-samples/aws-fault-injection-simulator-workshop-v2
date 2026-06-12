@@ -7,7 +7,7 @@ import * as yaml from 'js-yaml';
 import { Stack, StackProps, CfnJson, Fn, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import { Construct } from 'constructs'
-import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import { ContainerImageBuilder } from './common/container-image-builder'
 import { PetAdoptionsHistory } from './applications/pet-adoptions-history-application'
 import { ApplicationsStackProps } from './common/services-shared-properties';
@@ -34,7 +34,7 @@ export class Applications extends Stack {
         const cluster = eks.Cluster.fromClusterAttributes(this, 'MyCluster', {
             clusterName: 'PetSite',
             kubectlRoleArn: roleArn,
-            kubectlLayer: new KubectlV32Layer(this, 'KubectlLayer'),
+            kubectlLayer: new KubectlV35Layer(this, 'KubectlLayer'),
         });
 
         // Create metrics server

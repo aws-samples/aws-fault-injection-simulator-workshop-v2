@@ -26,7 +26,7 @@
   "dependencies": {
     "@aws-cdk/aws-cognito-identitypool-alpha": "^2.131.0-alpha.0",
     "@aws-cdk/aws-lambda-python-alpha": "^2.126.0-alpha.0",
-    "@aws-cdk/lambda-layer-kubectl-v32": "^2.1.0",
+    "@aws-cdk/lambda-layer-kubectl-v35": "^2.2.0",
     "@types/js-yaml": "4.0.5",
     "aws-cdk-lib": "^2.253.0",
     "cdk-ecr-deployment": "^3.0.32",
