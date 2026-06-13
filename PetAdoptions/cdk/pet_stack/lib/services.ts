@@ -564,6 +564,8 @@ export class Services extends Stack {
             namespace: "kube-system",
             values: {
                 clusterName: "PetSite",
+                region: region,
+                vpcId: theVPC.vpcId,
                 serviceAccount: {
                     create: false,
                     name: "alb-ingress-controller"

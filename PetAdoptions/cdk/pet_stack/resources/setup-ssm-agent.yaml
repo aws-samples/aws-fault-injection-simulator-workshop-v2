@@ -86,9 +86,9 @@ spec:
           path: /tmp/install
       serviceAccount: ssm-agent-installer
       containers:
-      - image: "gcr.io/google-containers/pause:2.0"
+      - image: "public.ecr.aws/eks-distro/kubernetes/pause:3.9"
         name: pause
-        securityContext:  
-          allowPrivilegeEscalation: false  
-          runAsUser: 1000  
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 1000
           readOnlyRootFilesystem: true
