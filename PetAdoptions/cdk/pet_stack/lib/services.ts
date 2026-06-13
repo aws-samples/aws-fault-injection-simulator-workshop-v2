@@ -526,6 +526,12 @@ export class Services extends Stack {
             EKS_ADMIN_ARN = eksAdminArn;
         }
 
+        const codebuildRoleArn = this.node.tryGetContext('codebuild_role');
+        if ((codebuildRoleArn != undefined) && (codebuildRoleArn.length > 0)) {
+            const cbRole = iam.Role.fromRoleArn(this, "codebuildRoleArn", codebuildRoleArn, { mutable: false });
+            cluster.awsAuth.addMastersRole(cbRole);
+        }
+
         const dahshboardManifest = new eks.KubernetesManifest(this, "k8sdashboardrbac", {
             cluster: cluster,
             manifest: dashboardRoleYaml
