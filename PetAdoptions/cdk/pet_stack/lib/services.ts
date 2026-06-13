@@ -359,11 +359,9 @@ export class Services extends Stack {
             kubectlLayer: new KubectlV35Layer(this, 'kubectl')
         });
 
-        const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
-            cpuArch: eks.CpuArch.X86_64,
-            kubernetesVersion: '1.36',
-            nodeType: eks.NodeType.STANDARD,
-        });
+        const eksOptimizedImage = ec2.MachineImage.fromSsmParameter(
+            '/aws/service/eks/optimized-ami/1.36/amazon-linux-2023/x86_64/standard/recommended/image_id'
+        );
 
         const userData = ec2.UserData.forLinux();
         userData.addCommands(`/etc/eks/bootstrap.sh ${cluster.clusterName} --node-labels AzImpairmentPower=Ready,foo=bar,goo=far`);
