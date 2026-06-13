@@ -359,23 +359,7 @@ export class Services extends Stack {
             kubectlLayer: new KubectlV35Layer(this, 'kubectl')
         });
 
-        const eksOptimizedImage = ec2.MachineImage.fromSsmParameter(
-            '/aws/service/eks/optimized-ami/1.36/amazon-linux-2023/x86_64/standard/recommended/image_id'
-        );
-
-        const userData = ec2.UserData.forLinux();
-        userData.addCommands(`/etc/eks/bootstrap.sh ${cluster.clusterName} --node-labels AzImpairmentPower=Ready,foo=bar,goo=far`);
-
-        const eksPetSitelt = new ec2.LaunchTemplate(this, 'eksPetSitelt', {
-            machineImage: eksOptimizedImage,
-            instanceType: new ec2.InstanceType('m5.xlarge'),
-            userData: userData,
-            //   role: eksPetSiteRole,
-        });
-
         const eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole';
-
-
 
         const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, eksPNodeGroupRoleName, {
             roleName: eksPNodeGroupRoleName,
@@ -388,13 +372,11 @@ export class Services extends Stack {
             ],
         });
 
-        // Create nodeGroup properties
+        // Create nodeGroup properties - let EKS manage AL2023 AMI and nodeadm bootstrap
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
-            launchTemplateSpec: {
-                id: eksPetSitelt.launchTemplateId!,
-                version: eksPetSitelt.latestVersionNumber,
-            },
+            amiType: eks.NodegroupAmiType.AL2023_X86_64_STANDARD,
+            instanceTypes: [new ec2.InstanceType('m5.xlarge')],
             labels: {
                 ["AzImpairmentPower"]: "Ready",
             },
