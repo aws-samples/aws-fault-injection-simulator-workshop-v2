@@ -575,13 +575,6 @@ export class Services extends Stack {
             jsonPath: "@"
         });
 
-        const loadBalancerCRDYaml = yaml.loadAll(readFileSync("./resources/load_balancer/crds.yaml", "utf8")) as Record<string, any>[];
-        const loadBalancerCRDManifest = new eks.KubernetesManifest(this, "loadBalancerCRD", {
-            cluster: cluster,
-            manifest: loadBalancerCRDYaml
-        });
-
-
         const awsLoadBalancerManifest = new eks.HelmChart(this, "AWSLoadBalancerController", {
             cluster: cluster,
             chart: "aws-load-balancer-controller",
@@ -596,7 +589,6 @@ export class Services extends Stack {
                 wait: true
             }
         });
-        awsLoadBalancerManifest.node.addDependency(loadBalancerCRDManifest);
         awsLoadBalancerManifest.node.addDependency(loadBalancerServiceAccount);
         awsLoadBalancerManifest.node.addDependency(waitForLBServiceAccount);
 
