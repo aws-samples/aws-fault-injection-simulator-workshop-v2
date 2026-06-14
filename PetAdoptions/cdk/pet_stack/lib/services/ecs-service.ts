@@ -114,6 +114,9 @@ export abstract class EcsService extends Construct {
       logging,
       environment: { // clear text, not for sensitive data
         AWS_REGION: props.region,
+        // Service name for log enrichment / FIS fault attribution. AZ + instance
+        // are resolved at runtime from the ECS Task Metadata v4 endpoint.
+        SERVICE_NAME: props.logGroupName.split('/').pop() || 'petadoptions',
       }
     });
 

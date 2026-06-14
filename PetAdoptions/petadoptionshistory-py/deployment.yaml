@@ -48,6 +48,21 @@ spec:
         env:
         - name: AWS_XRAY_DAEMON_ADDRESS
           value: xray-service.default:2000
+        - name: SERVICE_NAME
+          value: petadoptionshistory
+        # Location context for log enrichment (FIS fault attribution).
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: AWS_REGION
           value: "{{AWS_REGION}}"
         - name: OTEL_OTLP_ENDPOINT

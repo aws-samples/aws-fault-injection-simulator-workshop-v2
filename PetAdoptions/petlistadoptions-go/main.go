@@ -70,6 +70,9 @@ func main() {
 	var logger log.Logger
 	logger = log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+	// Enrich every log line with service / AZ / instance so failures can be
+	// attributed to a specific location during FIS experiments.
+	logger = log.With(logger, petlistadoptions.LoadRuntimeContext().LogKeyvals()...)
 
 
 	var cfg Config

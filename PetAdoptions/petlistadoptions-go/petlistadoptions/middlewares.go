@@ -59,6 +59,7 @@ func (mw *middleware) ListAdoptions(ctx context.Context) (ax []Adoption, err err
 			"xrayTraceId", getXrayTraceID(span),
 			"resultCount", len(ax),
 			"took", time.Since(begin),
+			"latency_ms", time.Since(begin).Milliseconds(),
 			"err", err)
 		if err2 != nil {
 			fmt.Println("log error", err2)

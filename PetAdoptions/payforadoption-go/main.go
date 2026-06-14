@@ -42,6 +42,9 @@ func main() {
 		logger = log.NewJSONLogger(os.Stderr)
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 		logger = log.With(logger, "caller", log.DefaultCaller)
+		// Enrich every log line with service / AZ / instance so failures can be
+		// attributed to a specific location during FIS experiments.
+		logger = log.With(logger, payforadoption.LoadRuntimeContext().LogKeyvals()...)
 	}
 
 	var cfg payforadoption.Config

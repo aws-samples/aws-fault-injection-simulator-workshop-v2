@@ -46,6 +46,14 @@ namespace PetSite
                             configureSource.ReloadAfter = TimeSpan.FromMinutes(5);
                         });
                 })
+                .ConfigureLogging(logging =>
+                {
+                    // Emit structured JSON logs so PetSite request/error lines are
+                    // queryable in CloudWatch Logs Insights and carry the
+                    // service/az/instance/latency context added in Startup.
+                    logging.ClearProviders();
+                    logging.AddJsonConsole();
+                })
                 .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
     }
 }

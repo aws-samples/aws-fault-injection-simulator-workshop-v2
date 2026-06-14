@@ -58,6 +58,21 @@ spec:
         env:
         - name: AWS_XRAY_DAEMON_ADDRESS
           value: xray-service.default:2000
+        - name: SERVICE_NAME
+          value: petsite
+        # Location context for log enrichment (FIS fault attribution).
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
 ---
 apiVersion: elbv2.k8s.aws/v1beta1
 kind: TargetGroupBinding

@@ -1,5 +1,7 @@
 package ca.petsearch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import jakarta.servlet.*;
@@ -8,6 +10,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public class ApplicationFilter implements Filter {
+
+    private static final Logger logger = LoggerFactory.getLogger(ApplicationFilter.class);
 
     private final MetricEmitter metricEmitter;
 
@@ -29,11 +33,16 @@ public class ApplicationFilter implements Filter {
         responseWrapper.copyBodyToResponse();
 
         String statusCode = String.valueOf(((HttpServletResponse)response).getStatus());
+        String path = ((HttpServletRequest)request).getServletPath();
+        long latencyMs = System.currentTimeMillis() - requestStartTime;
 
-        metricEmitter.emitReturnTimeMetric(
-                System.currentTimeMillis() - requestStartTime, ((HttpServletRequest)request).getServletPath(), statusCode);
+        metricEmitter.emitReturnTimeMetric(latencyMs, path, statusCode);
 
+        metricEmitter.emitBytesSentMetric(loadSize, path, statusCode);
 
-        metricEmitter.emitBytesSentMetric(loadSize, ((HttpServletRequest)request).getServletPath(), statusCode);
+        // Per-request structured log line. The service/az/instance context is
+        // attached to every log line via MDC (see RuntimeContext), so this also
+        // makes request latency queryable during FIS latency experiments.
+        logger.info("request path={} status={} latency_ms={} bytes={}", path, statusCode, latencyMs, loadSize);
     }
 }
