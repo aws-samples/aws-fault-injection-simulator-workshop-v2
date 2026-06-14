@@ -226,7 +226,7 @@ export abstract class EcsEc2Service extends Construct {
 
   private addXRayContainer(taskDefinition: ecs.Ec2TaskDefinition, logging: ecs.AwsLogDriver, region: string) {
     taskDefinition.addContainer('xraydaemon', {
-      image: ecs.ContainerImage.fromRegistry('public.ecr.aws/xray/aws-xray-daemon:3.3.4'),
+      image: ecs.ContainerImage.fromRegistry('public.ecr.aws/xray/aws-xray-daemon:3.3.12'),
       memoryLimitMiB: 256,
       cpu: 256,
       logging,
@@ -241,7 +241,7 @@ export abstract class EcsEc2Service extends Construct {
 
   private addOtelCollectorContainer(taskDefinition: ecs.Ec2TaskDefinition, logging: ecs.AwsLogDriver, region: string) {
     const otelCollector = taskDefinition.addContainer('aws-otel-collector', {
-        image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/aws-otel-collector:v0.28.0'),
+        image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/aws-otel-collector:v0.41.1'),
         memoryLimitMiB: 256,
         cpu: 256,
         command: ["--config", "/etc/ecs/ecs-xray.yaml"],

@@ -101,7 +101,7 @@ spec:
     spec:
       containers:
         - name: cloudwatch-agent
-          image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:1.300028.1b210
+          image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:1.300054.1b1064
           #ports:
           #  - containerPort: 8125
           #    hostPort: 8125
@@ -136,12 +136,7 @@ spec:
             - name: rootfs
               mountPath: /rootfs
               readOnly: true
-            - name: dockersock
-              mountPath: /var/run/docker.sock
-              readOnly: true
-            - name: varlibdocker
-              mountPath: /var/lib/docker
-              readOnly: true
+            # Docker socket/lib mounts removed: EKS 1.24+ uses containerd only.
             - name: containerdsock
               mountPath: /run/containerd/containerd.sock
               readOnly: true
@@ -160,12 +155,6 @@ spec:
         - name: rootfs
           hostPath:
             path: /
-        - name: dockersock
-          hostPath:
-            path: /var/run/docker.sock
-        - name: varlibdocker
-          hostPath:
-            path: /var/lib/docker
         - name: containerdsock
           hostPath:
             path: /run/containerd/containerd.sock
@@ -464,7 +453,7 @@ spec:
     spec:
       containers:
       - name: fluent-bit
-        image: public.ecr.aws/aws-observability/aws-for-fluent-bit:stable
+        image: public.ecr.aws/aws-observability/aws-for-fluent-bit:2.32.5
         imagePullPolicy: Always
         env:
             - name: AWS_REGION

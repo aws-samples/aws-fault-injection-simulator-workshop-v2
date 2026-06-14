@@ -67,7 +67,7 @@ spec:
           initialDelaySeconds: 3
           periodSeconds: 3
       - name: aws-otel-collector
-        image: amazon/aws-otel-collector:latest
+        image: public.ecr.aws/aws-observability/aws-otel-collector:v0.41.1
         args: ["--config=/etc/otel-config/otel-config.yaml"]
         env:
         - name: AWS_REGION

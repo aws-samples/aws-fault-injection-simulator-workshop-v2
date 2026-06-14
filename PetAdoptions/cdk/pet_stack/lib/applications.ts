@@ -42,6 +42,9 @@ export class Applications extends Stack {
             cluster,
             chart: 'metrics-server',
             repository: 'https://kubernetes-sigs.github.io/metrics-server/',
+            // Pin the chart version so a deploy can't silently pull a newer,
+            // potentially breaking, release.
+            version: '3.13.1',
             namespace: 'kube-system',
         });
 

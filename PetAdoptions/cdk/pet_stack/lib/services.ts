@@ -22,7 +22,6 @@ import { PetAdoptionsStepFn } from './services/stepfn'
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
 import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
-import 'ts-replace-all'
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
@@ -219,7 +218,7 @@ export class Services extends Stack {
         ecsEc2PetSearchRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
 
         const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
-            machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+            machineImage: ecs.EcsOptimizedImage.amazonLinux2023(),
             instanceType: new ec2.InstanceType('m5.xlarge'),
             userData: ec2.UserData.forLinux(),
             role: ecsEc2PetSearchRole,
@@ -411,15 +410,11 @@ export class Services extends Stack {
         clusterSG.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(443), 'Allow local access to k8s api');
 
 
-        // From https://github.com/aws-samples/ssm-agent-daemonset-installer
-        var ssmAgentSetup = yaml.loadAll(readFileSync("./resources/setup-ssm-agent.yaml", "utf8")) as Record<string, any>[];
-
-        const ssmAgentSetupManifest = new eks.KubernetesManifest(this, "ssmAgentdeployment", {
-            cluster: cluster,
-            manifest: ssmAgentSetup
-        });
-
-
+        // NOTE: The ssm-agent-installer DaemonSet was removed. The EKS managed
+        // nodegroup runs Amazon Linux 2023, which ships the SSM Agent
+        // pre-installed, so the installer (which used a personal DockerHub image
+        // and a yum-based script that does not work on AL2023) is no longer
+        // needed.
 
         // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
         const clusterId = Fn.select(4, Fn.split('/', cluster.clusterOpenIdConnectIssuerUrl)) // Remove https:// from the URL as workaround to get ClusterID
@@ -567,6 +562,9 @@ export class Services extends Stack {
             cluster: cluster,
             chart: "aws-load-balancer-controller",
             repository: "https://aws.github.io/eks-charts",
+            // Pin the chart version so a deploy can't silently pick up a newer,
+            // potentially breaking, controller release. 1.17.x supports EKS 1.36.
+            version: "1.17.1",
             namespace: "kube-system",
             values: {
                 clusterName: "PetSite",
@@ -666,7 +664,7 @@ export class Services extends Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
             handler: 'petsite-application-resource-controler.lambda_handler',
             memorySize: 128,
-            runtime: lambda.Runtime.PYTHON_3_11,
+            runtime: lambda.Runtime.PYTHON_3_12,
             role: customWidgetLambdaRole,
             timeout: Duration.minutes(10)
         });
@@ -682,7 +680,7 @@ export class Services extends Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
             handler: 'cloudwatch-custom-widget.lambda_handler',
             memorySize: 128,
-            runtime: lambda.Runtime.PYTHON_3_11,
+            runtime: lambda.Runtime.PYTHON_3_12,
             role: customWidgetLambdaRole,
             timeout: Duration.seconds(60)
         });

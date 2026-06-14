@@ -20,21 +20,11 @@ metadata:
   name: xray-daemon
   namespace: default
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: xray-daemon
-  labels:
-    app: xray-daemon
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-- kind: ServiceAccount
-  name: xray-daemon
-  namespace: default
----
+# NOTE: The X-Ray daemon sends trace segments to the AWS X-Ray API using the
+# IAM permissions granted by its IRSA role (see the role-arn annotation above).
+# It never calls the Kubernetes API, so it requires no RBAC. The previous
+# cluster-admin ClusterRoleBinding was removed to eliminate a severe
+# privilege-escalation path if the pod were compromised.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -58,7 +48,7 @@ spec:
       hostNetwork: true
       containers:
       - name: xray-daemon
-        image: public.ecr.aws/xray/aws-xray-daemon:3.3.3
+        image: public.ecr.aws/xray/aws-xray-daemon:3.3.12
         imagePullPolicy: Always
         command:
         - "/xray"

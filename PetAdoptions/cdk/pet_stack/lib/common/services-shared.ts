@@ -170,7 +170,7 @@ export function createRDSCluster(props: CreateRDSClusterProps): RDSClusterResult
     const rdsUsername = props.rdsUsername || "petadmin";
     const auroraCluster = new rds.DatabaseCluster(props.scope, 'Database', {
         credentials: { username: rdsUsername },
-        engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_9 }),
+        engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_15_10 }),
         writer: rds.ClusterInstance.provisioned('writer', {
             instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
         }),
@@ -179,7 +179,7 @@ export function createRDSCluster(props: CreateRDSClusterProps): RDSClusterResult
                 instanceType: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
             }),
         ],
-        parameterGroup: rds.ParameterGroup.fromParameterGroupName(props.scope, 'ParameterGroup', 'default.aurora-postgresql13'),
+        parameterGroup: rds.ParameterGroup.fromParameterGroupName(props.scope, 'ParameterGroup', 'default.aurora-postgresql15'),
         vpc: props.vpc,
         securityGroups: [rdssecuritygroup],
         defaultDatabaseName: 'adoptions'
