@@ -35,11 +35,7 @@ export class PetAdoptionsHistory extends EksApplication {
             "ssm:GetParametersByPath",
             "ssm:GetParameters",
             "ssm:GetParameter",
-            "ec2:DescribeVpcs",
-            // Allows the ADOT collector's OpenTelemetry EKS/EC2 resource detector to
-            // resolve cloud.availability_zone + host.id via the EC2 API fallback,
-            // since pod IMDS is blocked (node hop limit 1 + IRSA). Read-only.
-            "ec2:DescribeInstances"
+            "ec2:DescribeVpcs"
         ],
         resources: ['*']
     });

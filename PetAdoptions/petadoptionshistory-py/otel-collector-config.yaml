@@ -45,15 +45,6 @@ data:
     processors:
       batch/metrics:
         timeout: 60s
-      # Auto-detect cloud/host context (cloud.availability_zone, host.id=instance id,
-      # host.type, cloud.region) and attach it to traces + metrics as resource
-      # attributes, so FIS fault blast radius is attributable by AZ/instance.
-      # The eks detector reads IMDS first and falls back to the K8s + EC2 APIs,
-      # so it works even when pod IMDS access is blocked (hop limit 1 + IRSA).
-      resourcedetection:
-        detectors: [eks, ec2, env]
-        timeout: 5s
-        override: false
 
     exporters:
       debug:
@@ -120,9 +111,8 @@ data:
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [resourcedetection]
           exporters: [awsxray]
         metrics:
           receivers: [prometheus]
-          processors: [resourcedetection, batch/metrics]
+          processors: [batch/metrics]
           exporters: [awsemf]
