@@ -20,8 +20,13 @@ ext {
 
 dependencies {
 
-    implementation 'ch.qos.logback.contrib:logback-jackson:0.1.5'
-    implementation 'ch.qos.logback.contrib:logback-json-classic:0.1.5'
+    // Structured JSON logging: logstash-logback-encoder writes each
+    // StructuredArguments.kv(...) pair as a top-level JSON field (so az /
+    // instance / latency_ms / status are visible to CloudWatch Contributor
+    // Insights), and surfaces MDC (OTel trace_id/span_id) as top-level fields.
+    // Replaces logback-contrib JsonLayout, which trapped everything inside the
+    // fixed "message" key.
+    implementation 'net.logstash.logback:logstash-logback-encoder:8.0'
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
 

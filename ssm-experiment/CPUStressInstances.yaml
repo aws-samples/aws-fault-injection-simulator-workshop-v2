@@ -18,6 +18,10 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base
     Description: 'SSM Parameter for Windows 2019 AMI.'
+  LinuxImageId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: 'SSM Parameter for the latest Amazon Linux 2023 x86_64 AMI.'
   InstanceType:
     AllowedValues:
       - t3.nano
@@ -73,6 +77,12 @@ Resources:
   FISRole:
     Type: AWS::IAM::Role
     Properties:
+      # Explicit name so the lab guides can tell participants to select
+      # "FisCpuStress-FISRole" in the FIS execution-role dropdown. Without this,
+      # CloudFormation generates a random suffix (FisCpuStress-FISRole-XXXX) that
+      # would not match the name printed in the 020 and 040 lab pages. Requires
+      # CAPABILITY_NAMED_IAM (setup-ssm-experiment.sh already passes it).
+      RoleName: FisCpuStress-FISRole
       Policies:
         - PolicyDocument:
             Version: '2012-10-17'
@@ -92,6 +102,18 @@ Resources:
                 Action:
                   - ssm:ListCommands
                   - ssm:ListDocuments
+                  # Required so FIS can poll the SSM command status (without
+                  # GetCommandInvocation the aws:ssm:send-command action reports
+                  # "Not enough privileges") and cancel the command for rollback
+                  # when a stop condition halts the experiment.
+                  - ssm:GetCommandInvocation
+                  - ssm:CancelCommand
+                Resource: '*'
+              # Required for CloudWatch alarm stop conditions: FIS must be able to
+              # read the alarm state to decide whether to halt a running experiment.
+              - Effect: Allow
+                Action:
+                  - cloudwatch:DescribeAlarms
                 Resource: '*'
               - Effect: Allow
                 Action: ssm:SendCommand
@@ -109,46 +131,102 @@ Resources:
               - "fis.amazonaws.com"
             Action: sts:AssumeRole
 
-#  FISExperimentCPUStress:
-#    Type: AWS::FIS::ExperimentTemplate
-#    Properties:
-#      Description: Workshop for injecting CPU stress via SSM
-#      RoleArn:
-#        Fn::GetAtt:
-#          - FISRole
-#          - Arn
-#      StopConditions:
-#        - Source: none
-#      Tags:
-#        Name: BurnCPUViaSSM
-#      Targets:
-#        instanceTargets:
-#          ResourceArns:
-#            - Fn::Join:
-#                - ""
-#                - - "arn:aws:ec2:"
-#                  - Ref: AWS::Region
-#                  - ":"
-#                  - Ref: AWS::AccountId
-#                  - :instance/
-#                  - Ref: EC2Instance
-#          ResourceType: aws:ec2:instance
-#          SelectionMode: ALL
-#      Actions:
-#        instanceActions:
-#          ActionId: aws:ssm:send-command
-#          Description: burn cpu vis SSM
-#          Parameters:
-#            documentArn:
-#              Fn::Join:
-#                - ""
-#                - - "arn:aws:ssm:"
-#                  - Ref: AWS::Region
-#                  - ::document/AWSFIS-Run-CPU-Stress
-#            documentParameters: '{"DurationSeconds":"120"}'
-#            duration: PT2M
-#          Targets:
-#            Instances: instanceTargets
+  # ----------------------------------------------------------------------------
+  # Stop-condition teaching example
+  #
+  # The resources below back the "Stop conditions" lab page (040_stop_condition).
+  # They are pre-deployed so a participant only has to SELECT and START the
+  # experiment, then watch the CloudWatch alarm automatically halt it.
+  #
+  #   LinuxInstance          -> dedicated, isolated CPU-stress target (AL2023)
+  #   CPUStressAlarm         -> alarms on the instance's native CPUUtilization
+  #   FISExperimentCPUStress -> the experiment whose StopCondition IS that alarm
+  #
+  # Experiment logs go to the shared "FISExperiments" CloudWatch log group that
+  # the workshop already provisions; we reference it by ARN (see LogConfiguration
+  # below) instead of creating a new log group, to avoid a name collision.
+  #
+  # We use a dedicated Linux instance + the AWS-managed AWSFIS-Run-CPU-Stress
+  # document (stress-ng) so no custom SSM document is needed and the breach is
+  # driven by the native AWS/EC2 CPUUtilization metric (detailed monitoring on).
+  # ----------------------------------------------------------------------------
+  LinuxInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref 'LinuxImageId'
+      IamInstanceProfile: !Ref 'SSMInstanceProfile'
+      InstanceType: !Ref 'InstanceType'
+      Monitoring: true
+      SubnetId: !If [UseDefaultVpc, !Ref "AWS::NoValue", !Ref SubnetId]
+      Tags:
+        - Key: Name
+          Value: 'FisLinuxCPUStress'
+
+  # The safeguard: an alarm on the stress instance's native CPUUtilization.
+  # Stress drives CPU to ~100%, so a single 60s datapoint >= 50% trips it.
+  # This is a plain (single-metric) alarm - FIS stop conditions cannot use
+  # math/SEARCH() expression alarms.
+  CPUStressAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: FisCpuStress-CPUHigh
+      AlarmDescription: >-
+        Stop-condition alarm for the FIS CPU stress teaching example. Fires when
+        the dedicated stress instance sustains high CPU, causing FIS to halt the
+        experiment automatically.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref LinuxInstance
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 50
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  # The experiment. Its StopConditions source is the alarm ARN, so when the
+  # alarm transitions to ALARM, FIS stops this experiment. The action duration
+  # (PT10M) is deliberately MUCH longer than the time it takes the alarm to
+  # fire, so the stop condition pre-empts normal completion - that is the whole
+  # point of the demo.
+  FISExperimentCPUStress:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: CPU stress on a dedicated Linux instance, halted by a CloudWatch alarm stop condition
+      RoleArn: !GetAtt FISRole.Arn
+      StopConditions:
+        - Source: aws:cloudwatch:alarm
+          Value: !GetAtt CPUStressAlarm.Arn
+      # Reuse the shared "FISExperiments" CloudWatch log group that the workshop
+      # already provisions (referenced as a log destination by the 020 Linux
+      # stress lab). We point at it by ARN rather than creating a new log group,
+      # to avoid a name collision with the existing one.
+      LogConfiguration:
+        LogSchemaVersion: 2
+        CloudWatchLogsConfiguration:
+          LogGroupArn: !Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:FISExperiments:*
+      Tags:
+        Name: StopConditionBurnCPUViaSSM
+      Targets:
+        instanceTargets:
+          ResourceArns:
+            - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${LinuxInstance}
+          ResourceType: aws:ec2:instance
+          SelectionMode: ALL
+      Actions:
+        instanceActions:
+          ActionId: aws:ssm:send-command
+          Description: Inject CPU stress via the AWS-managed AWSFIS-Run-CPU-Stress SSM document
+          Parameters:
+            documentArn: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWSFIS-Run-CPU-Stress
+            documentParameters: '{"DurationSeconds":"600","InstallDependencies":"True"}'
+            duration: PT10M
+          Targets:
+            Instances: instanceTargets
+
   WinStressDocument:
     Type: AWS::SSM::Document
     Properties:
@@ -221,3 +299,12 @@ Outputs:
     Value: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${WinStressDocument}
   WindowsInstanceId:
     Value: !Ref WindowsInstance
+  LinuxInstanceId:
+    Description: Instance ID of the dedicated Linux CPU-stress target for the stop-condition example
+    Value: !Ref LinuxInstance
+  CPUStressAlarmArn:
+    Description: ARN of the CloudWatch alarm used as the FIS experiment stop condition
+    Value: !GetAtt CPUStressAlarm.Arn
+  FISExperimentCPUStressId:
+    Description: ID of the pre-wired FIS experiment template with the CloudWatch alarm stop condition
+    Value: !Ref FISExperimentCPUStress

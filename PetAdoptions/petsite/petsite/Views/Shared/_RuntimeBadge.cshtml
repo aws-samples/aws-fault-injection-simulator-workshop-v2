@@ -2,28 +2,27 @@
 @using System.Diagnostics
 @*
     "Served by" footer bar. Shows which service / Availability Zone / node /
-    instance rendered this page and how long it took, as a row of labeled chips.
-    During FIS experiments (AZ power interruption, instance termination, injected
-    latency) participants can watch the node/instance change or the latency chip
-    turn amber/red in the page itself, instead of leaving for CloudWatch.
+    instance rendered this page, as a single row of labeled chips. During FIS
+    experiments (AZ power interruption, instance termination) participants can
+    watch the AZ / node / instance change in the page itself; per-request latency
+    lives on the CloudWatch Latency-by-AZ dashboard. The whole bar still tints
+    amber/red with render time as a subtle in-page signal.
 
-    Values come from RuntimeContext (env + ECS task metadata) and the per-request
-    stopwatch stashed in HttpContext.Items by the request middleware. On EKS the
-    AZ is not exposed to the pod (node IMDS hop limit), so when AZ is unknown we
-    simply omit the AZ chip and lead with the node — which maps 1:1 to an AZ.
+    Values come from RuntimeContext (env + ECS task metadata; on EKS the AZ is
+    resolved from the node's topology.kubernetes.io/zone label). When AZ is
+    unknown the chip is omitted and the node leads — node maps 1:1 to an AZ.
 *@
 @{
     var sw = Context.Items["RequestStopwatch"] as Stopwatch;
     long latencyMs = sw?.ElapsedMilliseconds ?? -1;
-    // Latency thresholds for the health dot (ms). Normal PetSite renders are
-    // tens of ms; injected network latency pushes this well past 250ms.
+    // Latency thresholds for the bar tint (ms). Normal PetSite renders are tens
+    // of ms; injected network latency pushes this well past 250ms.
     string state = latencyMs < 0 ? "unknown" : latencyMs < 250 ? "ok" : latencyMs < 750 ? "warn" : "crit";
 
     var service = string.IsNullOrEmpty(RuntimeContext.Service) ? "petsite" : RuntimeContext.Service;
     var az = RuntimeContext.AvailabilityZone;
     var node = RuntimeContext.Node;
     var instance = RuntimeContext.Instance;
-    var latencyText = latencyMs < 0 ? "–" : $"{latencyMs} ms";
 }
 
 <div class="pet-runtime pet-runtime-@state" role="status" aria-live="polite">
@@ -62,9 +61,4 @@
             <span class="pet-runtime-val">@instance</span>
         </span>
     }
-
-    <span class="pet-runtime-chip pet-runtime-latency-chip" title="Server-side render time for this request — watch it rise during a latency experiment">
-        <span class="pet-runtime-dot" aria-hidden="true"></span>
-        <span class="pet-runtime-val">@latencyText</span>
-    </span>
 </div>

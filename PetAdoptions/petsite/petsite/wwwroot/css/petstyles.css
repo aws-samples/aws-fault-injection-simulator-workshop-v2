@@ -9,13 +9,15 @@
        the technical IDs in the telemetry bar.) */
     --pet-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-    --pet-black: #000000;
-    --pet-green: #137e44;          /* filter bar */
-    --pet-green-bar: rgba(19, 126, 68, 0.67);
-    --pet-teal: #2d7f83;           /* primary button */
-    --pet-teal-hover: #0fa828;
-    --pet-yellow: rgb(228, 239, 68);
-    --pet-link: #7abaff;
+    /* Cohesive palette aligned to the banner's teal->green gradient:
+       teal = structure (bars, buttons), green = brand/accent, yellow = highlight.
+       (Replaces the earlier mix of olive green, off-teal and stray blues.) */
+    --pet-black: #0b0b0b;
+    --pet-green: #2fbf71;          /* brand / accent green (matches hero + header) */
+    --pet-green-dark: #1f9d5b;     /* deeper green for depth/borders */
+    --pet-teal: #2d7f83;           /* primary structural teal (buttons, filter bar) */
+    --pet-teal-dark: #21646a;      /* teal hover / darker shade */
+    --pet-yellow: #ffd23f;         /* highlight (hero 'Save a Life!', filter labels) */
     --pet-star: #f5a623;           /* accessible amber star (was pure red) */
     --pet-radius: .5rem;
 
@@ -34,10 +36,11 @@ body {
     background-image: url("../images/main_banner.png");
     background-size: cover;
     background-position: center;
-    min-height: 135px;
+    min-height: 150px;
     width: 100%;
     display: flex;
     align-items: center;
+    padding-bottom: 1.5rem;        /* room for the overlapping filter card */
 }
 
 /* Hero headline (replaces main_banner_text.png with styled text, matching the
@@ -89,6 +92,43 @@ body {
     text-align: center;
 }
 
+/* Previous / Next pagination for the home pet grid. */
+.pet-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin: 1.5rem 0 2.5rem;
+    flex-wrap: wrap;
+}
+.pet-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background-color: var(--pet-teal);
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: .95rem;
+    padding: .5rem 1.1rem;
+    border-radius: 999px;
+    transition: background-color .2s ease;
+}
+.pet-page-btn:hover,
+.pet-page-btn:focus {
+    background-color: var(--pet-teal-dark);
+    color: #ffffff;
+    text-decoration: none;
+}
+.pet-page-btn.is-disabled {
+    opacity: .4;
+    pointer-events: none;
+}
+.pet-page-status {
+    color: #5b6470;
+    font-size: .9rem;
+}
+
 /* Card chrome for each pet (used by _PetItem / _AdoptionItem). */
 .pet-card {
     display: block;
@@ -114,6 +154,50 @@ body {
     margin: 0px;
     background-color: var(--pet-black);
     padding: .5rem 0;
+}
+
+/* Header layout: brand on the left, nav links on the right. */
+.pet-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+.pet-nav-links {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+/* Nav links styled as subtle outlined pills (was plain underlined blue text). */
+.pet-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    color: #e6e9ee;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: .95rem;
+    padding: .4rem .9rem;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 999px;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.pet-nav-link:hover,
+.pet-nav-link:focus {
+    color: #ffffff;
+    text-decoration: none;
+    background-color: var(--pet-teal);
+    border-color: var(--pet-teal);
+}
+.pet-nav-link .bi { color: #2fbf71; font-size: 1rem; }
+.pet-nav-link:hover .bi,
+.pet-nav-link:focus .bi { color: #ffffff; }
+
+@media screen and (max-width: 575px) {
+    .pet-nav { justify-content: center; }
+    .pet-nav-link { font-size: .85rem; padding: .35rem .7rem; }
 }
 
 /* Text brand (replaces the baked-in "Observability PET ADOPTIONS" brand.png). */
@@ -146,30 +230,48 @@ body {
     padding-bottom: 3rem;
 }
 
+/* Filters live on a light card that overlaps the bottom of the hero, so they
+   read as a distinct "controls" zone rather than a second teal band. */
 .pet-filters {
-    background-color: var(--pet-green-bar);
-    height: 65px;
+    background: transparent;
+    margin-top: -1.75rem;          /* pull the card up to overlap the hero */
+    margin-bottom: 1rem;
+    position: relative;
+    z-index: 2;
+}
+.pet-filters .container {
+    background: #ffffff;
+    border: 1px solid #e6e6e6;
+    border-radius: var(--pet-radius);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
+    padding: 1rem 1.25rem;
+}
+.pet-filters form {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .pet-filter {
     border-radius: var(--pet-radius);
     -webkit-appearance: none;
-    background-color: transparent;
-    border-color: #033c40;
-    color: #FFFFFF;
+    background-color: #f6f7f9;
+    border: 1px solid #cdd3da;
+    color: #1f2530;
     cursor: pointer;
-    margin-right: 1rem;
-    margin-top: .5rem;
-    min-width: 140px;
-    outline-color: #033c40;
-    padding-bottom: 0;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-    padding-top: 1.5rem;
+    min-width: 150px;
+    outline-color: var(--pet-green);
+    padding: 1.4rem 0.6rem .4rem 0.6rem;
+}
+.pet-filter:focus {
+    border-color: var(--pet-green);
+    box-shadow: 0 0 0 2px rgba(47, 191, 113, .25);
 }
 
 .pet-filter option {
-    background-color: #5096e7;
+    background-color: #ffffff;
+    color: #1f2530;
 }
 
 .pet-label {
@@ -178,43 +280,61 @@ body {
     z-index: 0;
 }
 .pet-label::before {
-    color: var(--pet-yellow);
+    color: var(--pet-teal-dark);
     content: attr(data-title);
-    font-size: .8rem;
-    font-weight: bold;
-    margin-left: 0.5rem;
-    margin-top: 0.65rem;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    margin-left: 0.65rem;
+    margin-top: 0.5rem;
     position: absolute;
     text-transform: uppercase;
     z-index: 1;
 }
 .pet-label::after {
     background-image: url("../images/arrow-down.png");
+    background-repeat: no-repeat;
     content: '';
     height: 7px;
     position: absolute;
-    right: 1.5rem;
-    top: 2.5rem;
+    right: 1rem;
+    bottom: .9rem;
     width: 10px;
     z-index: 1;
+    pointer-events: none;
+    filter: brightness(0) saturate(100%);   /* dark arrow on the light field */
 }
 
-.pet-send {
-    background-color: #dc7406;
-    color: #efd912;
+/* Search submit button — styled as a green pill matching the brand accent
+   (was the raw default grey submit box). */
+#searchpets {
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: var(--pet-green);
+    color: #ffffff;
+    border: 0;
+    border-radius: 999px;
     cursor: pointer;
-    font-size: 1rem;
-    margin-top: -1.5rem;
-    transition: all 0.35s;
+    font-weight: 600;
+    font-size: .95rem;
+    padding: .55rem 1.6rem;
+    transition: background-color .2s ease;
 }
-.pet-send:hover {
-    background-color: #db7603;
-    transition: all 0.35s;
+#searchpets:hover,
+#searchpets:focus {
+    background-color: var(--pet-green-dark);
 }
 
 .pet-thumbnail {
-    max-width: 370px;
     width: 100%;
+    height: 220px;
+    /* Show the WHOLE pet in a uniform box: contain (not cover) scales the image
+       to fit without cropping, so cards stay the same size and no dog/cat gets
+       cut off. Letterbox space gets a neutral background so it looks intentional. */
+    object-fit: contain;
+    border-radius: var(--pet-radius);
+    display: block;
+    background: #f4f4f5;
 }
 
 .pet-button {
@@ -234,8 +354,7 @@ body {
     pointer-events: none;
 }
 .pet-button:hover {
-    font-size: 1.15rem;
-    background-color: var(--pet-teal-hover);
+    background-color: var(--pet-teal-dark);
     transition: all 0.35s;
 }
 

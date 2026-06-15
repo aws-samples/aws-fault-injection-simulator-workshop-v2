@@ -144,11 +144,13 @@ namespace PetSite.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string selectedPetType, string selectedPetColor, string petid, string pageSize)
+        public async Task<IActionResult> Index(string selectedPetType, string selectedPetColor, string petid, string pageSize, int page = 1)
         {
             // Default the home page to 10 pets (the full list is a long scroll);
-            // participants can switch to 25 / 50 / All via the filter bar.
+            // participants can switch to 25 / 50 / All via the filter bar and
+            // page through the results with Previous / Next.
             if (string.IsNullOrEmpty(pageSize)) pageSize = "10";
+            if (page < 1) page = 1;
             Console.WriteLine(
                 $"AWS_XRAY_DAEMON_ADDRESS:- {Environment.GetEnvironmentVariable("AWS_XRAY_DAEMON_ADDRESS")}");
                 
@@ -211,14 +213,27 @@ namespace PetSite.Controllers
             // the home-page display limit) so the metric is unaffected by paging.
             PetsWaitingForAdoption.Set(Pets.Where(pet => pet.availability == "yes").Count());
 
-            // Apply the home-page display limit (10 / 25 / 50 / all). Only trims
-            // how many cards are rendered; does not change search results.
+            // Apply the home-page display limit (10 / 25 / 50 / all) with paging.
+            // Only affects how many cards are rendered; does not change search
+            // results. Page metadata is passed to the view for Previous/Next.
             var displayedPets = Pets;
+            int totalPets = Pets.Count;
+            int totalPages = 1;
             if (!string.Equals(pageSize, "all", StringComparison.OrdinalIgnoreCase)
                 && int.TryParse(pageSize, out var take) && take > 0)
             {
-                displayedPets = Pets.Take(take).ToList();
+                totalPages = Math.Max(1, (int)Math.Ceiling(totalPets / (double)take));
+                if (page > totalPages) page = totalPages;
+                displayedPets = Pets.Skip((page - 1) * take).Take(take).ToList();
             }
+            else
+            {
+                page = 1; // "all" => single page
+            }
+
+            ViewData["CurrentPage"] = page;
+            ViewData["TotalPages"] = totalPages;
+            ViewData["TotalPets"] = totalPets;
 
             var PetDetails = new PetDetails()
             {

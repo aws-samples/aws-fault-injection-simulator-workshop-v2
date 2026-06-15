@@ -84,3 +84,33 @@ spec:
     port: 80
   targetGroupARN: "<arn-to-targetGroup>"
   targetType: ip
+---
+# Read-only access to node objects so the pod can resolve its own AZ from the
+# node's topology.kubernetes.io/zone label (IMDS is unreachable from EKS pods).
+# Scoped to get on nodes only. NOTE: applications.ts indexes the docs in this
+# file positionally ([0] SA, [2] Deployment, [3] TargetGroupBinding) — these two
+# docs are appended last so those indices are unaffected.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: petsite-node-reader
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: petsite-node-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: petsite-node-reader
+subjects:
+  - kind: ServiceAccount
+    name: petsite-sa
+    namespace: default

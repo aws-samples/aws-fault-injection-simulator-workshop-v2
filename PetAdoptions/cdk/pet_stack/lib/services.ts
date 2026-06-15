@@ -527,6 +527,22 @@ export class Services extends Stack {
             cluster.awsAuth.addMastersRole(cbRole);
         }
 
+        // FIS EKS pod actions (AZ: Application Slowdown — aws:eks:pod-network-latency)
+        // need a Kubernetes service account + RBAC, and the FIS experiment role mapped
+        // into the cluster as the bound K8s user. Provisioned here so the scenario runs
+        // with zero participant setup. The FIS role is created (by fixed name) by the
+        // az-app-slowdown setup script; we map it by its well-known ARN as the
+        // "fis-experiment" user that resources/fis-eks-rbac.yaml binds.
+        const fisExperimentRole = iam.Role.fromRoleArn(this, "FisExperimentRole",
+            "arn:aws:iam::" + stack.account + ":role/fis-az-app-slowdown-role", { mutable: false });
+        cluster.awsAuth.addRoleMapping(fisExperimentRole, { username: "fis-experiment", groups: [] });
+
+        const fisEksRbacYaml = yaml.loadAll(readFileSync("./resources/fis-eks-rbac.yaml", "utf8")) as Record<string, any>[];
+        const fisEksRbacManifest = new eks.KubernetesManifest(this, "fisEksRbac", {
+            cluster: cluster,
+            manifest: fisEksRbacYaml
+        });
+
         const dahshboardManifest = new eks.KubernetesManifest(this, "k8sdashboardrbac", {
             cluster: cluster,
             manifest: dashboardRoleYaml
@@ -609,10 +625,43 @@ export class Services extends Stack {
         fluentbitYaml[12].data["cluster.name"] = "PetSite";
         fluentbitYaml[12].data["logs.region"] = region;
 
+        // Drop the hand-rolled cloudwatch-agent METRICS resources (ServiceAccount,
+        // ClusterRole(+Binding), cwagentconfig ConfigMap, DaemonSet). Their pinned
+        // agent image was pruned from public ECR (ImagePullBackOff) and the only
+        // pullable replacement is an OTel-gen agent incompatible with this hand-
+        // rolled config. EKS metrics are now provided by the managed
+        // amazon-cloudwatch-observability add-on below. We KEEP the fluent-bit
+        // (logs) resources untouched — they feed /aws/containerinsights/PetSite/
+        // application, which the dashboards and Contributor Insights rules rely on.
+        const cwAgentMetricsResources = new Set([
+            'cloudwatch-agent',          // ServiceAccount + DaemonSet
+            'cloudwatch-agent-role',
+            'cloudwatch-agent-role-binding',
+            'cwagentconfig',
+        ]);
+        const fluentbitOnlyYaml = fluentbitYaml.filter((doc: any) =>
+            !(doc && cwAgentMetricsResources.has(doc?.metadata?.name)));
+
         const fluentbitManifest = new eks.KubernetesManifest(this, "cloudwatcheployment", {
             cluster: cluster,
-            manifest: fluentbitYaml
+            manifest: fluentbitOnlyYaml
         });
+
+        // Managed EKS add-on for Container Insights METRICS (pod/node CPU, memory,
+        // network, etc.). Metrics-only: containerLogs disabled so it does not
+        // create its own fluent-bit and collide with the logs pipeline above.
+        // Uses the existing CW service-account IRSA role for credentials.
+        const cwObservabilityAddon = new eks.CfnAddon(this, 'CloudWatchObservabilityAddon', {
+            addonName: 'amazon-cloudwatch-observability',
+            clusterName: cluster.clusterName,
+            serviceAccountRoleArn: cwserviceaccount.roleArn,
+            resolveConflicts: 'OVERWRITE',
+            configurationValues: JSON.stringify({
+                containerLogs: { enabled: false },
+                containerInsights: { enabled: true },
+            }),
+        });
+        cwObservabilityAddon.node.addDependency(fluentbitManifest);
 
         // CloudWatch agent for prometheus metrics
         var prometheusYaml = yaml.loadAll(readFileSync("./resources/prometheus-eks.yaml", "utf8")) as Record<string, any>[];

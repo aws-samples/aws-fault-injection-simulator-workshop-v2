@@ -65,6 +65,34 @@
                 </div>
             }
         </div>
+
+        var currentPage = (int)(ViewData["CurrentPage"] ?? 1);
+        var totalPages = (int)(ViewData["TotalPages"] ?? 1);
+        var totalPets = (int)(ViewData["TotalPets"] ?? 0);
+        if (totalPages > 1)
+        {
+            <nav class="pet-pagination" aria-label="Pet list pages">
+                <a class="pet-page-btn @(currentPage <= 1 ? "is-disabled" : "")"
+                   asp-action="Index"
+                   asp-route-selectedPetType="@Model.Varieties.SelectedPetType"
+                   asp-route-selectedPetColor="@Model.Varieties.SelectedPetColor"
+                   asp-route-pageSize="@Model.Varieties.SelectedPageSize"
+                   asp-route-page="@(currentPage - 1)"
+                   aria-disabled="@(currentPage <= 1 ? "true" : "false")">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i> Previous
+                </a>
+                <span class="pet-page-status">Page @currentPage of @totalPages &middot; @totalPets pets</span>
+                <a class="pet-page-btn @(currentPage >= totalPages ? "is-disabled" : "")"
+                   asp-action="Index"
+                   asp-route-selectedPetType="@Model.Varieties.SelectedPetType"
+                   asp-route-selectedPetColor="@Model.Varieties.SelectedPetColor"
+                   asp-route-pageSize="@Model.Varieties.SelectedPageSize"
+                   asp-route-page="@(currentPage + 1)"
+                   aria-disabled="@(currentPage >= totalPages ? "true" : "false")">
+                    Next <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                </a>
+            </nav>
+        }
     }
     else
     {

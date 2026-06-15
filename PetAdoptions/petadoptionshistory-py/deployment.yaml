@@ -172,3 +172,31 @@ subjects:
   - kind: ServiceAccount
     name: pethistory-sa
     namespace: default
+---
+# Read-only access to node objects so the pod can resolve its own AZ from the
+# node's topology.kubernetes.io/zone label (IMDS is unreachable from EKS pods).
+# Scoped to get/list on nodes only — no write, no other resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pethistory-node-reader
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pethistory-node-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pethistory-node-reader
+subjects:
+  - kind: ServiceAccount
+    name: pethistory-sa
+    namespace: default

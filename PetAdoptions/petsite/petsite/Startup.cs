@@ -40,7 +40,14 @@ namespace PetSite
             // Structured per-request log line carrying service / AZ / instance / node
             // and request latency, so FIS fault impact (AZ outage, instance kill,
             // injected latency) can be attributed and measured from PetSite's logs.
-            var reqLogger = loggerFactory.CreateLogger("PetSite.Request");
+            //
+            // The line is written as a raw flat JSON object via Console.WriteLine
+            // (rather than ILogger.LogInformation, whose JSON console formatter
+            // nests every field under a "State" object). The Container Insights
+            // Fluent Bit DaemonSet re-parses stdout JSON under "log_processed", so
+            // a flat object yields top-level fields ($.log_processed.latency_ms,
+            // $.log_processed.node, ...) matching the Python EKS services and
+            // letting one set of Contributor Insights rules key on them.
             app.Use(async (context, next) =>
             {
                 var sw = Stopwatch.StartNew();
@@ -49,20 +56,38 @@ namespace PetSite
                 // line below captures the final total). The badge makes
                 // FIS-injected latency visible in the page itself.
                 context.Items["RequestStopwatch"] = sw;
+                string errMsg = "";
                 try
                 {
                     await next();
+                }
+                catch (Exception ex)
+                {
+                    // Record the failure on the request line, then re-throw so the
+                    // rest of the pipeline (error pages) is unchanged.
+                    errMsg = ex.GetType().Name + ": " + ex.Message;
+                    throw;
                 }
                 finally
                 {
                     sw.Stop();
                     var traceId = Amazon.XRay.Recorder.Core.AWSXRayRecorder.Instance?.TraceContext?
                         .GetEntity()?.RootSegment?.TraceId ?? "";
-                    reqLogger.LogInformation(
-                        "request service={Service} az={AZ} instance={Instance} node={Node} method={Method} path={Path} status={Status} latency_ms={LatencyMs} traceId={TraceId}",
-                        RuntimeContext.Service, RuntimeContext.AvailabilityZone, RuntimeContext.Instance,
-                        RuntimeContext.Node, context.Request.Method, context.Request.Path.Value,
-                        context.Response?.StatusCode, sw.ElapsedMilliseconds, traceId);
+                    var line = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        @event = "request",
+                        service = RuntimeContext.Service,
+                        az = RuntimeContext.AvailabilityZone,   // "" on EKS; rank by node
+                        instance = RuntimeContext.Instance,
+                        node = RuntimeContext.Node,
+                        path = context.Request.Path.Value,
+                        status = context.Response?.StatusCode ?? 0,
+                        latency_ms = sw.ElapsedMilliseconds,
+                        bytes = context.Response?.ContentLength ?? 0,
+                        err = errMsg,
+                        trace_id = traceId
+                    });
+                    Console.WriteLine(line);
                 }
             });
 

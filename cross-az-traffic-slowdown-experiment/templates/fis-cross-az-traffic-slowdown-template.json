@@ -1,10 +1,10 @@
 {
-  "description": "Inject packet loss on cross-AZ traffic to simulate degraded inter-AZ network performance.",
+  "description": "Block cross-AZ connectivity from the subnets in a single AZ (aws:network:disrupt-connectivity, scope=availability-zone) to test the application's dependency on inter-AZ networking. Targets the app's existing AzImpairmentPower=Ready subnet tag.",
   "targets": {
     "Subnets": {
       "resourceType": "aws:ec2:subnet",
       "resourceTags": {
-        "CrossAzTrafficSlowdown": "Ready"
+        "AzImpairmentPower": "Ready"
       },
       "filters": [
         {

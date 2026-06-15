@@ -101,7 +101,14 @@ spec:
     spec:
       containers:
         - name: cloudwatch-agent
-          image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:1.300054.1b1064
+          # NOTE: this hand-rolled cloudwatch-agent (metrics) DaemonSet is no
+          # longer deployed — services.ts filters these cloudwatch-agent docs out
+          # and EKS metrics are provided by the managed amazon-cloudwatch-
+          # observability add-on instead (the old pinned image was pruned from
+          # public ECR and its replacement is incompatible with this config).
+          # Only the fluent-bit (logs) resources in this file are still applied.
+          # Image left as the last-known tag for reference only.
+          image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:1.300069.0b1529
           #ports:
           #  - containerPort: 8125
           #    hostPort: 8125

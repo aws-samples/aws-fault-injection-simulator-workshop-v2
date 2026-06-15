@@ -20,27 +20,20 @@
     <header class="pet-header">
 
         <div class="container">
-            <article class="row">
-
-                <section class="col-lg-7 col-md-6 col-xs-12 align-self-center">
-                    <a asp-controller="home" asp-action="index" class="pet-brand" aria-label="Resilient Pet Adoptions home">
-                        <i class="bi bi-heart-pulse pet-brand-icon" aria-hidden="true"></i>
-                        <span class="pet-brand-text">Resilient<span class="pet-brand-accent"> Pet Adoptions</span></span>
+            <nav class="pet-nav">
+                <a asp-controller="home" asp-action="index" class="pet-brand" aria-label="Resilient Pet Adoptions home">
+                    <i class="bi bi-heart-pulse pet-brand-icon" aria-hidden="true"></i>
+                    <span class="pet-brand-text">Resilient<span class="pet-brand-accent"> Pet Adoptions</span></span>
+                </a>
+                <div class="pet-nav-links">
+                    <a asp-controller="PetListAdoptions" asp-action="index" id="seeadoptionlist" class="pet-nav-link">
+                        <i class="bi bi-list-check" aria-hidden="true"></i> See Adoption List
                     </a>
-                </section>
-                <section class="col-md-2 align-self-center">
-                    <a asp-controller="PetListAdoptions" asp-action="index" id="seeadoptionlist" style="color: #7abaff">
-                        See Adoption List
+                    <a asp-controller="Home" asp-action="HouseKeeping" id="performhousekeeping" class="pet-nav-link">
+                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Perform Housekeeping
                     </a>
-                </section>
-
-                <section class="col-md-3 align-self-center">
-                    <a asp-controller="Home" asp-action="HouseKeeping" id="performhousekeeping" style="color: #7abaff">
-                        Perform Housekeeping
-                    </a>
-                </section>
-            </article>
-
+                </div>
+            </nav>
         </div>
     </header>
     @RenderBody()
