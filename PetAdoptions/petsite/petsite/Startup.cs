@@ -44,6 +44,11 @@ namespace PetSite
             app.Use(async (context, next) =>
             {
                 var sw = Stopwatch.StartNew();
+                // Expose the stopwatch to the view layer so the footer "served by"
+                // badge can read elapsed-so-far at render time (the request log
+                // line below captures the final total). The badge makes
+                // FIS-injected latency visible in the page itself.
+                context.Items["RequestStopwatch"] = sw;
                 try
                 {
                     await next();

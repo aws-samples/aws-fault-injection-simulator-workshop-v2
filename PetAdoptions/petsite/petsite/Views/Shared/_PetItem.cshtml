@@ -1,17 +1,8 @@
-﻿@using Microsoft.CodeAnalysis.CSharp.Syntax
-@model Pet;
+﻿@model Pet;
 
-    <form asp-controller="adoption" asp-action="takemehome" method="post">
-        <img class="pet-thumbnail" src="@Model.peturl" />
-        @if (Model.availability == "yes")
-        {
-            <input class="pet-button" type="submit" value="Take me home"/>
-        }
-        else
-        {
-            <span class="alert-danger">Not available</span>
-        }
-        
+    <form asp-controller="adoption" asp-action="takemehome" method="post" class="pet-card h-100">
+        <img class="pet-thumbnail" src="@Model.peturl" alt="@Model.pettype @Model.petcolor for adoption" />
+
         <div class="pet-name">
             <span>@Model.pettype-@Model.petcolor</span>
         </div>
@@ -19,9 +10,21 @@
             <span>@Model.price</span>
         </div>
 
-        @for (int i = 0; i < Int32.Parse(Model.cuteness_rate); i++)
+        <div class="pet-rating" role="img" aria-label="Cuteness rating @Model.cuteness_rate out of 5">
+            @for (int i = 0; i < 5; i++)
+            {
+                var filled = i < Int32.Parse(Model.cuteness_rate);
+                <i class="bi @(filled ? "bi-star-fill" : "bi-star") pet-star" aria-hidden="true"></i>
+            }
+        </div>
+
+        @if (Model.availability == "yes")
         {
-            <span style="color: red">☆</span>
+            <input class="pet-button" type="submit" value="Take me home"/>
+        }
+        else
+        {
+            <span class="badge bg-danger pet-unavailable">Not available</span>
         }
 
         <input type="hidden" asp-for="@Model.petcolor" name="petcolor" />
