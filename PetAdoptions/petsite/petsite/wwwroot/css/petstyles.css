@@ -4,6 +4,11 @@
    the old float/width grid hacks with a real responsive CSS grid. */
 
 :root {
+    /* One font for the whole site — the clean system-UI sans the header/hero
+       use — so everything reads consistently. (Monospace is reserved only for
+       the technical IDs in the telemetry bar.) */
+    --pet-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
     --pet-black: #000000;
     --pet-green: #137e44;          /* filter bar */
     --pet-green-bar: rgba(19, 126, 68, 0.67);
@@ -18,6 +23,11 @@
     --pet-ok: #2e7d32;
     --pet-warn: #ed9c28;
     --pet-crit: #c0392b;
+}
+
+/* Apply the single site font everywhere. */
+body {
+    font-family: var(--pet-font);
 }
 
 .pet-hero {
@@ -43,14 +53,14 @@
 }
 .pet-hero-line1,
 .pet-hero-line2 {
-    display: block;
+    display: inline;
     font-size: 2.5rem;
 }
 .pet-hero-line1 { color: #2fbf71; }       /* "Adopt a Pet," — green */
-.pet-hero-line2 { color: var(--pet-yellow); }  /* "Save a Life!" — yellow */
+.pet-hero-line2 { color: var(--pet-yellow); margin-left: .4rem; }  /* "Save a Life!" — yellow */
 
 @media screen and (max-width: 768px) {
-    .pet-hero-line1, .pet-hero-line2 { font-size: 1.8rem; }
+    .pet-hero-line1, .pet-hero-line2 { font-size: 1.6rem; }
 }
 
 .pet-items {
@@ -236,11 +246,10 @@
 
 .pet-name {
     font-size: 1rem;
-    font-stretch: condensed;
-    font-weight: 300;
+    font-weight: 500;
     margin-top: .5rem;
     text-align: center;
-    text-transform: lowercase;
+    text-transform: capitalize;
 }
 
 .pet-price {
