@@ -28,7 +28,7 @@
       "actionId": "aws:ssm:send-command",
       "parameters": {
         "documentArn": "arn:aws:ssm:us-east-1::document/AWSFIS-Run-Network-Latency",
-        "documentParameters": "{\"DurationSeconds\":\"600\",\"DelayMilliseconds\":\"200\",\"Interface\":\"eth0\",\"InstallDependencies\":\"True\"}",
+        "documentParameters": "{\"DurationSeconds\":\"600\",\"DelayMilliseconds\":\"200\",\"Interface\":\"ens5\",\"InstallDependencies\":\"True\"}",
         "duration": "PT12M"
       },
       "targets": {
