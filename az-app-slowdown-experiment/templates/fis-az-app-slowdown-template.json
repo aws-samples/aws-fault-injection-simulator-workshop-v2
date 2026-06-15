@@ -4,7 +4,7 @@
     "EC2-Instances": {
       "resourceType": "aws:ec2:instance",
       "resourceTags": {
-        "AzAppSlowdown": "Ready"
+        "AzImpairmentPower": "Ready"
       },
       "filters": [
         {

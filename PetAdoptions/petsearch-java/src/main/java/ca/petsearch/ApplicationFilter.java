@@ -40,9 +40,13 @@ public class ApplicationFilter implements Filter {
 
         metricEmitter.emitBytesSentMetric(loadSize, path, statusCode);
 
-        // Per-request structured log line. The service/az/instance context is
-        // attached to every log line via MDC (see RuntimeContext), so this also
-        // makes request latency queryable during FIS latency experiments.
-        logger.info("request path={} status={} latency_ms={} bytes={}", path, statusCode, latencyMs, loadSize);
+        // Per-request structured log line including service / AZ / instance so
+        // latency can be attributed and split by Availability Zone during FIS
+        // experiments (e.g. AZ latency slowdown). Context is included directly
+        // (not via MDC) because the OTel Java agent does not preserve start-time
+        // MDC values.
+        logger.info("request service={} az={} instance={} path={} status={} latency_ms={} bytes={}",
+                RuntimeContext.SERVICE, RuntimeContext.AVAILABILITY_ZONE, RuntimeContext.INSTANCE,
+                path, statusCode, latencyMs, loadSize);
     }
 }
