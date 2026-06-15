@@ -40,6 +40,9 @@ export class AZDashboard {
                 this.createALBUnhealthyHostsWidget(),
             ),
             new cloudwatch.Row(
+                this.createALBTargetResponseTimeByAZWidget(),
+            ),
+            new cloudwatch.Row(
                 this.createPetSearchLatencyWidget(),
                 this.createPetSiteLatencyWidget(),
                 this.createPetAdoptionLatencyWidget(),
@@ -169,6 +172,52 @@ export class AZDashboard {
                     label: `[${az}] ${this.parameters.loadBalancerArn}`
                 })
             )
+        });
+    }
+
+    // ALB TargetResponseTime split by Availability Zone. This is the clearest
+    // signal for an AZ-scoped slowdown (e.g. the az-app-slowdown FIS scenario):
+    // the ALB measures, per AZ, how long its targets take to respond — including
+    // the time their downstream calls (S3/DynamoDB/RDS) take. When egress latency
+    // is injected into one AZ, that AZ's line rises while the others stay flat,
+    // with no application instrumentation required. The lab guide tells
+    // participants to watch "ALB Target Response Time increasing for targets in
+    // the affected AZ" — this is that widget.
+    private createALBTargetResponseTimeByAZWidget(): cloudwatch.GraphWidget {
+        return new cloudwatch.GraphWidget({
+            title: 'ALB Target Response Time by AZ (watch one AZ diverge during an AZ slowdown)',
+            width: 24,
+            height: 6,
+            left: this.parameters.availabilityZones.flatMap(az => [
+                new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetResponseTime',
+                    dimensionsMap: {
+                        AvailabilityZone: az,
+                        LoadBalancer: this.parameters.loadBalancerArn
+                    },
+                    statistic: 'Average',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: `[${az}] avg`
+                }),
+                new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetResponseTime',
+                    dimensionsMap: {
+                        AvailabilityZone: az,
+                        LoadBalancer: this.parameters.loadBalancerArn
+                    },
+                    statistic: 'p90',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: `[${az}] p90`
+                })
+            ]),
+            view: cloudwatch.GraphWidgetView.TIME_SERIES,
+            period: Duration.seconds(60),
+            stacked: false,
+            leftYAxis: { min: 0, label: 'Seconds' }
         });
     }
 
