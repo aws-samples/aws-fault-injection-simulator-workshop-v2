@@ -82,7 +82,29 @@
 .pet-header {
     margin: 0px;
     background-color: var(--pet-black);
+    padding: .5rem 0;
 }
+
+/* Text brand (replaces the baked-in "Observability PET ADOPTIONS" brand.png). */
+.pet-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    text-decoration: none;
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+.pet-brand:hover { text-decoration: none; }
+.pet-brand-icon {
+    color: var(--pet-teal);
+    font-size: 1.6rem;
+}
+.pet-brand-text {
+    color: #2fbf71;                 /* "Resilient" — green, echoes the hero text */
+    font-size: 1.35rem;
+    line-height: 1.1;
+}
+.pet-brand-accent { color: #ffffff; }   /* "Pet Adoptions" — white */
 
 .pet-wrapper {
     display: flex;
