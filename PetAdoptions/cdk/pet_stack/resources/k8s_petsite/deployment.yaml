@@ -41,6 +41,18 @@ spec:
         app: petsite
     spec:
       serviceAccountName: petsite-sa
+      # Spread the 2 replicas one-per-AZ so a single-node/single-AZ fault (e.g. the
+      # 002compute/210ec2 disk-fill experiment) cannot evict both pods at once. Without
+      # this the scheduler may co-locate both replicas on one node, making the disk-fill
+      # "stays available" hypothesis false when that node is targeted. maxSkew 1 +
+      # DoNotSchedule guarantees one pod per zone across the 2-node (one-per-AZ) cluster.
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: petsite
       containers:
       - image: "{{ECR_IMAGE_URL}}"
         imagePullPolicy: Always

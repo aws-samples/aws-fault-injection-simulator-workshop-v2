@@ -537,6 +537,19 @@ export class Services extends Stack {
             "arn:aws:iam::" + stack.account + ":role/fis-az-app-slowdown-role", { mutable: false });
         cluster.awsAuth.addRoleMapping(fisExperimentRole, { username: "fis-experiment", groups: [] });
 
+        // The 003containers/310eks pod experiments (pod-cpu/memory/io/latency/delete) use
+        // a participant-created FIS service role named "eks-fis-role" as their service access
+        // role. It must be mapped into the cluster as the same bound K8s user "fis-experiment".
+        // Map it here (by its well-known ARN — the IAM role is created during the lab) so the
+        // mapping lives in CDK desired state and survives aws-auth reconciliation. This makes
+        // EKS pod experiments authorize out of the box: the guide's manual
+        // "eksctl create iamidentitymapping" step is now a redundant verify rather than the
+        // sole source of the row (which previously got dropped on any re-provision, causing
+        // AuthorizationFailure).
+        const eksFisRole = iam.Role.fromRoleArn(this, "EksFisRole",
+            "arn:aws:iam::" + stack.account + ":role/eks-fis-role", { mutable: false });
+        cluster.awsAuth.addRoleMapping(eksFisRole, { username: "fis-experiment", groups: [] });
+
         const fisEksRbacYaml = yaml.loadAll(readFileSync("./resources/fis-eks-rbac.yaml", "utf8")) as Record<string, any>[];
         const fisEksRbacManifest = new eks.KubernetesManifest(this, "fisEksRbac", {
             cluster: cluster,
