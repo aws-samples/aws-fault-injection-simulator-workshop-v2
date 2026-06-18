@@ -20,7 +20,7 @@ import { TrafficGeneratorService } from './services/traffic-generator-service'
 import { StatusUpdaterService } from './services/status-updater-service'
 import { PetAdoptionsStepFn } from './services/stepfn'
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
-import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
+import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput, Tags } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
 import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
@@ -268,6 +268,20 @@ export class Services extends Stack {
             securityGroup: ecsServicesSecurityGroup
         })
         trafficGeneratorService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
+
+        // Exclude the traffic generator from the FIS AZ-impairment target set.
+        // The app-wide `Tags.of(app).add("AzImpairmentPower","Ready")` (pet_stack.ts)
+        // tags every resource, and EcsService propagates task-def tags onto the
+        // running tasks (propagateTags: TASK_DEFINITION). But the traffic generator
+        // is the LOAD SOURCE, not part of the system under test — we want it to keep
+        // sending traffic *through* the impairment, not be impaired itself. It is also
+        // created with enableSSM:false (no amazon-ssm-agent sidecar), so if the FIS
+        // aws:ecs:task-network-* actions resolve it by tag, the whole experiment fails
+        // with "At least one ECS Task is not registered as a SSM managed instance"
+        // whenever the chosen impaired AZ happens to host it. Override the inherited
+        // tag to "NotReady" on the traffic-generator subtree so the AZ-slowdown /
+        // AZ-power scenarios never select it.
+        Tags.of(trafficGeneratorService).add("AzImpairmentPower", "NotReady");
 
         //status update service Lambda fault action experiment execution role & S3 bucket
         const fisLambdaActionsExperiment= new FisLambdaActionsExperiment(this, 'fis-lambda-actions-experiment');
