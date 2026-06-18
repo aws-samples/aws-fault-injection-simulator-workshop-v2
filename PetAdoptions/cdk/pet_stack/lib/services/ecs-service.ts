@@ -229,8 +229,16 @@ export abstract class EcsService extends Construct {
         publicLoadBalancer: true,
         desiredCount: props.desiredTaskCount,
         listenerPort: 80,
-        securityGroups: [props.securityGroup]
-
+        securityGroups: [props.securityGroup],
+        // Propagate task-definition tags (incl. the app-wide AzImpairmentPower
+        // tag) onto the running tasks, so the FIS aws:ecs:task AZ-slowdown
+        // scenarios can resolve them by tag. Without this, these Fargate tasks
+        // (PayForAdoption, PetListAdoptions) carry no tags and the ECS
+        // network-latency/packet-loss actions resolve an empty target set — so
+        // the RDS-backed cross-AZ path is never exercised. Mirrors the EC2
+        // (PetSearch) service in ecs-ec2-service.ts.
+        propagateTags: ecs.PropagatedTagSource.TASK_DEFINITION,
+        enableECSManagedTags: true,
       })
 
       if (props.healthCheck) {
