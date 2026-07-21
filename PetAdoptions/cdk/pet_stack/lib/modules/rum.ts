@@ -1,4 +1,3 @@
-import { IdentityPool } from '@aws-cdk/aws-cognito-identitypool-alpha'
 import { CfnOutput, Stack } from 'aws-cdk-lib';
 import { CfnAppMonitor } from 'aws-cdk-lib/aws-rum';
 import { Policy, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
@@ -13,7 +12,6 @@ export interface RUMProps {
 }
 
 export class RUM extends Construct {
-    public readonly identityPool: IdentityPool;
     public readonly appMonitor: CfnAppMonitor;
     public readonly htmlScript: string;
     public readonly pageViewScript: string;
@@ -22,11 +20,6 @@ export class RUM extends Construct {
 
     constructor(scope: Construct, id: string, props: RUMProps) {
         super(scope, id);
-
-        this.identityPool = new IdentityPool(this, 'IdentityPool', {
-            identityPoolName: props.name + '-RUM-IdentityPool',
-            allowUnauthenticatedIdentities: true
-        });
 
         const applicationName = props.name + '-RUM-AppMonitor';
 

@@ -1,6 +1,6 @@
-Flask==2.0.2
-boto3==1.20.21
-psycopg2==2.9.3
+Flask==3.0.3
+boto3==1.35.49
+psycopg2==2.9.10
 opentelemetry-distro==0.45b0
 opentelemetry-exporter-otlp==1.24.0
 opentelemetry-exporter-otlp-proto-grpc==1.24.0
@@ -18,6 +18,6 @@ opentelemetry-sdk==1.24.0
 opentelemetry-sdk-extension-aws==2.0.1
 opentelemetry-semantic-conventions==0.45b0
 opentelemetry-util-http==0.45b0
-prometheus-flask-exporter==0.20.2
-Werkzeug==2.2.2
+prometheus-flask-exporter==0.23.1
+Werkzeug==3.0.6
 

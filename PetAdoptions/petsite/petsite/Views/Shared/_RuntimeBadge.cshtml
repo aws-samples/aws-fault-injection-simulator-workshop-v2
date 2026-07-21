@@ -1,0 +1,64 @@
+@using PetSite
+@using System.Diagnostics
+@*
+    "Served by" footer bar. Shows which service / Availability Zone / node /
+    instance rendered this page, as a single row of labeled chips. During FIS
+    experiments (AZ power interruption, instance termination) participants can
+    watch the AZ / node / instance change in the page itself; per-request latency
+    lives on the CloudWatch Latency-by-AZ dashboard. The whole bar still tints
+    amber/red with render time as a subtle in-page signal.
+
+    Values come from RuntimeContext (env + ECS task metadata; on EKS the AZ is
+    resolved from the node's topology.kubernetes.io/zone label). When AZ is
+    unknown the chip is omitted and the node leads — node maps 1:1 to an AZ.
+*@
+@{
+    var sw = Context.Items["RequestStopwatch"] as Stopwatch;
+    long latencyMs = sw?.ElapsedMilliseconds ?? -1;
+    // Latency thresholds for the bar tint (ms). Normal PetSite renders are tens
+    // of ms; injected network latency pushes this well past 250ms.
+    string state = latencyMs < 0 ? "unknown" : latencyMs < 250 ? "ok" : latencyMs < 750 ? "warn" : "crit";
+
+    var service = string.IsNullOrEmpty(RuntimeContext.Service) ? "petsite" : RuntimeContext.Service;
+    var az = RuntimeContext.AvailabilityZone;
+    var node = RuntimeContext.Node;
+    var instance = RuntimeContext.Instance;
+}
+
+<div class="pet-runtime pet-runtime-@state" role="status" aria-live="polite">
+    <span class="pet-runtime-lead">
+        <i class="bi bi-hdd-network" aria-hidden="true"></i> Served&nbsp;by
+    </span>
+
+    <span class="pet-runtime-chip" title="Service rendering this page">
+        <span class="pet-runtime-label">service</span>
+        <span class="pet-runtime-val">@service</span>
+    </span>
+
+    @if (!string.IsNullOrEmpty(az))
+    {
+        <span class="pet-runtime-chip" title="Availability Zone">
+            <i class="bi bi-geo-alt pet-runtime-ico" aria-hidden="true"></i>
+            <span class="pet-runtime-label">AZ</span>
+            <span class="pet-runtime-val">@az</span>
+        </span>
+    }
+
+    @if (!string.IsNullOrEmpty(node))
+    {
+        <span class="pet-runtime-chip" title="EC2 node that served this request (maps to an Availability Zone)">
+            <i class="bi bi-hdd-rack pet-runtime-ico" aria-hidden="true"></i>
+            <span class="pet-runtime-label">node</span>
+            <span class="pet-runtime-val">@node</span>
+        </span>
+    }
+
+    @if (!string.IsNullOrEmpty(instance))
+    {
+        <span class="pet-runtime-chip pet-runtime-chip-muted" title="Pod / instance that served this request">
+            <i class="bi bi-box pet-runtime-ico" aria-hidden="true"></i>
+            <span class="pet-runtime-label">instance</span>
+            <span class="pet-runtime-val">@instance</span>
+        </span>
+    }
+</div>

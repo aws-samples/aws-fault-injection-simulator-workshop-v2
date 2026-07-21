@@ -45,7 +45,12 @@ namespace PetSite.Controllers
             AWSSDKHandler.RegisterXRayForAllServices();
             _configuration = configuration;
 
-            _sqsClient = new AmazonSQSClient(Amazon.Util.EC2InstanceMetadata.Region);
+            // Resolve the region from the standard AWS SDK chain (AWS_REGION env var /
+            // IRSA) instead of querying EC2 instance metadata (IMDS). PetSite runs as an
+            // EKS pod where IMDS is not reachable, so EC2InstanceMetadata.Region threw on
+            // every payment request and broke the "Pay" action. The other AWS clients in
+            // this controller already rely on the default chain.
+            _sqsClient = new AmazonSQSClient();
         }
 
         // GET: Payment

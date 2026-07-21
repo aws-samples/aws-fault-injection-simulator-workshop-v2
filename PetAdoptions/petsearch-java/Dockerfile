@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 gradle:8.10-jdk17 as build
+FROM --platform=linux/amd64 gradle:8.12-jdk17 AS build
 
 WORKDIR /app
 COPY ./build.gradle ./build.gradle
@@ -11,7 +11,7 @@ RUN gradle build -DexcludeTags='integration'
 FROM --platform=linux/amd64 amazoncorretto:17-alpine
 WORKDIR /app
 
-ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/download/v1.21.1/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar
+ADD https://github.com/aws-observability/aws-otel-java-instrumentation/releases/download/v1.33.0/aws-opentelemetry-agent.jar /app/aws-opentelemetry-agent.jar
 ENV JAVA_TOOL_OPTIONS "-javaagent:/app/aws-opentelemetry-agent.jar"
 
 ARG JAR_FILE=build/libs/\*.jar

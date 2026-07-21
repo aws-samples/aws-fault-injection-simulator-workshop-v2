@@ -78,6 +78,14 @@ export abstract class EcsEc2Service extends Construct {
         pidMode: ecs.PidMode.TASK,
     });
 
+    // Enable the ECS task fault-injection endpoints, required by the FIS
+    // aws:ecs:task-network-latency action (AZ: Application Slowdown scenario)
+    // when useEcsFaultInjectionEndpoints=true. Not exposed on the L2 construct,
+    // so set it via the CloudFormation escape hatch. networkMode=awsvpc +
+    // pidMode=task (above) are the other prerequisites for the network action.
+    (this.taskDefinition.node.defaultChild as ecs.CfnTaskDefinition)
+        .addPropertyOverride('EnableFaultInjection', true);
+
     this.taskDefinition.addToExecutionRolePolicy(EcsEc2Service.ExecutionRolePolicy);
     this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AmazonECSTaskExecutionRolePolicy', 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'));
     this.taskDefinition.taskRole?.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this, 'AWSXrayWriteOnlyAccess', 'arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess'));
@@ -103,6 +111,9 @@ export abstract class EcsEc2Service extends Construct {
       logging,
       environment: { // clear text, not for sensitive data
         AWS_REGION: props.region,
+        // Service name for log enrichment / FIS fault attribution. AZ + instance
+        // are resolved at runtime from the ECS Task Metadata v4 endpoint.
+        SERVICE_NAME: props.logGroupName.split('/').pop() || 'petadoptions',
       }
     });
 
@@ -209,7 +220,12 @@ export abstract class EcsEc2Service extends Construct {
         publicLoadBalancer: true,
         desiredCount: props.desiredTaskCount,
         listenerPort: 80,
-
+        // Propagate task-definition tags (incl. the app-wide AzImpairmentPower
+        // tag) onto the running tasks, so the FIS aws:ecs:task AZ-slowdown
+        // scenario can resolve them by tag. Without this, tasks carry no tags
+        // and the ECS network-latency action resolves an empty target set.
+        propagateTags: ecs.PropagatedTagSource.TASK_DEFINITION,
+        enableECSManagedTags: true,
       })
 
       if (props.healthCheck) {
@@ -226,7 +242,7 @@ export abstract class EcsEc2Service extends Construct {
 
   private addXRayContainer(taskDefinition: ecs.Ec2TaskDefinition, logging: ecs.AwsLogDriver, region: string) {
     taskDefinition.addContainer('xraydaemon', {
-      image: ecs.ContainerImage.fromRegistry('public.ecr.aws/xray/aws-xray-daemon:3.3.4'),
+      image: ecs.ContainerImage.fromRegistry('public.ecr.aws/xray/aws-xray-daemon:3.3.12'),
       memoryLimitMiB: 256,
       cpu: 256,
       logging,
@@ -241,7 +257,7 @@ export abstract class EcsEc2Service extends Construct {
 
   private addOtelCollectorContainer(taskDefinition: ecs.Ec2TaskDefinition, logging: ecs.AwsLogDriver, region: string) {
     const otelCollector = taskDefinition.addContainer('aws-otel-collector', {
-        image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/aws-otel-collector:v0.28.0'),
+        image: ecs.ContainerImage.fromRegistry('public.ecr.aws/aws-observability/aws-otel-collector:v0.41.1'),
         memoryLimitMiB: 256,
         cpu: 256,
         command: ["--config", "/etc/ecs/ecs-xray.yaml"],

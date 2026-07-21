@@ -60,7 +60,10 @@ func (mw *middleware) CompleteAdoption(ctx context.Context, petId, petType strin
 			"PetId", petId,
 			"PetType", petType,
 			"took", time.Since(begin),
-			"customer", getFakeCustomer(),
+			"latency_ms", time.Since(begin).Milliseconds(),
+			// Do not log full customer PII (name/email/credit card). Log only a
+			// non-sensitive identifier so adoptions remain traceable.
+			"customerId", getFakeCustomer().ID,
 			"err", err)
 	}(time.Now())
 

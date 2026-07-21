@@ -1,0 +1,113 @@
+{
+  "description": "AZ: Application Slowdown — add 200ms latency to network flows within a single AZ to simulate an application-level gray failure. Mirrors the AWS 'AZ: Application Slowdown' scenario (aws:ecs:task-network-latency + aws:eks:pod-network-latency + aws:ssm EC2 latency in parallel), but targets the workshop's existing AzImpairmentPower=Ready tag (applied app-wide by the CDK) instead of the scenario's default AZApplicationSlowdown tags. Each action is skipped if no matching targets exist (emptyTargetResolutionMode=skip), so it works whether or not the EKS pod action is set up.",
+  "targets": {
+    "TargetsForECS": {
+      "resourceType": "aws:ecs:task",
+      "resourceTags": {
+        "AzImpairmentPower": "Ready"
+      },
+      "filters": [
+        {
+          "path": "AvailabilityZone",
+          "values": [
+            "your_availability_zone_identifier"
+          ]
+        }
+      ],
+      "selectionMode": "ALL"
+    },
+    "TargetsForEC2": {
+      "resourceType": "aws:ec2:instance",
+      "resourceTags": {
+        "AzImpairmentPower": "Ready"
+      },
+      "filters": [
+        {
+          "path": "State.Name",
+          "values": [
+            "running"
+          ]
+        },
+        {
+          "path": "Placement.AvailabilityZone",
+          "values": [
+            "your_availability_zone_identifier"
+          ]
+        }
+      ],
+      "selectionMode": "ALL"
+    },
+    "TargetsForEKS": {
+      "resourceType": "aws:eks:pod",
+      "parameters": {
+        "availabilityZoneIdentifier": "your_availability_zone_identifier",
+        "clusterIdentifier": "PetSite",
+        "namespace": "default",
+        "selectorType": "labelSelector",
+        "selectorValue": "app=petsite"
+      },
+      "selectionMode": "ALL"
+    }
+  },
+  "actions": {
+    "LatencyForECS": {
+      "actionId": "aws:ecs:task-network-latency",
+      "parameters": {
+        "delayMilliseconds": "200",
+        "jitterMilliseconds": "0",
+        "duration": "PT12M",
+        "flowsPercent": "100",
+        "installDependencies": "true",
+        "sources": "your_availability_zone_identifier",
+        "useEcsFaultInjectionEndpoints": "true"
+      },
+      "targets": {
+        "Tasks": "TargetsForECS"
+      }
+    },
+    "LatencyForEC2": {
+      "actionId": "aws:ssm:send-command",
+      "parameters": {
+        "duration": "PT12M",
+        "documentArn": "arn:aws:ssm:us-east-1::document/AWSFIS-Run-Network-Latency-Sources",
+        "documentParameters": "{\"DelayMilliseconds\":\"200\",\"Sources\":\"your_availability_zone_identifier\",\"Interface\":\"DEFAULT\",\"TrafficType\":\"egress\",\"DurationSeconds\":\"720\",\"FlowsPercent\":\"100\",\"InstallDependencies\":\"True\"}"
+      },
+      "targets": {
+        "Instances": "TargetsForEC2"
+      }
+    },
+    "LatencyForEKS": {
+      "actionId": "aws:eks:pod-network-latency",
+      "parameters": {
+        "delayMilliseconds": "200",
+        "duration": "PT12M",
+        "flowsPercent": "100",
+        "interface": "eth0",
+        "kubernetesServiceAccount": "fis-service-account",
+        "sources": "your_availability_zone_identifier"
+      },
+      "targets": {
+        "Pods": "TargetsForEKS"
+      }
+    }
+  },
+  "stopConditions": [
+    {
+      "source": "none"
+    }
+  ],
+  "roleArn": "arn:aws:iam::your_aws_account:role/fis-az-app-slowdown-role",
+  "tags": {
+    "Name": "AZ: Application Slowdown"
+  },
+  "logConfiguration": {
+    "cloudWatchLogsConfiguration": {
+      "logGroupArn": "arn:aws:logs:us-east-1:your_aws_account:log-group:FISExperiments:*"
+    },
+    "logSchemaVersion": 2
+  },
+  "experimentOptions": {
+    "accountTargeting": "single-account",
+    "emptyTargetResolutionMode": "skip"
+  }
+}

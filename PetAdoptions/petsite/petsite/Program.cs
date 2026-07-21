@@ -3,6 +3,7 @@ using Amazon.Extensions.NETCore.Setup;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Prometheus.DotNetRuntime;
 
 namespace PetSite
@@ -45,6 +46,14 @@ namespace PetSite
                             configureSource.Optional = true;
                             configureSource.ReloadAfter = TimeSpan.FromMinutes(5);
                         });
+                })
+                .ConfigureLogging(logging =>
+                {
+                    // Emit structured JSON logs so PetSite request/error lines are
+                    // queryable in CloudWatch Logs Insights and carry the
+                    // service/az/instance/latency context added in Startup.
+                    logging.ClearProviders();
+                    logging.AddJsonConsole();
                 })
                 .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
     }

@@ -98,10 +98,18 @@ export class PetAdoptionsHistory extends EksApplication {
 
     deploymentYaml[0].metadata.annotations["eks.amazonaws.com/role-arn"] = petadoptionhistoryserviceaccount.roleArn;
     deploymentYaml[2].spec.template.spec.containers[0].image = props.imageUri;
-    deploymentYaml[2].spec.template.spec.containers[0].env[1].value = props.region;
-    deploymentYaml[2].spec.template.spec.containers[0].env[3].value = `ClusterName=${props.cluster.clusterName}`;
-    deploymentYaml[2].spec.template.spec.containers[0].env[5].value = props.region;
-    deploymentYaml[2].spec.template.spec.containers[1].env[0].value = props.region;
+    // Substitute env values by NAME (not array position) so adding/reordering env
+    // vars in deployment.yaml — e.g. the SERVICE_NAME / NODE_NAME / POD_NAME /
+    // POD_IP context vars — can't silently corrupt these values.
+    const setEnv = (container: any, name: string, value: string) => {
+        const entry = container.env.find((e: any) => e.name === name);
+        if (entry) { entry.value = value; }
+    };
+    const appContainer = deploymentYaml[2].spec.template.spec.containers[0];
+    setEnv(appContainer, 'AWS_REGION', props.region);
+    setEnv(appContainer, 'OTEL_RESOURCE', `ClusterName=${props.cluster.clusterName}`);
+    setEnv(appContainer, 'S3_REGION', props.region);
+    setEnv(deploymentYaml[2].spec.template.spec.containers[1], 'AWS_REGION', props.region);
     deploymentYaml[3].spec.targetGroupARN = props.targetGroupArn;
 
     const deploymentManifest = new eks.KubernetesManifest(this,"petsitedeployment",{

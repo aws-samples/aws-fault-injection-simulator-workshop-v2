@@ -3,7 +3,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$REPO_DIR/../eks-experiment/"
-aws iam create-role --role-name eks-fis-role --assume-role-policy-document file://fis-trust-policy.json
+aws iam get-role --role-name eks-fis-role >/dev/null 2>&1 \
+  || aws iam create-role --role-name eks-fis-role --assume-role-policy-document file://fis-trust-policy.json
 aws iam attach-role-policy --role-name eks-fis-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorNetworkAccess
 aws iam attach-role-policy --role-name eks-fis-role --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 aws iam attach-role-policy --role-name eks-fis-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSFaultInjectionSimulatorEKSAccess

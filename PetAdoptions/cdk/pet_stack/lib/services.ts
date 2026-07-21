@@ -20,10 +20,9 @@ import { TrafficGeneratorService } from './services/traffic-generator-service'
 import { StatusUpdaterService } from './services/status-updater-service'
 import { PetAdoptionsStepFn } from './services/stepfn'
 import { KubernetesVersion } from 'aws-cdk-lib/aws-eks';
-import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput } from 'aws-cdk-lib';
+import { CfnJson, RemovalPolicy, Fn, Duration, Stack, StackProps, CfnOutput, Tags } from 'aws-cdk-lib';
 import { readFileSync } from 'fs';
-import 'ts-replace-all'
-import { KubectlV32Layer } from '@aws-cdk/lambda-layer-kubectl-v32';
+import { KubectlV35Layer } from '@aws-cdk/lambda-layer-kubectl-v35';
 import { NodegroupAsgTags } from 'eks-nodegroup-asg-tags-cdk';
 import { ServiceStackProps, TargetTag } from './common/services-shared-properties';
 import { createListAdoptionsService, createPayForAdoptionService, createDynamoDBTable, createRDSCluster, createVPC, createAdoptionsBucket, createFISReportBucket } from './common/services-shared';
@@ -219,7 +218,7 @@ export class Services extends Stack {
         ecsEc2PetSearchRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'));
 
         const ecsEc2PetSearchlaunchTemplate = new ec2.LaunchTemplate(this, 'ecsEc2PetSearchLaunchTemplate', {
-            machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+            machineImage: ecs.EcsOptimizedImage.amazonLinux2023(),
             instanceType: new ec2.InstanceType('m5.xlarge'),
             userData: ec2.UserData.forLinux(),
             role: ecsEc2PetSearchRole,
@@ -269,6 +268,20 @@ export class Services extends Stack {
             securityGroup: ecsServicesSecurityGroup
         })
         trafficGeneratorService.taskDefinition.taskRole?.addToPrincipalPolicy(readSSMParamsPolicy);
+
+        // Exclude the traffic generator from the FIS AZ-impairment target set.
+        // The app-wide `Tags.of(app).add("AzImpairmentPower","Ready")` (pet_stack.ts)
+        // tags every resource, and EcsService propagates task-def tags onto the
+        // running tasks (propagateTags: TASK_DEFINITION). But the traffic generator
+        // is the LOAD SOURCE, not part of the system under test — we want it to keep
+        // sending traffic *through* the impairment, not be impaired itself. It is also
+        // created with enableSSM:false (no amazon-ssm-agent sidecar), so if the FIS
+        // aws:ecs:task-network-* actions resolve it by tag, the whole experiment fails
+        // with "At least one ECS Task is not registered as a SSM managed instance"
+        // whenever the chosen impaired AZ happens to host it. Override the inherited
+        // tag to "NotReady" on the traffic-generator subtree so the AZ-slowdown /
+        // AZ-power scenarios never select it.
+        Tags.of(trafficGeneratorService).add("AzImpairmentPower", "NotReady");
 
         //status update service Lambda fault action experiment execution role & S3 bucket
         const fisLambdaActionsExperiment= new FisLambdaActionsExperiment(this, 'fis-lambda-actions-experiment');
@@ -355,29 +368,11 @@ export class Services extends Stack {
             defaultCapacity: 0,
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
-            version: KubernetesVersion.of('1.31'),
-            kubectlLayer: new KubectlV32Layer(this, 'kubectl')
-        });
-
-        const eksOptimizedImage = new eks.EksOptimizedImage(/* all optional props */ {
-            cpuArch: eks.CpuArch.X86_64,
-            kubernetesVersion: '1.31',
-            nodeType: eks.NodeType.STANDARD,
-        });
-
-        const userData = ec2.UserData.forLinux();
-        userData.addCommands(`/etc/eks/bootstrap.sh ${cluster.clusterName} --node-labels AzImpairmentPower=Ready,foo=bar,goo=far`);
-
-        const eksPetSitelt = new ec2.LaunchTemplate(this, 'eksPetSitelt', {
-            machineImage: eksOptimizedImage,
-            instanceType: new ec2.InstanceType('m5.xlarge'),
-            userData: userData,
-            //   role: eksPetSiteRole,
+            version: KubernetesVersion.of('1.36'),
+            kubectlLayer: new KubectlV35Layer(this, 'kubectl')
         });
 
         const eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole';
-
-
 
         const eksPetsiteASGClusterNodeGroupRole = new iam.Role(this, eksPNodeGroupRoleName, {
             roleName: eksPNodeGroupRoleName,
@@ -390,13 +385,11 @@ export class Services extends Stack {
             ],
         });
 
-        // Create nodeGroup properties
+        // Create nodeGroup properties - let EKS manage AL2023 AMI and nodeadm bootstrap
         const eksPetSiteNodegroupProps = {
             cluster: cluster,
-            launchTemplateSpec: {
-                id: eksPetSitelt.launchTemplateId!,
-                version: eksPetSitelt.latestVersionNumber,
-            },
+            amiType: eks.NodegroupAmiType.AL2023_X86_64_STANDARD,
+            instanceTypes: [new ec2.InstanceType('m5.xlarge')],
             labels: {
                 ["AzImpairmentPower"]: "Ready",
             },
@@ -431,15 +424,11 @@ export class Services extends Stack {
         clusterSG.addIngressRule(ec2.Peer.ipv4(theVPC.vpcCidrBlock), ec2.Port.tcp(443), 'Allow local access to k8s api');
 
 
-        // From https://github.com/aws-samples/ssm-agent-daemonset-installer
-        var ssmAgentSetup = yaml.loadAll(readFileSync("./resources/setup-ssm-agent.yaml", "utf8")) as Record<string, any>[];
-
-        const ssmAgentSetupManifest = new eks.KubernetesManifest(this, "ssmAgentdeployment", {
-            cluster: cluster,
-            manifest: ssmAgentSetup
-        });
-
-
+        // NOTE: The ssm-agent-installer DaemonSet was removed. The EKS managed
+        // nodegroup runs Amazon Linux 2023, which ships the SSM Agent
+        // pre-installed, so the installer (which used a personal DockerHub image
+        // and a yum-based script that does not work on AL2023) is no longer
+        // needed.
 
         // ClusterID is not available for creating the proper conditions https://github.com/aws/aws-cdk/issues/10347
         const clusterId = Fn.select(4, Fn.split('/', cluster.clusterOpenIdConnectIssuerUrl)) // Remove https:// from the URL as workaround to get ClusterID
@@ -546,6 +535,41 @@ export class Services extends Stack {
             EKS_ADMIN_ARN = eksAdminArn;
         }
 
+        const codebuildRoleArn = this.node.tryGetContext('codebuild_role');
+        if ((codebuildRoleArn != undefined) && (codebuildRoleArn.length > 0)) {
+            const cbRole = iam.Role.fromRoleArn(this, "codebuildRoleArn", codebuildRoleArn, { mutable: false });
+            cluster.awsAuth.addMastersRole(cbRole);
+        }
+
+        // FIS EKS pod actions (AZ: Application Slowdown — aws:eks:pod-network-latency)
+        // need a Kubernetes service account + RBAC, and the FIS experiment role mapped
+        // into the cluster as the bound K8s user. Provisioned here so the scenario runs
+        // with zero participant setup. The FIS role is created (by fixed name) by the
+        // az-app-slowdown setup script; we map it by its well-known ARN as the
+        // "fis-experiment" user that resources/fis-eks-rbac.yaml binds.
+        const fisExperimentRole = iam.Role.fromRoleArn(this, "FisExperimentRole",
+            "arn:aws:iam::" + stack.account + ":role/fis-az-app-slowdown-role", { mutable: false });
+        cluster.awsAuth.addRoleMapping(fisExperimentRole, { username: "fis-experiment", groups: [] });
+
+        // The 003containers/310eks pod experiments (pod-cpu/memory/io/latency/delete) use
+        // a participant-created FIS service role named "eks-fis-role" as their service access
+        // role. It must be mapped into the cluster as the same bound K8s user "fis-experiment".
+        // Map it here (by its well-known ARN — the IAM role is created during the lab) so the
+        // mapping lives in CDK desired state and survives aws-auth reconciliation. This makes
+        // EKS pod experiments authorize out of the box: the guide's manual
+        // "eksctl create iamidentitymapping" step is now a redundant verify rather than the
+        // sole source of the row (which previously got dropped on any re-provision, causing
+        // AuthorizationFailure).
+        const eksFisRole = iam.Role.fromRoleArn(this, "EksFisRole",
+            "arn:aws:iam::" + stack.account + ":role/eks-fis-role", { mutable: false });
+        cluster.awsAuth.addRoleMapping(eksFisRole, { username: "fis-experiment", groups: [] });
+
+        const fisEksRbacYaml = yaml.loadAll(readFileSync("./resources/fis-eks-rbac.yaml", "utf8")) as Record<string, any>[];
+        const fisEksRbacManifest = new eks.KubernetesManifest(this, "fisEksRbac", {
+            cluster: cluster,
+            manifest: fisEksRbacYaml
+        });
+
         const dahshboardManifest = new eks.KubernetesManifest(this, "k8sdashboardrbac", {
             cluster: cluster,
             manifest: dashboardRoleYaml
@@ -577,20 +601,18 @@ export class Services extends Stack {
             jsonPath: "@"
         });
 
-        const loadBalancerCRDYaml = yaml.loadAll(readFileSync("./resources/load_balancer/crds.yaml", "utf8")) as Record<string, any>[];
-        const loadBalancerCRDManifest = new eks.KubernetesManifest(this, "loadBalancerCRD", {
-            cluster: cluster,
-            manifest: loadBalancerCRDYaml
-        });
-
-
         const awsLoadBalancerManifest = new eks.HelmChart(this, "AWSLoadBalancerController", {
             cluster: cluster,
             chart: "aws-load-balancer-controller",
             repository: "https://aws.github.io/eks-charts",
+            // Pin the chart version so a deploy can't silently pick up a newer,
+            // potentially breaking, controller release. 1.17.x supports EKS 1.36.
+            version: "1.17.1",
             namespace: "kube-system",
             values: {
                 clusterName: "PetSite",
+                region: region,
+                vpcId: theVPC.vpcId,
                 serviceAccount: {
                     create: false,
                     name: "alb-ingress-controller"
@@ -598,7 +620,6 @@ export class Services extends Stack {
                 wait: true
             }
         });
-        awsLoadBalancerManifest.node.addDependency(loadBalancerCRDManifest);
         awsLoadBalancerManifest.node.addDependency(loadBalancerServiceAccount);
         awsLoadBalancerManifest.node.addDependency(waitForLBServiceAccount);
 
@@ -631,10 +652,43 @@ export class Services extends Stack {
         fluentbitYaml[12].data["cluster.name"] = "PetSite";
         fluentbitYaml[12].data["logs.region"] = region;
 
+        // Drop the hand-rolled cloudwatch-agent METRICS resources (ServiceAccount,
+        // ClusterRole(+Binding), cwagentconfig ConfigMap, DaemonSet). Their pinned
+        // agent image was pruned from public ECR (ImagePullBackOff) and the only
+        // pullable replacement is an OTel-gen agent incompatible with this hand-
+        // rolled config. EKS metrics are now provided by the managed
+        // amazon-cloudwatch-observability add-on below. We KEEP the fluent-bit
+        // (logs) resources untouched — they feed /aws/containerinsights/PetSite/
+        // application, which the dashboards and Contributor Insights rules rely on.
+        const cwAgentMetricsResources = new Set([
+            'cloudwatch-agent',          // ServiceAccount + DaemonSet
+            'cloudwatch-agent-role',
+            'cloudwatch-agent-role-binding',
+            'cwagentconfig',
+        ]);
+        const fluentbitOnlyYaml = fluentbitYaml.filter((doc: any) =>
+            !(doc && cwAgentMetricsResources.has(doc?.metadata?.name)));
+
         const fluentbitManifest = new eks.KubernetesManifest(this, "cloudwatcheployment", {
             cluster: cluster,
-            manifest: fluentbitYaml
+            manifest: fluentbitOnlyYaml
         });
+
+        // Managed EKS add-on for Container Insights METRICS (pod/node CPU, memory,
+        // network, etc.). Metrics-only: containerLogs disabled so it does not
+        // create its own fluent-bit and collide with the logs pipeline above.
+        // Uses the existing CW service-account IRSA role for credentials.
+        const cwObservabilityAddon = new eks.CfnAddon(this, 'CloudWatchObservabilityAddon', {
+            addonName: 'amazon-cloudwatch-observability',
+            clusterName: cluster.clusterName,
+            serviceAccountRoleArn: cwserviceaccount.roleArn,
+            resolveConflicts: 'OVERWRITE',
+            configurationValues: JSON.stringify({
+                containerLogs: { enabled: false },
+                containerInsights: { enabled: true },
+            }),
+        });
+        cwObservabilityAddon.node.addDependency(fluentbitManifest);
 
         // CloudWatch agent for prometheus metrics
         var prometheusYaml = yaml.loadAll(readFileSync("./resources/prometheus-eks.yaml", "utf8")) as Record<string, any>[];
@@ -686,7 +740,7 @@ export class Services extends Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
             handler: 'petsite-application-resource-controler.lambda_handler',
             memorySize: 128,
-            runtime: lambda.Runtime.PYTHON_3_11,
+            runtime: lambda.Runtime.PYTHON_3_12,
             role: customWidgetLambdaRole,
             timeout: Duration.minutes(10)
         });
@@ -702,7 +756,7 @@ export class Services extends Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '/../resources/resource-controller-widget')),
             handler: 'cloudwatch-custom-widget.lambda_handler',
             memorySize: 128,
-            runtime: lambda.Runtime.PYTHON_3_11,
+            runtime: lambda.Runtime.PYTHON_3_12,
             role: customWidgetLambdaRole,
             timeout: Duration.seconds(60)
         });

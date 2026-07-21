@@ -40,6 +40,9 @@ export class AZDashboard {
                 this.createALBUnhealthyHostsWidget(),
             ),
             new cloudwatch.Row(
+                this.createALBTargetResponseTimeByAZWidget(),
+            ),
+            new cloudwatch.Row(
                 this.createPetSearchLatencyWidget(),
                 this.createPetSiteLatencyWidget(),
                 this.createPetAdoptionLatencyWidget(),
@@ -55,6 +58,21 @@ export class AZDashboard {
                 this.createRDSReaderInstancesWidget(),
                 this.createRDSWriterWidget(),
                 this.createRDSConnectionsWidget()
+            ),
+            // Cross-AZ Traffic Disruption section. The cross-az-traffic-slowdown
+            // FIS scenario uses aws:network:disrupt-connectivity scoped to one AZ,
+            // which severs TCP connectivity between that AZ and the others. The ALB
+            // 5XX count is NOT AZ-separable here (it is dominated by load-generator
+            // noise), so participants cannot see the disruption from it. The signals
+            // below ARE AZ-distinguishable: TargetConnectionErrorCount rises in the
+            // affected AZ as the ALB fails to open TCP connections to cross-AZ
+            // targets, and Aurora replica lag climbs as cross-AZ replication stalls.
+            new cloudwatch.Row(
+                this.createCrossAZHeaderWidget(),
+            ),
+            new cloudwatch.Row(
+                this.createALBTargetConnectionErrorsByAZWidget(),
+                this.createRDSReplicaLagWidget(),
             )
         );
 
@@ -169,6 +187,139 @@ export class AZDashboard {
                     label: `[${az}] ${this.parameters.loadBalancerArn}`
                 })
             )
+        });
+    }
+
+    // ALB TargetResponseTime split by Availability Zone. This is the clearest
+    // signal for an AZ-scoped slowdown (e.g. the az-app-slowdown FIS scenario):
+    // the ALB measures, per AZ, how long its targets take to respond — including
+    // the time their downstream calls (S3/DynamoDB/RDS) take. When egress latency
+    // is injected into one AZ, that AZ's line rises while the others stay flat,
+    // with no application instrumentation required. The lab guide tells
+    // participants to watch "ALB Target Response Time increasing for targets in
+    // the affected AZ" — this is that widget.
+    private createALBTargetResponseTimeByAZWidget(): cloudwatch.GraphWidget {
+        return new cloudwatch.GraphWidget({
+            title: 'ALB Target Response Time by AZ (watch one AZ diverge during an AZ slowdown)',
+            width: 24,
+            height: 6,
+            left: this.parameters.availabilityZones.flatMap(az => [
+                new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetResponseTime',
+                    dimensionsMap: {
+                        AvailabilityZone: az,
+                        LoadBalancer: this.parameters.loadBalancerArn
+                    },
+                    statistic: 'Average',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: `[${az}] avg`
+                }),
+                new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetResponseTime',
+                    dimensionsMap: {
+                        AvailabilityZone: az,
+                        LoadBalancer: this.parameters.loadBalancerArn
+                    },
+                    statistic: 'p90',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: `[${az}] p90`
+                })
+            ]),
+            view: cloudwatch.GraphWidgetView.TIME_SERIES,
+            period: Duration.seconds(60),
+            stacked: false,
+            leftYAxis: { min: 0, label: 'Seconds' }
+        });
+    }
+
+    // Header for the Cross-AZ Traffic Disruption section. The cross-az-traffic-slowdown
+    // scenario opens this same dashboard, so the section is labelled explicitly to tell
+    // participants which widgets correspond to the inter-AZ connectivity fault (as opposed
+    // to the AZ power-impairment / slowdown widgets above).
+    private createCrossAZHeaderWidget(): cloudwatch.TextWidget {
+        return new cloudwatch.TextWidget({
+            width: 24,
+            height: 2,
+            markdown: '# Cross-AZ Traffic Disruption\n' +
+                'For the **cross-az-traffic-slowdown** scenario (inter-AZ connectivity severed in one AZ). ' +
+                'Watch **Target Connection Errors** spike in the affected AZ as the ALB cannot open TCP ' +
+                'connections to cross-AZ targets, and **Aurora Replica Lag** climb as cross-AZ replication ' +
+                'stalls. (The ALB 5XX widget above is dominated by load-generator noise and is *not* AZ-separable here.)'
+        });
+    }
+
+    // ALB TargetConnectionErrorCount split by Availability Zone. This is the clearest
+    // signal for the cross-az-traffic-slowdown scenario: when inter-AZ connectivity is
+    // disrupted, the ALB nodes in the affected AZ fail to establish TCP connections to
+    // their cross-AZ targets, so this count rises sharply for that AZ while the others
+    // stay flat — unlike HTTPCode_Target_5XX_Count, which is not AZ-distinguishable here.
+    private createALBTargetConnectionErrorsByAZWidget(): cloudwatch.GraphWidget {
+        return new cloudwatch.GraphWidget({
+            title: 'ALB Target Connection Errors by AZ (watch the affected AZ spike during cross-AZ disruption)',
+            width: 12,
+            height: 6,
+            left: this.parameters.availabilityZones.map(az =>
+                new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetConnectionErrorCount',
+                    dimensionsMap: {
+                        AvailabilityZone: az,
+                        LoadBalancer: this.parameters.loadBalancerArn
+                    },
+                    statistic: 'Sum',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: `[${az}] connection errors`
+                })
+            ),
+            view: cloudwatch.GraphWidgetView.TIME_SERIES,
+            period: Duration.seconds(60),
+            stacked: false,
+            leftYAxis: { min: 0, label: 'Count' }
+        });
+    }
+
+    // Aurora replica lag on the reader instance. When cross-AZ traffic is disrupted and
+    // the reader sits in a different AZ from the writer, replication stalls and this lag
+    // climbs; it recovers once connectivity is restored. The cluster is Aurora, so the
+    // metric is AuroraReplicaLag (the plain AWS/RDS ReplicaLag metric is not emitted here).
+    private createRDSReplicaLagWidget(): cloudwatch.GraphWidget {
+        return new cloudwatch.GraphWidget({
+            title: 'RDS Aurora Replica Lag - Reader (climbs when cross-AZ replication stalls)',
+            width: 12,
+            height: 6,
+            left: [
+                new cloudwatch.Metric({
+                    namespace: 'AWS/RDS',
+                    metricName: 'AuroraReplicaLag',
+                    dimensionsMap: {
+                        DBInstanceIdentifier: this.parameters.rdsReaderInstanceId
+                    },
+                    statistic: 'Average',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: 'reader avg'
+                }),
+                new cloudwatch.Metric({
+                    namespace: 'AWS/RDS',
+                    metricName: 'AuroraReplicaLag',
+                    dimensionsMap: {
+                        DBInstanceIdentifier: this.parameters.rdsReaderInstanceId
+                    },
+                    statistic: 'Maximum',
+                    period: Duration.seconds(60),
+                    region: this.region,
+                    label: 'reader max'
+                })
+            ],
+            view: cloudwatch.GraphWidgetView.TIME_SERIES,
+            period: Duration.seconds(60),
+            stacked: false,
+            leftYAxis: { min: 0, label: 'Milliseconds' }
         });
     }
 

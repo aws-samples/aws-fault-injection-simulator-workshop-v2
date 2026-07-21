@@ -1,0 +1,80 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowFISExperimentLoggingActionsCloudwatch",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DescribeTasks",
+      "Effect": "Allow",
+      "Action": "ecs:DescribeTasks",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DescribeContainerInstances",
+      "Effect": "Allow",
+      "Action": "ecs:DescribeContainerInstances",
+      "Resource": "arn:aws:ecs:*:*:container-instance/*/*"
+    },
+    {
+      "Sid": "DescribeInstances",
+      "Effect": "Allow",
+      "Action": "ec2:DescribeInstances",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DescribeSubnets",
+      "Effect": "Allow",
+      "Action": "ec2:DescribeSubnets",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DescribeCluster",
+      "Effect": "Allow",
+      "Action": "eks:DescribeCluster",
+      "Resource": "arn:aws:eks:*:*:cluster/*"
+    },
+    {
+      "Sid": "TargetResolutionByTags",
+      "Effect": "Allow",
+      "Action": "tag:GetResources",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SendCommand",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand"
+      ],
+      "Resource": [
+        "arn:aws:ec2:*:*:instance/*",
+        "arn:aws:ssm:*:*:managed-instance/*",
+        "arn:aws:ssm:*:*:document/*"
+      ]
+    },
+    {
+      "Sid": "ListCommands",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:ListCommands"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CancelCommand",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:CancelCommand"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

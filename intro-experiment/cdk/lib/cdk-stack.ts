@@ -23,7 +23,7 @@ export class FisStackAsg extends cdk.Stack {
     const asg = new autoscaling.AutoScalingGroup(this, 'ASG', {
       vpc: vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO),
-      machineImage: ec2.MachineImage.latestAmazonLinux2(),
+      machineImage: ec2.MachineImage.latestAmazonLinux2023(),
       //vpcSubnets: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_ISOLATED }),
       minCapacity: 1,
       desiredCapacity: 1,

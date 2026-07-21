@@ -1,0 +1,54 @@
+---
+# Service account + RBAC that AWS FIS uses to run aws:eks:pod-* actions (e.g.
+# the AZ: Application Slowdown scenario's pod-network-latency action) against
+# pods in the default namespace. Provisioned at deploy time by the CDK so the
+# workshop's EKS fault-injection works with zero participant setup — the FIS
+# experiment role is mapped to the Kubernetes user "fis-experiment" in aws-auth
+# (see services.ts), and that user is bound to this Role here.
+#
+# Permissions are exactly those AWS documents for aws:eks:pod actions: FIS
+# creates a helper pod that injects an ephemeral container into the target pod.
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  namespace: default
+  name: fis-service-account
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: default
+  name: fis-role-experiments
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "create", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["create", "list", "get", "delete", "deletecollection"]
+- apiGroups: [""]
+  resources: ["pods/ephemeralcontainers"]
+  verbs: ["update"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fis-bind-role-experiments
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: fis-service-account
+  namespace: default
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: fis-experiment
+roleRef:
+  kind: Role
+  name: fis-role-experiments
+  apiGroup: rbac.authorization.k8s.io

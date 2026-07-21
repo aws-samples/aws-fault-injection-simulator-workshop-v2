@@ -1,7 +1,8 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROLEARN=$(aws iam list-roles | jq '.Roles[].Arn | select(contains("cfn-exec") and contains("us-east-1"))' -r)
+REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}}"
+ROLEARN=$(aws iam list-roles | jq --arg r "$REGION" '.Roles[].Arn | select(contains("cfn-exec") and contains($r))' -r)
 ROLE_NAME="FisWorkshopServiceRole"
 
 echo "#########################################################"

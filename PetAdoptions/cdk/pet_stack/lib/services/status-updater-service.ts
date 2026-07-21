@@ -72,7 +72,7 @@ export class StatusUpdaterService extends Construct {
     var layer = lambda.LayerVersion.fromLayerVersionArn(this,`LayerFromArn`,layerArn);
 
     const lambdaFunction = new nodejslambda.NodejsFunction(this, "lambdafn", {
-      runtime: lambda.Runtime.NODEJS_20_X, // execution environment
+      runtime: lambda.Runtime.NODEJS_22_X, // execution environment
       entry: "../../petstatusupdater/index.js",
       depsLockFilePath: "../../petstatusupdater/package-lock.json",
       handler: "handler",

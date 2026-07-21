@@ -1,11 +1,11 @@
-FROM golang:1.18 as builder
+FROM golang:1.24 AS builder
 ENV GOPROXY=https://proxy.golang.org,direct
 WORKDIR /go/src/app
 COPY . .
 RUN go get .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
-FROM alpine:latest
+FROM alpine:3.20
 WORKDIR /app
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /go/src/app/app .

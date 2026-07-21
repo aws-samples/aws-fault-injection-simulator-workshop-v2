@@ -2,3 +2,6 @@ aws-xray-sdk==2.9.0
 Flask==2.3.2
 boto3==1.34.64
 gunicorn==22.0.0
+# Python 3.12 removed the stdlib distutils module; aws-xray-sdk 2.9.0 still
+# imports it (distutils.util.strtobool), so provide it via setuptools' shim.
+setuptools<81

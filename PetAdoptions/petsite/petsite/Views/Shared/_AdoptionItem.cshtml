@@ -1,8 +1,8 @@
-@using Microsoft.CodeAnalysis.CSharp.Syntax
 @model Pet;
-    
-        <img class="pet-thumbnail" src="@Model.peturl" />
-        
+
+    <div class="pet-card h-100">
+        <img class="pet-thumbnail" src="@Model.peturl" alt="@Model.pettype @Model.petcolor, adopted" />
+
         <div class="pet-name">
             <span>@Model.pettype-@Model.petcolor</span>
         </div>
@@ -15,3 +15,4 @@
         <div class="pet-list-item">
             <span>Adopted on-@Model.adoptiondate</span>
         </div>
+    </div>

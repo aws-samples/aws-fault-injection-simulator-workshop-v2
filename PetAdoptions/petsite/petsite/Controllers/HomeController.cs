@@ -70,6 +70,16 @@ namespace PetSite.Controllers
                 new SelectListItem() {Value = "black", Text = "Black"},
                 new SelectListItem() {Value = "white", Text = "White"}
             };
+
+            // How many pets to show on the home page (the full list is a long
+            // scroll). Defaults to 10 via the Index action.
+            _variety.PageSizes = new List<SelectListItem>()
+            {
+                new SelectListItem() {Value = "10", Text = "10"},
+                new SelectListItem() {Value = "25", Text = "25"},
+                new SelectListItem() {Value = "50", Text = "50"},
+                new SelectListItem() {Value = "all", Text = "All"}
+            };
         }
 
         private async Task<string> GetPetDetails(string pettype, string petcolor, string petid)
@@ -134,8 +144,13 @@ namespace PetSite.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string selectedPetType, string selectedPetColor, string petid)
+        public async Task<IActionResult> Index(string selectedPetType, string selectedPetColor, string petid, string pageSize, int page = 1)
         {
+            // Default the home page to 10 pets (the full list is a long scroll);
+            // participants can switch to 25 / 50 / All via the filter bar and
+            // page through the results with Previous / Next.
+            if (string.IsNullOrEmpty(pageSize)) pageSize = "10";
+            if (page < 1) page = 1;
             Console.WriteLine(
                 $"AWS_XRAY_DAEMON_ADDRESS:- {Environment.GetEnvironmentVariable("AWS_XRAY_DAEMON_ADDRESS")}");
                 
@@ -160,7 +175,31 @@ namespace PetSite.Controllers
             catch (Exception e)
             {
                 AWSXRayRecorder.Instance.AddException(e);
-                throw e;
+                // Graceful degradation: when the Search service is unreachable
+                // (e.g. during an FIS network-latency / AZ-slowdown experiment),
+                // render the page in a "search degraded" state instead of a raw
+                // 500. The view surfaces the Availability Zone that served the
+                // failed request so the blast radius is visible in the app
+                // itself. The exception is still recorded to X-Ray above and
+                // logged here for the per-request log/dashboards.
+                _logger.LogError(e,
+                    "search degraded service={Service} az={AZ} instance={Instance} node={Node}",
+                    RuntimeContext.Service, RuntimeContext.AvailabilityZone,
+                    RuntimeContext.Instance, RuntimeContext.Node);
+                ViewData["SearchDegraded"] = true;
+                return View(new PetDetails
+                {
+                    Pets = new List<Pet>(),
+                    Varieties = new Variety
+                    {
+                        PetTypes = _variety.PetTypes,
+                        PetColors = _variety.PetColors,
+                        PageSizes = _variety.PageSizes,
+                        SelectedPetColor = selectedPetColor,
+                        SelectedPetType = selectedPetType,
+                        SelectedPageSize = pageSize
+                    }
+                });
             }
             finally
             {
@@ -169,23 +208,49 @@ namespace PetSite.Controllers
 
             var Pets = JsonSerializer.Deserialize<List<Pet>>(result);
 
+            // Sets the metric value to the number of pets available for adoption
+            // at the moment. Computed from the FULL result set (before applying
+            // the home-page display limit) so the metric is unaffected by paging.
+            PetsWaitingForAdoption.Set(Pets.Where(pet => pet.availability == "yes").Count());
+
+            // Apply the home-page display limit (10 / 25 / 50 / all) with paging.
+            // Only affects how many cards are rendered; does not change search
+            // results. Page metadata is passed to the view for Previous/Next.
+            var displayedPets = Pets;
+            int totalPets = Pets.Count;
+            int totalPages = 1;
+            if (!string.Equals(pageSize, "all", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(pageSize, out var take) && take > 0)
+            {
+                totalPages = Math.Max(1, (int)Math.Ceiling(totalPets / (double)take));
+                if (page > totalPages) page = totalPages;
+                displayedPets = Pets.Skip((page - 1) * take).Take(take).ToList();
+            }
+            else
+            {
+                page = 1; // "all" => single page
+            }
+
+            ViewData["CurrentPage"] = page;
+            ViewData["TotalPages"] = totalPages;
+            ViewData["TotalPets"] = totalPets;
+
             var PetDetails = new PetDetails()
             {
-                Pets = Pets,
+                Pets = displayedPets,
                 Varieties = new Variety
                 {
                     PetTypes = _variety.PetTypes,
                     PetColors = _variety.PetColors,
+                    PageSizes = _variety.PageSizes,
                     SelectedPetColor = selectedPetColor,
-                    SelectedPetType = selectedPetType
+                    SelectedPetType = selectedPetType,
+                    SelectedPageSize = pageSize
                 }
             };
             AWSXRayRecorder.Instance.AddMetadata("results", System.Text.Json.JsonSerializer.Serialize(PetDetails));
             Console.WriteLine(
                 $" TraceId: [{AWSXRayRecorder.Instance.GetEntity().TraceId}] - {JsonSerializer.Serialize(PetDetails)}");
-
-            // Sets the metric value to the number of pets available for adoption at the moment
-            PetsWaitingForAdoption.Set(Pets.Where(pet => pet.availability == "yes").Count());
 
             return View(PetDetails);
         }

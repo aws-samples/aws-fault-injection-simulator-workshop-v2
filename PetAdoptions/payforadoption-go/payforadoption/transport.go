@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 
@@ -22,7 +22,10 @@ func MakeHTTPHandler(s Service, logger log.Logger) http.Handler {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorHandler(transport.NewLogErrorHandler(logger)),
 		httptransport.ServerErrorEncoder(encodeError),
-		httptransport.ServerFinalizer(loggingMiddleware),
+		httptransport.ServerBefore(func(ctx context.Context, r *http.Request) context.Context {
+			return context.WithValue(ctx, ctxKeyStart{}, time.Now())
+		}),
+		httptransport.ServerFinalizer(makeLoggingFinalizer(logger)),
 	}
 
 	r.Methods("GET").Path("/health/status").Handler(httptransport.NewServer(
@@ -139,6 +142,33 @@ func codeFrom(err error) int {
 	}
 }
 
-func loggingMiddleware(ctx context.Context, code int, r *http.Request) {
-	fmt.Println(r.Method, r.RequestURI, r.Proto, r.RemoteAddr, code)
+// ctxKeyStart carries the request-start time from ServerBefore to the
+// finalizer so per-request latency can be computed.
+type ctxKeyStart struct{}
+
+// makeLoggingFinalizer returns a go-kit ServerFinalizer that emits one
+// top-level JSON line per request. The logger passed in is the base logger
+// from main.go, already enriched with service / az / instance via
+// log.With(...LogKeyvals()...), so those fields appear on the line for free.
+// Emitting through the JSON logger (not fmt.Println) makes status / path /
+// latency_ms top-level fields visible to CloudWatch Contributor Insights and
+// the per-AZ latency dashboard during FIS experiments.
+func makeLoggingFinalizer(logger log.Logger) httptransport.ServerFinalizerFunc {
+	return func(ctx context.Context, code int, r *http.Request) {
+		var latencyMs int64
+		if t, ok := ctx.Value(ctxKeyStart{}).(time.Time); ok {
+			latencyMs = time.Since(t).Milliseconds()
+		}
+		// The finalizer receives only the response status code, not the handler
+		// error, so the error signal is status>=500 (err kept "" for field
+		// parity with the other services; per-method error detail is still
+		// logged separately via level.Error in the service layer).
+		_ = logger.Log(
+			"event", "request",
+			"path", r.URL.Path,
+			"status", code,
+			"latency_ms", latencyMs,
+			"err", "",
+		)
+	}
 }

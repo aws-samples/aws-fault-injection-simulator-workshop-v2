@@ -6,14 +6,15 @@ Parameters:
     Type: String
     Default: UpdateLambdaWithSSMAutomationRoleParam
     Description: Update lambda via SSM Automation role
-  LambdaExecutionRoleName:
-    Type: String
-    Default: SampleLambdaExecutionRole
-    Description: Sample Lambda Execution Role
   FISRoleName:
     Type: String
-    Default: FISRole
-    Description: Sample FIS Execution Role
+    Default: FisLambdaChaosInjectionRole
+    Description: Name of the FIS execution role for the pre-built Lambda chaos
+      experiment. Keep the name lab-specific - this role is trusted by
+      fis.amazonaws.com, so it appears in the FIS console Service access dropdown
+      for every lab. A generic name like "FISRole" gets selected by mistake for
+      EKS/other experiments, which then fail with AuthorizationFailure (target
+      resolution, logs:CreateLogDelivery).
   ChaosDocumentName:
     Type: String
     Default: InjectChaosLambda
@@ -217,19 +218,8 @@ Resources:
         InjectChaos:
           ActionId: aws:ssm:start-automation-execution
           Parameters:
-            documentArn: !Join
-              - ''
-              - - !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/
-                - !Ref ChaosDocumentName
-            documentParameters: !Join
-              - ''
-              - - '{"FunctionName":"'
-                - !Ref TargetFunctionName
-                - '","LayerArn":"'
-                - !Ref NodeLambdaLayer
-                - '","assumeRole":"'
-                - !GetAtt UpdateLambdaWithSSMAutomationRole.Arn
-                - '"}'
+            documentArn: !Sub arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${ChaosDocumentName}
+            documentParameters: !Sub '{"FunctionName":"${TargetFunctionName}","LayerArn":"${NodeLambdaLayer}","assumeRole":"${UpdateLambdaWithSSMAutomationRole.Arn}"}'
             maxDuration: PT10M
       StopConditions:
         - Source: none
@@ -281,10 +271,4 @@ Outputs:
   NodeChaosInjectionParam:
     Description: The parameter string to update in FIS experiment template for
       injecting chaos in Node Lambda function
-    Value: !Join
-      - ''
-      - - '{"FunctionName":"NodeChaosInjectionExampleFn","LayerArn":"'
-        - !Ref NodeLambdaLayer
-        - '","assumeRole":"'
-        - !GetAtt UpdateLambdaWithSSMAutomationRole.Arn
-        - '"}'
+    Value: !Sub '{"FunctionName":"NodeChaosInjectionExampleFn","LayerArn":"${NodeLambdaLayer}","assumeRole":"${UpdateLambdaWithSSMAutomationRole.Arn}"}'

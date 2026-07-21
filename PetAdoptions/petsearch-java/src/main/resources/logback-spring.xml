@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-            <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
-                <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter" />
-                <timestampFormat>yyyy-MM-dd' 'HH:mm:ss.SSS</timestampFormat>
-                <appendLineSeparator>true</appendLineSeparator>
-            </layout>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- keep MDC (OTel trace_id/span_id) as top-level fields -->
+            <includeMdc>true</includeMdc>
         </encoder>
     </appender>
 
