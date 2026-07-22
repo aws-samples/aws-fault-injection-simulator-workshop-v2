@@ -102,7 +102,7 @@ jobs:
       - name: Deploy Application Stacks
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
-          cdk deploy Applications --require-approval=never
+          cdk deploy Applications --exclusively --require-approval=never
           cdk deploy FisServerless --require-approval=never
 
       - name: Deploy Observability Stack
