@@ -75,7 +75,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '23.x'  # adjust version as needed
+          node-version: '24.x'
 
       - name: Cache Node.js dependencies
         id: cache
@@ -223,7 +223,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '23.x'
+          node-version: '24.x'
 
       - name: Install global dependencies
         run: npm install aws-cdk -g
