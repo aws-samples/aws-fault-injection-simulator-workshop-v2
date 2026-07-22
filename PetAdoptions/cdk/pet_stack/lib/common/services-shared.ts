@@ -11,6 +11,7 @@ import * as ddb from 'aws-cdk-lib/aws-dynamodb'
 import { RemovalPolicy, Tags } from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3'
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cr from 'aws-cdk-lib/custom-resources';
 
 
 //Create ListAdoptionsService
@@ -168,6 +169,26 @@ export function createRDSCluster(props: CreateRDSClusterProps): RDSClusterResult
     rdssecuritygroup.addIngressRule(ec2.Peer.ipv4(props.vpcCidr), ec2.Port.tcp(5432), 'Allow Aurora PG access from within the VPC CIDR range');
 
     const rdsUsername = props.rdsUsername || "petadmin";
+
+    // Freshly vended workshop accounts have no AWSServiceRoleForRDS; RDS's
+    // implicit creation of it can race and fail the whole Services deploy.
+    // Pre-create it idempotently (InvalidInput = role already exists).
+    const rdsServiceLinkedRole = new cr.AwsCustomResource(props.scope, 'RdsServiceLinkedRole', {
+        onCreate: {
+            service: 'IAM',
+            action: 'createServiceLinkedRole',
+            parameters: { AWSServiceName: 'rds.amazonaws.com' },
+            physicalResourceId: cr.PhysicalResourceId.of('rds-service-linked-role'),
+            ignoreErrorCodesMatching: 'InvalidInput',
+        },
+        policy: cr.AwsCustomResourcePolicy.fromStatements([
+            new iam.PolicyStatement({
+                actions: ['iam:CreateServiceLinkedRole'],
+                resources: ['arn:aws:iam::*:role/aws-service-role/rds.amazonaws.com/*'],
+            }),
+        ]),
+    });
+
     const auroraCluster = new rds.DatabaseCluster(props.scope, 'Database', {
         credentials: { username: rdsUsername },
         engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_15_10 }),
@@ -182,8 +203,13 @@ export function createRDSCluster(props: CreateRDSClusterProps): RDSClusterResult
         parameterGroup: rds.ParameterGroup.fromParameterGroupName(props.scope, 'ParameterGroup', 'default.aurora-postgresql15'),
         vpc: props.vpc,
         securityGroups: [rdssecuritygroup],
-        defaultDatabaseName: 'adoptions'
+        defaultDatabaseName: 'adoptions',
+        // Workshop database is disposable; without DESTROY the default SNAPSHOT
+        // policy creates a manual snapshot on every CI teardown until the
+        // 100-snapshot account quota blocks stack deletion entirely.
+        removalPolicy: RemovalPolicy.DESTROY
     });
+    auroraCluster.node.addDependency(rdsServiceLinkedRole);
 
     if (auroraCluster.secret === undefined) {
         throw new Error("RDS Doesn't have a secret");

@@ -1,8 +1,9 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cdk from 'aws-cdk-lib/core';
 import { Construct } from 'constructs'
 import path = require('path');
@@ -46,7 +47,11 @@ export class UserSimulationStack extends cdk.Stack {
       // Add a container to the task definition using your Docker image
       const catAdoptContainer = catAdoptTaskDefinition.addContainer('catAdoptContainer', {
         image: ecs.ContainerImage.fromAsset('./resources/user_simulation/catadopt'),
-        logging: new ecs.AwsLogDriver({ streamPrefix: 'catadopt' }),
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: 'catadopt',
+          // Explicit log group so it is destroyed with the stack instead of retained.
+          logGroup: new logs.LogGroup(this, 'catAdoptLogGroup', { removalPolicy: RemovalPolicy.DESTROY }),
+        }),
       });
 
       // Configure container settings, environment variables, etc.
@@ -83,7 +88,10 @@ export class UserSimulationStack extends cdk.Stack {
       // Add a container to the task definition using your Docker image
       const dogAdoptContainer = dogAdoptTaskDefinition.addContainer('dogAdoptContainer', {
         image: ecs.ContainerImage.fromAsset('./resources/user_simulation/dogadopt'),
-        logging: new ecs.AwsLogDriver({ streamPrefix: 'dogadopt' }),
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: 'dogadopt',
+          logGroup: new logs.LogGroup(this, 'dogAdoptLogGroup', { removalPolicy: RemovalPolicy.DESTROY }),
+        }),
       });
 
       // Configure container settings, environment variables, etc.
@@ -116,7 +124,10 @@ export class UserSimulationStack extends cdk.Stack {
     // Add a container to the task definition using your Docker image
     const getAllPetsContainer = getAllPetsTaskDefinition.addContainer('getAllPetsContainer', {
       image: ecs.ContainerImage.fromAsset('./resources/user_simulation/getallpets'),
-      logging: new ecs.AwsLogDriver({ streamPrefix: 'getallpets' }),
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'getallpets',
+        logGroup: new logs.LogGroup(this, 'getAllPetsLogGroup', { removalPolicy: RemovalPolicy.DESTROY }),
+      }),
     });
 
     // Configure container settings, environment variables, etc.
@@ -149,7 +160,10 @@ export class UserSimulationStack extends cdk.Stack {
     // Add a container to the task definition using your Docker image
     const searchListContainer = searchListTaskDefinition.addContainer('searchListContainer', {
       image: ecs.ContainerImage.fromAsset('./resources/user_simulation/searchlist'),
-      logging: new ecs.AwsLogDriver({ streamPrefix: 'searchlist' }),
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'searchlist',
+        logGroup: new logs.LogGroup(this, 'searchListLogGroup', { removalPolicy: RemovalPolicy.DESTROY }),
+      }),
     });
 
     // Configure container settings, environment variables, etc.
@@ -252,7 +266,10 @@ CMD ["./monitor"]`;
     // Add a container to the task definition using your Docker image
     const azMonitorContainer = azMonitorTaskDefinition.addContainer('azMonitorContainer', {
       image: ecs.ContainerImage.fromAsset(azMonitorDockerBuildDir),
-      logging: new ecs.AwsLogDriver({ streamPrefix: 'azmonitor' }),
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'azmonitor',
+        logGroup: new logs.LogGroup(this, 'azMonitorLogGroup', { removalPolicy: RemovalPolicy.DESTROY }),
+      }),
     });
 
 

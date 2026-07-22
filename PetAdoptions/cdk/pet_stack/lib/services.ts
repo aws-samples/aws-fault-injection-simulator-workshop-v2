@@ -359,7 +359,10 @@ export class Services extends Stack {
             assumedBy: new iam.AccountRootPrincipal()
         });
 
-        const secretsKey = new kms.Key(this, 'SecretsKey');
+        // Without DESTROY the key is orphaned (and billed) on every CI teardown.
+        const secretsKey = new kms.Key(this, 'SecretsKey', {
+            removalPolicy: RemovalPolicy.DESTROY
+        });
 
         const cluster = new eks.Cluster(this, 'petsite', {
             clusterName: 'PetSite',
