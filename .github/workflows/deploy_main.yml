@@ -90,42 +90,37 @@ jobs:
           aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text
         if: steps.cache.outputs.cache-hit != 'true'
 
+      # The workshop is single-region since PR #193; the former *Secondary,
+      # Network*, and S3Replica stacks no longer exist in the CDK app.
       - name: Deploy Pet Stack Services
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           npm install
           npm run build
-          cdk deploy Services --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="false" --require-approval=never 
-          cdk deploy ServicesSecondary --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="false" --require-approval=never 
-
-      - name: Deploy Network Stacks
-        working-directory: ./PetAdoptions/cdk/pet_stack
-        run: |
-          cdk deploy NetworkRegionPeering --require-approval=never
-          cdk deploy NetworkRoutesMain --require-approval=never
-          cdk deploy NetworkRoutesSecondary --require-approval=never
+          cdk deploy Services --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="false" --require-approval=never
 
       - name: Deploy Application Stacks
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
-          cdk deploy S3Replica --require-approval=never
           cdk deploy Applications --require-approval=never
-          cdk deploy ApplicationsSecondary --require-approval=never
           cdk deploy FisServerless --require-approval=never
 
-      - name: Deploy Observability Stacks
+      - name: Deploy Observability Stack
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy Observability --require-approval=never
-          cdk deploy ObservabilitySecondary --require-approval=never
-          cdk deploy ObservabilityDashboard --require-approval=never
 
-      - name: Deploy User Simulation Stacks
+      # Same order as buildspec.yml: dashboard deploys after user simulation.
+      - name: Deploy User Simulation Stack
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy UserSimulationStack --require-approval=never
           sh ../../../az-experiment/scripts/removeusersimtags.sh
-          cdk deploy UserSimulationStackSecondary --require-approval=never
+
+      - name: Deploy Observability Dashboard
+        working-directory: ./PetAdoptions/cdk/pet_stack
+        run: |
+          cdk deploy ObservabilityDashboard --require-approval=never
 
       - name: Deploy Intro Experiment
         working-directory: ./intro-experiment/cdk
