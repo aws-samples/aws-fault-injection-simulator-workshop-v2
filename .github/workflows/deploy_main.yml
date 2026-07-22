@@ -24,7 +24,7 @@ jobs:
       deployment_status: ${{ job.status }}
     steps: 
       - name: Git clone the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Debug directory structure
         run: |
@@ -32,7 +32,7 @@ jobs:
           ls -R
 
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::992382547812:role/GithubActionRole
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -73,13 +73,13 @@ jobs:
         shell: bash 
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '23.x'  # adjust version as needed
 
       - name: Cache Node.js dependencies
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ./node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('./package-lock.json') }}
@@ -136,10 +136,10 @@ jobs:
       verification_status: ${{ job.status }}
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.EE_TEAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -210,10 +210,10 @@ jobs:
       )
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.EE_TEAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -221,7 +221,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '23.x'
 
