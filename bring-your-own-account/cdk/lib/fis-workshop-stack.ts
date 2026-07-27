@@ -149,7 +149,7 @@ export class FisWorkshopStack extends cdk.Stack {
                             'mkdir -p ./out',
                             'cdk synth Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}"',
                             'cdk deploy Services --context admin_role="${EE_TEAM_ROLE_ARN}" --context is_event_engine="${IS_EVENT_ENGINE}" --require-approval=never --verbose -O ./out/out.json',
-                            'cdk deploy Applications --require-approval=never --verbose -O ./out/out.json',
+                            'cdk deploy Applications --exclusively --require-approval=never --verbose -O ./out/out.json',
                             'cdk deploy FisServerless --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy Observability --require-approval never --verbose -O ./out/out.json',
                             'cdk deploy UserSimulationStack --require-approval never --verbose -O ./out/out.json',

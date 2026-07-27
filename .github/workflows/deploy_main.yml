@@ -24,7 +24,7 @@ jobs:
       deployment_status: ${{ job.status }}
     steps: 
       - name: Git clone the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Debug directory structure
         run: |
@@ -32,7 +32,7 @@ jobs:
           ls -R
 
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: arn:aws:iam::992382547812:role/GithubActionRole
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -44,42 +44,14 @@ jobs:
         run: |
           aws sts get-caller-identity
 
-      - name: Delete UserSimulationStack Log Groups
-        run: |
-          echo "Searching for log groups containing 'UserSimulationStack'"
-          # Get the log groups containing UserSimulationStack
-          LOG_GROUPS=$(aws logs describe-log-groups \
-            --query "logGroups[?contains(logGroupName, 'UserSimulationStack')].logGroupName" \
-            --output text)
-
-          # Check if any log groups were found
-          if [ -z "$LOG_GROUPS" ] || [ "$LOG_GROUPS" = "None" ]; then
-              echo "No log groups found containing 'UserSimulationStack'. Skipping deletion."
-              exit 0
-          fi
-
-          # Process each log group
-          echo "$LOG_GROUPS" | tr '\t' '\n' | while read -r log_group; do
-              if [ ! -z "$log_group" ]; then
-                  echo "Deleting log group: $log_group"
-                  if aws logs delete-log-group --log-group-name "$log_group"; then
-                      echo "Successfully deleted: $log_group"
-                  else
-                      echo "Failed to delete: $log_group"
-                  fi
-              fi
-          done
-          echo "Finished processing log groups" 
-        shell: bash 
-
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '23.x'  # adjust version as needed
+          node-version: '24.x'
 
       - name: Cache Node.js dependencies
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ./node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('./package-lock.json') }}
@@ -90,42 +62,37 @@ jobs:
           aws cloudformation list-stacks --query 'StackSummaries[?(StackName==`CDKToolkit` && StackStatus==`CREATE_COMPLETE`)].StackId' --output text
         if: steps.cache.outputs.cache-hit != 'true'
 
+      # The workshop is single-region since PR #193; the former *Secondary,
+      # Network*, and S3Replica stacks no longer exist in the CDK app.
       - name: Deploy Pet Stack Services
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           npm install
           npm run build
-          cdk deploy Services --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="false" --require-approval=never 
-          cdk deploy ServicesSecondary --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="false" --require-approval=never 
-
-      - name: Deploy Network Stacks
-        working-directory: ./PetAdoptions/cdk/pet_stack
-        run: |
-          cdk deploy NetworkRegionPeering --require-approval=never
-          cdk deploy NetworkRoutesMain --require-approval=never
-          cdk deploy NetworkRoutesSecondary --require-approval=never
+          cdk deploy Services --context admin_role=$EE_TEAM_ROLE_ARN --context is_event_engine="false" --require-approval=never
 
       - name: Deploy Application Stacks
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
-          cdk deploy S3Replica --require-approval=never
-          cdk deploy Applications --require-approval=never
-          cdk deploy ApplicationsSecondary --require-approval=never
+          cdk deploy Applications --exclusively --require-approval=never
           cdk deploy FisServerless --require-approval=never
 
-      - name: Deploy Observability Stacks
+      - name: Deploy Observability Stack
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy Observability --require-approval=never
-          cdk deploy ObservabilitySecondary --require-approval=never
-          cdk deploy ObservabilityDashboard --require-approval=never
 
-      - name: Deploy User Simulation Stacks
+      # Same order as buildspec.yml: dashboard deploys after user simulation.
+      - name: Deploy User Simulation Stack
         working-directory: ./PetAdoptions/cdk/pet_stack
         run: |
           cdk deploy UserSimulationStack --require-approval=never
           sh ../../../az-experiment/scripts/removeusersimtags.sh
-          cdk deploy UserSimulationStackSecondary --require-approval=never
+
+      - name: Deploy Observability Dashboard
+        working-directory: ./PetAdoptions/cdk/pet_stack
+        run: |
+          cdk deploy ObservabilityDashboard --require-approval=never
 
       - name: Deploy Intro Experiment
         working-directory: ./intro-experiment/cdk
@@ -141,10 +108,10 @@ jobs:
       verification_status: ${{ job.status }}
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.EE_TEAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -215,10 +182,10 @@ jobs:
       )
     steps:
       - name: Git clone the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ env.EE_TEAM_ROLE_ARN }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
@@ -226,9 +193,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '23.x'
+          node-version: '24.x'
 
       - name: Install global dependencies
         run: npm install aws-cdk -g

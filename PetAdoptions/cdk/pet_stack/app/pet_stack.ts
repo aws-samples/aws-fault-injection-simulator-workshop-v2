@@ -28,6 +28,11 @@ const applications = new Applications(app, "Applications", {
     region: process.env.CDK_DEFAULT_REGION
   },
 });
+// Applications imports the PetSite cluster by name (fromClusterAttributes),
+// which CloudFormation can't see as a dependency. Without this hint,
+// `cdk destroy --all` may delete Services (and the cluster) first, leaving
+// Applications' kubectl resources unable to delete (update-kubeconfig 255).
+applications.addDependency(stack_primary);
 
 const fis_serverless = new FisServerless(app, "FisServerless", {
   env: {
