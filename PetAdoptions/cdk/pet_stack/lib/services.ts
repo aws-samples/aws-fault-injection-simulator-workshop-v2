@@ -14,6 +14,8 @@ import * as path from 'path';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import { LoadBalancerV2Origin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Construct } from 'constructs'
 import { SearchEc2Service } from './services/search-service-ec2'
 import { TrafficGeneratorService } from './services/traffic-generator-service'
@@ -310,7 +312,13 @@ export class Services extends Stack {
             securityGroupName: 'ALBSecurityGroup',
             allowAllOutbound: true
         });
-        albSG.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
+        // Public access goes through CloudFront (see petSiteDistribution); the
+        // ALB itself only accepts traffic from CloudFront's origin-facing fleet
+        // so its ENIs are not directly reachable from the internet.
+        const cloudFrontOriginPrefixList = ec2.PrefixList.fromLookup(this, 'CloudFrontOriginPrefixList', {
+            prefixListName: 'com.amazonaws.global.cloudfront.origin-facing',
+        });
+        albSG.addIngressRule(ec2.Peer.prefixList(cloudFrontOriginPrefixList.prefixListId), ec2.Port.tcp(80), 'Allow CloudFront origin-facing access');
 
         // PetSite - Create ALB and Target Groups
         const alb = new elbv2.ApplicationLoadBalancer(this, 'PetSiteLoadBalancer', {
@@ -331,8 +339,28 @@ export class Services extends Stack {
 
         const listener = alb.addListener('Listener', {
             port: 80,
-            open: true,
+            // open:false keeps CDK from adding a 0.0.0.0/0 ingress rule; the
+            // security group above only admits CloudFront's origin fleet.
+            open: false,
             defaultTargetGroups: [targetGroup],
+        });
+
+        // Public HTTPS entry point for PetSite. The default *.cloudfront.net
+        // certificate avoids needing a custom domain in ephemeral accounts.
+        const petSiteDistribution = new cloudfront.Distribution(this, 'PetSiteDistribution', {
+            defaultBehavior: {
+                origin: new LoadBalancerV2Origin(alb, {
+                    protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+                }),
+                viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+                // Pure proxy: workshop failure experiments must surface origin
+                // errors immediately, not cached responses.
+                cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+            },
+            comment: 'PetSite workshop frontend',
+            enableIpv6: false,
         });
 
         // PetAdoptionHistory - attach service to path /petadoptionhistory on PetSite ALB
@@ -789,7 +817,7 @@ export class Services extends Stack {
             'XRayServiceAccountArn': xrayserviceaccount.roleArn,
             'OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
             'OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
-            'PetSiteUrl': `http://${alb.loadBalancerDnsName}`
+            'PetSiteUrl': `https://${petSiteDistribution.distributionDomainName}`
         })));
 
 
@@ -829,8 +857,8 @@ export class Services extends Stack {
             '/petstore/stackname': stackName,
             '/petstore/vpcid': `${theVPC.vpcId}`,
             '/petstore/vpccidr': `${theVPC.vpcCidrBlock}`,
-            '/petstore/petsiteurl': `http://${alb.loadBalancerDnsName}`,
-            '/petstore/pethistoryurl': `http://${alb.loadBalancerDnsName}/petadoptionshistory`,
+            '/petstore/petsiteurl': `https://${petSiteDistribution.distributionDomainName}`,
+            '/petstore/pethistoryurl': `https://${petSiteDistribution.distributionDomainName}/petadoptionshistory`,
             '/eks/petsite/OIDCProviderUrl': cluster.clusterOpenIdConnectIssuerUrl,
             '/eks/petsite/OIDCProviderArn': cluster.openIdConnectProvider.openIdConnectProviderArn,
             '/petstore/errormode1': "false",
