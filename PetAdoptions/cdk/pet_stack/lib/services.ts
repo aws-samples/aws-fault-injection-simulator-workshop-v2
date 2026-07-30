@@ -400,7 +400,15 @@ export class Services extends Stack {
             // defaultCapacityInstance: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
             secretsEncryptionKey: secretsKey,
             version: KubernetesVersion.of('1.36'),
-            kubectlLayer: new KubectlV35Layer(this, 'kubectl')
+            kubectlLayer: new KubectlV35Layer(this, 'kubectl'),
+            // The 310eks lab has participants grant their own role an EKS access
+            // entry (AmazonEKSClusterAdminPolicy) so they can run kubectl. Access
+            // entries require the API authentication mode; CONFIG_MAP-only rejects
+            // them. The aws-auth ConfigMap mappings elsewhere in this file
+            // (awsAuth.*) keep working unchanged under API_AND_CONFIG_MAP.
+            // Note: this flip is one-way -- the CDK cluster handler refuses to
+            // fall back from API_AND_CONFIG_MAP to CONFIG_MAP.
+            authenticationMode: eks.AuthenticationMode.API_AND_CONFIG_MAP,
         });
 
         const eksPNodeGroupRoleName = 'eksPetsiteASGClusterNodeGroupRole';
@@ -556,6 +564,16 @@ export class Services extends Stack {
         if (isEventEngine === 'true') {
             const teamRole = iam.Role.fromRoleArn(this, 'TeamRole', "arn:aws:iam::" + stack.account + ":role/WSParticipantRole");
             cluster.awsAuth.addRoleMapping(teamRole, { groups: ["dashboard-view"] });
+
+            // No AccessEntry for WSParticipantRole here on purpose. The 310eks
+            // lab has participants create their own access entry with
+            // AmazonEKSClusterAdminPolicy, and its "does an entry already
+            // exist?" guard would short-circuit on a CDK-created entry --
+            // skipping the associate-access-policy call and leaving them with
+            // narrower access than the lab needs. AmazonEKSEditPolicy and
+            // AmazonEKSViewPolicy also cover neither metrics.k8s.io (kubectl
+            // top pod) nor nodes (kubectl get nodes), so pre-provisioning them
+            // would not satisfy the lab anyway.
         }
 
         const eksAdminArn = this.node.tryGetContext('admin_role');
