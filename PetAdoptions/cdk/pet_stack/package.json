@@ -29,7 +29,7 @@
     "aws-cdk-lib": "^2.259.0",
     "cdk-ecr-deployment": "^3.3.1",
     "eks-nodegroup-asg-tags-cdk": "^1.2.2",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.1",
     "source-map-support": "^0.5.21"
   }
 }
